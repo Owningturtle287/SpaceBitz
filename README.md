@@ -20,7 +20,7 @@ Screen distances are log compressed and body radii are visually enlarged for sel
 
 ## Install on a phone
 
-Host the app on HTTPS (GitHub Pages supports this). Enable **Settings → Pages → Build and deployment → GitHub Actions** on this repository, then merge the deployment workflow to `main`. On Android Chrome, use the browser's **Install app** prompt or menu. On iPhone Safari, use **Share → Add to Home Screen**. After the first successful online load, the app shell works offline; progress is stored locally.
+Host the app on HTTPS (GitHub Pages supports this). Enable **Settings → Pages → Build and deployment → GitHub Actions** on this repository, then run **Actions → Deploy SpaceBitz → Run workflow**. The workflow is already on `main` and will deploy future changes automatically. On Android Chrome, use the browser's **Install app** prompt or menu. On iPhone Safari, use **Share → Add to Home Screen**. After the first successful online load, the app shell works offline; progress is stored locally.
 
 The repository does not ship a native APK or IPA. The installed app is a progressive web app and uses the browser's app shell and storage.
 
