@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080f22">
+  <meta name="description" content="Explore a living pocket galaxy. Follow real orbital rhythms, find habitable worlds and leave your mark among the stars.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./style.css">
+  <title>SpaceBitz — The small universe</title>
+</head>
+<body>
+  <canvas id="sky" aria-label="SpaceBitz space exploration game"></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+  <div id="app" hidden>
+    <header class="topbar">
+      <div class="brand"><span class="brandmark">✦</span><span>SPACE<span class="brand-accent">BITZ</span></span><span class="edition">FIELD EDITION</span></div>
+      <div class="top-actions"><span id="clock" class="clock">01 JAN 2026</span><button id="settingsOpen" class="icon-button" aria-label="Open settings">⚙</button></div>
+    </header>
+    <aside class="mission glass" aria-live="polite">
+      <div class="eyebrow" id="modeLabel">SYSTEM / 01</div>
+      <h1 id="placeLabel">Sol</h1>
+      <p id="hint">Select a world to explore.</p>
+      <div id="zoneLegend" class="legend"><i></i> TEMPERATE ORBIT BAND <button id="zoneToggle" type="button" class="text-button" aria-pressed="true">VISIBLE</button></div>
+      <div id="bodyList" class="body-list" aria-label="Celestial bodies"></div>
+    </aside>
+    <section class="target glass" id="targetCard" aria-live="polite">
+      <div class="eyebrow" id="targetTag">FLIGHT COMPUTER</div>
+      <div class="target-line"><h2 id="targetName">Chart a course</h2><span id="targetGlyph">✧</span></div>
+      <p id="targetText">Tap a planet or choose one from the system list.</p>
+      <div id="targetMetrics" class="metrics"></div>
+      <div class="target-actions"><button id="primaryAction" class="button primary">Explore Earth</button><button id="secondaryAction" class="button subtle" hidden>Details</button></div>
+    </section>
+    <div class="zoom glass" aria-label="Zoom controls"><button id="zoomOut" aria-label="Zoom out">−</button><span id="zoomLabel">100%</span><button id="zoomIn" aria-label="Zoom in">+</button></div>
+    <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
+    <div class="bottom">
+      <div class="status glass"><span class="status-led"></span><span id="statusText">SYSTEM // SOL</span><span class="key-help">WASD / ARROWS · DRAG TO PAN · SCROLL TO ZOOM</span></div>
+      <div class="main-controls glass"><button id="mapButton" class="button subtle">✦ <span>STAR CHART</span></button><button id="homeButton" class="button subtle">⌖ <span>RECENTER</span></button><button id="journalButton" class="button subtle">▤ <span>LOGBOOK</span></button></div>
+    </div>
+  </div>
+  <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
+    <div class="welcome-card glass">
+      <div class="eyebrow accent">AN EXPLORER'S POCKET UNIVERSE</div>
+      <h1 id="welcomeTitle">SPACE<span>BITZ</span><b>✦</b></h1>
+      <p>Follow the planets. Cross the temperate zone. Find a little place among the stars.</p>
+      <div class="create-row"><label for="universeName">UNIVERSE NAME</label><input id="universeName" maxlength="40" value="My Universe" autocomplete="off"></div>
+      <div class="create-row"><label for="universeSeed">SEED <small>OPTIONAL</small></label><input id="universeSeed" maxlength="64" placeholder="Leave blank for a surprise" autocomplete="off"></div>
+      <div class="welcome-actions"><button id="newGame" class="button primary">START EXPLORING <span>↗</span></button><button id="solGame" class="button subtle">VISIT SOL</button></div>
+      <div class="saved-heading">CONTINUE A VOYAGE</div><div id="savedGames" class="saved-games"></div>
+      <div class="welcome-foot"><span>SAVED ON THIS DEVICE</span><button id="importButton" class="text-button">IMPORT SAVE ↑</button><input id="importFile" type="file" accept="application/json,.json" hidden><button id="installButton" class="text-button" hidden>INSTALL APP ↓</button></div>
+    </div>
+  </div>
+  <div id="modal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
+    <div class="modal-card glass"><div class="modal-head"><div><div class="eyebrow" id="modalEyebrow">FIELD NOTES</div><h2 id="modalTitle">Details</h2></div><button id="modalClose" class="icon-button" aria-label="Close dialog">✕</button></div><div id="modalContent"></div></div>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
