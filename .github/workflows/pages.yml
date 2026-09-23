@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Check orbital model
+      - name: Check simulation, terrain and audio
         run: npm test
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4

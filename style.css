@@ -11,3 +11,33 @@
 @media(max-width:800px){.edition,.key-help{display:none}.mission{width:205px}.target{width:228px}.target h2{font-size:19px}.bottom{gap:4px}.status{max-width:38vw;overflow:hidden;white-space:nowrap}.main-controls .button{padding:9px 7px}}
 @media(max-width:600px){.topbar{padding:calc(11px + env(safe-area-inset-top)) 14px 8px;min-height:61px}.brand{font-size:16px;letter-spacing:.1em}.brandmark{font-size:20px}.clock{font-size:9px}.top-actions{gap:8px}.mission{top:calc(58px + env(safe-area-inset-top));left:10px;width:min(55vw,210px);padding:11px;max-height:28dvh}.mission h1{font-size:21px;margin:3px 0}.mission p{font-size:10px;margin:3px 0 8px}.legend{padding:7px 0;font-size:8px}.body-list{display:flex;overflow:auto;gap:4px;scrollbar-width:none}.body-entry{width:auto;flex:none;padding:5px;font-size:10px}.body-entry.moon{padding-left:5px}.body-entry small{display:none}.target{top:auto;right:10px;left:10px;bottom:calc(77px + env(safe-area-inset-bottom));width:auto;padding:11px 12px;min-height:0}.target h2{font-size:18px;margin:4px 0}.target p{font-size:11px;margin:3px 0 7px}.target .metrics{padding:6px 0;display:flex;justify-content:space-between;flex-wrap:wrap;gap:3px 8px;font-size:9px}.target .metric{gap:4px}.target .metric:nth-child(n+3){display:none}.target-actions .button{min-height:36px;padding:8px;font-size:10px}.bottom{left:10px;right:10px;bottom:calc(9px + env(safe-area-inset-bottom));gap:6px}.status,.main-controls{height:48px;padding:5px}.status{font-size:8px;max-width:32%;gap:5px}.main-controls{gap:0;flex:1;justify-content:space-around}.main-controls .button{font-size:16px;padding:6px;min-height:38px}.main-controls .button span{display:none}.zoom{bottom:calc(250px + env(safe-area-inset-bottom));right:10px}.joystick{display:block;left:18px;bottom:calc(245px + env(safe-area-inset-bottom));width:85px;height:85px}.joystick #stick{width:34px;height:34px}.toast{top:calc(60px + env(safe-area-inset-top))}.welcome-card{max-height:calc(100dvh - 22px)}}
 @media(max-height:590px) and (min-width:601px){.mission{top:70px;max-height:calc(100% - 135px)}.target{top:70px}.bottom{bottom:8px}.zoom{bottom:68px}}@media(max-height:510px) and (max-width:600px){.mission{max-height:24dvh}.target{bottom:calc(57px + env(safe-area-inset-bottom));padding:7px}.target p,.target .metrics{display:none}.bottom .status,.bottom .main-controls{height:42px}.joystick{bottom:calc(114px + env(safe-area-inset-bottom))}.zoom{bottom:calc(136px + env(safe-area-inset-bottom))}}
+
+/* Expedition edition: pixel console, a visible moving sky, and accessible settings. */
+[hidden]{display:none!important}
+#welcome{background:linear-gradient(90deg,#030a1480,#030a1420);backdrop-filter:none}
+#welcome:before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,#0208111a 3px 4px);pointer-events:none}
+.welcome-card{position:relative;background:linear-gradient(140deg,#0a1a2bed,#071321e6);border:2px solid #438b9a;border-radius:4px;box-shadow:0 0 0 4px #061421,0 0 0 5px #254557,0 25px 90px #0009;backdrop-filter:none}
+.welcome-card:after{content:'';position:absolute;left:0;top:0;width:54px;height:4px;background:#9ef3d5;box-shadow:0 0 16px #79dacaaa}
+.menu-top,.menu-console{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.version-chip{color:#9fbbc5;font:10px ui-monospace,monospace;letter-spacing:.12em;border:1px solid #456573;padding:4px 6px}
+.welcome-card h1{font-family:ui-monospace,monospace;font-weight:900;font-size:clamp(38px,9.6vw,66px);letter-spacing:-.075em;line-height:1.15;color:#e8e9cc;text-shadow:3px 3px 0 #32647c,6px 6px 0 #081926;margin:18px 0 17px}
+.welcome-card h1 span{color:#91e2c2;text-shadow:3px 3px 0 #277c77,6px 6px 0 #081926}
+.welcome-card h1 b{font-size:22px;text-shadow:2px 2px 0 #8d7250}
+.welcome-card>.eyebrow{font-size:10px}
+.menu-console{font:9px ui-monospace,monospace;letter-spacing:.09em;border-top:1px solid #36556a;border-bottom:1px solid #36556a;padding:7px 0;margin:0 0 19px;color:#8abbb8;justify-content:flex-start}
+.console-light{width:5px;height:5px;background:#9cedb8;box-shadow:0 0 9px #62e3a9;flex:none}
+.menu-console .text-button{font-size:9px;min-height:30px;letter-spacing:0;padding:2px}
+.welcome-card .button,.welcome-card input{border-radius:3px;font-family:ui-monospace,monospace}
+.welcome-card .primary{box-shadow:3px 3px 0 #254e55}
+.welcome-actions{margin:16px 0 9px}.menu-settings{width:100%;margin:3px 0 16px;background:#10283a;color:#aacccc;border:1px solid #345d70}
+.settings-content h3{font:11px ui-monospace,monospace;letter-spacing:.15em;text-transform:uppercase;color:#89e0cb;padding:15px 0 5px;margin:0;border-bottom:1px solid #537581}
+.setting-row{min-height:46px}.setting-row input[type=checkbox]{accent-color:#86dfc8;width:21px;height:21px;cursor:pointer}
+.setting-row input[type=range]{width:110px;accent-color:#8adecc}.setting-value{display:flex;align-items:center;gap:8px}.setting-value output{font:10px ui-monospace,monospace;min-width:31px;text-align:right;color:#b5d3df}
+#telemetry{position:absolute;top:calc(75px + env(safe-area-inset-top));right:24px;font:10px ui-monospace,monospace;color:#a5c9d3;text-shadow:1px 1px #000}
+#joystick{left:clamp(10px,calc(var(--joy-x,16%) - 43px),calc(100vw - 100px));bottom:calc(245px + env(safe-area-inset-bottom) + var(--joy-offset,0px));border-radius:50%;backdrop-filter:blur(3px)}
+body[data-controls=desktop] #joystick{display:none}body[data-controls=touch] #joystick{display:block}
+body[data-reduced-motion=true] *,body[data-reduced-motion=true] *:before,body[data-reduced-motion=true] *:after{scroll-behavior:auto!important;transition:none!important}
+@media(pointer:coarse){body[data-controls=auto] #joystick{display:block}}
+@media(min-width:601px){body[data-controls=touch] #joystick{bottom:calc(94px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}
+@media(max-width:600px){.welcome-card{padding:19px}.welcome-card>p{font-size:12px;margin-bottom:14px}.menu-top .eyebrow{font-size:9px}.setting-row{font-size:12px}.setting-row select{max-width:160px}.setting-row input[type=range]{width:94px}#telemetry{top:calc(61px + env(safe-area-inset-top));right:12px;font-size:8px}.top-actions{gap:5px}.clock{font-size:8px;letter-spacing:.02em}}
+@media(max-height:510px) and (max-width:600px){#joystick{bottom:calc(114px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}

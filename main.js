@@ -1,20 +1,48 @@
-import {TAU, DAY_MS, EPOCH, clamp, hash, rng, orbitRadius, visualRadius,
+import {TAU, DAY_MS, EPOCH, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
   habitableZone, makeSystem, bodyPosition, galaxyStars, starName} from './model.js';
+import {Soundtrack} from './music.js';
+import {DEFAULT_SETTINGS,normalizeSettings} from './settings.js';
+import {TerrainRenderer} from './terrain.js';
+import {paintShip,paintAstronaut} from './sprites.js';
+import {updateMotion,navigationTarget} from './motion.js';
+import {celestialSprite} from './celestial.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('sky');
 const ctx = canvas.getContext('2d', {alpha:false});
 const SAVE_KEY = 'spacebitz:field:v1';
 const SETTINGS_KEY = 'spacebitz:field:settings';
-const settings = readJSON(SETTINGS_KEY, {zone:true, speed:7});
+const settings = normalizeSettings({music:readJSON('spacebitz:musicEnabled',true),
+  reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  ...readJSON(SETTINGS_KEY,{})});
+const terrain=new TerrainRenderer();
+const music=new Soundtrack(status=>{
+  $('menuMusic').textContent=status==='playing'?'♪ MUSIC ON':status==='off'?'♪ MUSIC OFF':status==='unavailable'?'♪ AUDIO UNAVAILABLE':'♪ ENABLE MUSIC';
+  $('menuMusic').dataset.status=status;
+});
 const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,y:0}, zoom:1,
   panUntil:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
-  last:performance.now(), lastUI:0, elapsed:0, particles:[], textureCache:new Map()};
+  last:performance.now(), lastUI:0, elapsed:0, fps:60, particles:[], textureCache:new Map(),
+  shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
 const loadSaves = () => {
   const value=readJSON(SAVE_KEY, []);
   return Array.isArray(value)?value.filter(s=>s && s.id && s.seed):[];
 };
 function readJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
+function saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}catch{toast('Settings could not be saved on this device.');}}
+function applySettings(){
+  document.body.dataset.controls=settings.controls;
+  document.body.dataset.reducedMotion=String(settings.reducedMotion);
+  document.documentElement.style.setProperty('--joy-x',settings.joyX+'%');
+  document.documentElement.style.setProperty('--joy-offset',settings.joyOffset+'px');
+  music.configure(settings.music,settings.volume);fit();updateUI();
+}
+document.addEventListener('pointerdown',e=>{if(!e.target.closest('#menuMusic'))music.start();},{capture:true,passive:true});
+document.addEventListener('keydown',()=>music.start(),{capture:true});
+$('menuMusic').onclick=()=>{
+  if($('menuMusic').dataset.status==='ready'){music.start();return;}
+  settings.music=!settings.music;saveSettings();music.configure(settings.music,settings.volume);
+};
 function persist() {
   if (!state.save) return;
   state.save.updated = Date.now();
@@ -36,7 +64,7 @@ function starAt(seed) {
     || {id:'origin',seed:state.save.homeSeed,x:0,y:0};
 }
 function nearbyStars() {
-  const x = state.save.chart.x, y = state.save.chart.y, span = Math.max(state.width,state.height)/state.zoom/2 + 400;
+  const x = state.camera.x, y = state.camera.y, span = Math.max(state.width,state.height)/state.zoom/2 + 400;
   const stars = [{id:'origin',seed:state.save.homeSeed,x:0,y:0}];
   for(let cy=Math.floor((y-span)/330);cy<=Math.floor((y+span)/330);cy++)
     for(let cx=Math.floor((x-span)/330);cx<=Math.floor((x+span)/330);cx++)
@@ -46,14 +74,14 @@ function nearbyStars() {
 function fit() {
   const rect = canvas.getBoundingClientRect();
   state.width=rect.width; state.height=rect.height;
-  state.dpr=Math.min(window.devicePixelRatio||1,2);
+  state.dpr=settings.resolution==='auto'?Math.min(window.devicePixelRatio||1,2):Number(settings.resolution);
   canvas.width=Math.round(rect.width*state.dpr); canvas.height=Math.round(rect.height*state.dpr);
   ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
-  state.stars=Array.from({length:Math.min(300,Math.round(rect.width*rect.height/3200))},(_,i)=>{
-    const r=rng('background:'+i);return {x:r(),y:r(),size:r()<.91?1:2,alpha:.25+r()*.6,phase:r()*TAU};
+  state.stars=Array.from({length:Math.max(110,Math.min(400,Math.round(rect.width*rect.height/2600)))},(_,i)=>{
+    const r=rng('background:'+i);return {x:r(),y:r(),size:r()<.87?1:2,alpha:.25+r()*.6,phase:r()*TAU,depth:r(),speed:.4+r(),color:r()};
   });
 }
-window.addEventListener('resize',fit); fit();
+window.addEventListener('resize',fit); applySettings();
 function start(save) {
   state.save=save; state.scene=save.scene || 'system';
   state.system=makeSystem(save.currentSystem || save.homeSeed);
@@ -61,7 +89,16 @@ function start(save) {
   save.chart ||= {x:0,y:0}; save.ship ||= {x:0,y:0};
   save.surface ||= {x:0,y:0}; save.discoveries ||= []; save.log ||= [];
   save.days=Number.isFinite(save.days)?save.days:0;
-  state.selected=null; state.autopilot=null; state.zoom=state.scene==='chart'?1:state.scene==='surface'?1.3:.85;
+  if(save.layoutVersion!==2 && state.scene==='system'){
+    const nearest=state.system.planets.map(p=>{const a=p.phase+TAU*save.days/p.period,r=160+275*Math.log1p(p.au*2);
+      return {p,d:Math.hypot(Math.cos(a)*r-save.ship.x,Math.sin(a)*r-save.ship.y)};}).sort((a,b)=>a.d-b.d)[0].p;
+    const pos=bodyPosition(nearest,save.days,state.system);save.ship={x:pos.x+visualRadius(nearest.diameter)+60,y:pos.y};
+  }
+  save.layoutVersion=2;save.route||=[];
+  if(state.scene==='surface' && !findBody(save.landed)?.solid){state.scene='system';save.scene='system';save.landed=null;}
+  state.selected=null; state.autopilot=null;state.followBody=null;state.panUntil=0;
+  state.shipMotion={heading:-Math.PI/2,thrust:0};state.actorMotion={direction:'down',steps:0};
+  state.zoom=state.scene==='chart'?1:state.scene==='surface'?1.3:.85;
   if(state.scene==='chart') state.camera={...save.chart};
   else if(state.scene==='surface') state.camera={...save.surface};
   else state.camera={...save.ship};
@@ -73,11 +110,11 @@ function create(sol=false) {
   const seed=($('universeSeed').value.trim() || (crypto.randomUUID?.() || Math.random().toString(36).slice(2))).slice(0,64);
   const homeSeed=sol?'sol':'home:'+seed;
   const system=makeSystem(homeSeed);
-  const home=sol?system.planets[2]:system.planets.find(p=>p.type==='temperate') || system.planets[1];
+  const home=sol?system.planets[2]:system.planets.find(p=>p.type==='temperate') || system.planets.find(p=>p.solid) || system.planets[0];
   const h=bodyPosition(home,0,system);
   const save={id:crypto.randomUUID?.()||String(Date.now()),name,seed,homeSeed,currentSystem:homeSeed,
     scene:'system',ship:{x:h.x+visualRadius(home.diameter)+70,y:h.y},chart:{x:0,y:0},
-    surface:{x:0,y:0},landed:null,days:0,discoveries:[],log:[],updated:Date.now()};
+    surface:{x:0,y:0},landed:null,days:0,discoveries:[],log:[],layoutVersion:2,updated:Date.now()};
   start(save); select(home); toast(`Welcome to ${system.name}. Select a world to chart a course.`);
 }
 function renderSaves() {
@@ -110,7 +147,7 @@ $('importFile').onchange=async e=>{
       const system=makeSystem(homeSeed),body=system.planets[0],p=bodyPosition(body,0,system);
       return {id:crypto.randomUUID?.()||String(Date.now()+Math.random()),name:String(raw.name||'Imported universe').slice(0,40),
         seed,homeSeed,currentSystem:homeSeed,scene:'system',ship:{x:p.x+80,y:p.y+20},chart:{x:0,y:0},
-        surface:{x:0,y:0},landed:null,days:Number.isFinite(raw.days)?raw.days:0,
+        surface:{x:0,y:0},landed:null,layoutVersion:2,days:Number.isFinite(raw.days)?raw.days:0,
         discoveries:Array.isArray(raw.discoveries)?raw.discoveries.filter(x=>typeof x==='string').slice(0,1000):[],
         log:Array.isArray(raw.log)?raw.log.filter(x=>x&&typeof x.name==='string').slice(0,100):[],updated:Date.now()};
     });
@@ -123,10 +160,15 @@ $('importFile').onchange=async e=>{
 let installPrompt;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installButton').hidden=false;});
 $('installButton').onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installButton').hidden=true;}};
-if('serviceWorker' in navigator && location.protocol.startsWith('http'))
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  const wasControlled=!!navigator.serviceWorker.controller;let reloading=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(wasControlled&&!reloading){reloading=true;persist();location.reload();}
+  });
   window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
 
-function select(object) { state.selected=object; state.autopilot=null; updateUI(); }
+function select(object) { state.selected=object; state.autopilot=null;state.followBody=null; updateUI(); }
 function markDiscovery(body) {
   if(state.save.discoveries.includes(body.id)) return;
   state.save.discoveries.push(body.id);
@@ -134,25 +176,32 @@ function markDiscovery(body) {
   toast(`First landing on ${body.name} · added to logbook`);persist();
 }
 function enterChart() {
+  state.followBody=null;state.shipMotion.thrust=0;
   const star=currentStar();state.scene='chart';state.selected=star;
   state.save.scene='chart';state.save.chart={x:star.x+38,y:star.y+30};
   state.camera={...state.save.chart};state.zoom=1;state.autopilot=null;persist();updateUI();
 }
 function enterSystem(star) {
+  state.followBody=null;state.shipMotion.thrust=0;
   state.system=makeSystem(star.seed);state.save.currentSystem=star.seed;
   state.scene='system';state.save.scene='system';state.selected=null;
   const first=state.system.planets[0],pos=bodyPosition(first,state.save.days,state.system);
   state.save.ship={x:pos.x+60,y:pos.y+40};state.camera={...state.save.ship};
   state.zoom=.85;state.autopilot=null;state.save.chart={x:star.x,y:star.y};
   state.save.log.unshift({name:state.system.name,action:'Entered system',days:state.save.days});
+  if(state.save.route.at(-1)!==star.seed)state.save.route.push(star.seed);
+  state.save.route=state.save.route.slice(-40);
   toast(`Entering the ${state.system.name} system`);persist();updateUI();
 }
 function enterSurface(body) {
+  if(!body.solid){toast('No solid surface here. Explore one of its moons.');return;}
+  state.followBody=null;state.actorMotion={direction:'down',steps:0};
   state.scene='surface';state.save.scene='surface';state.save.landed=body.id;
   state.save.surface={x:50,y:35};state.camera={...state.save.surface};state.zoom=1.3;
   state.autopilot=null;markDiscovery(body);persist();updateUI();
 }
 function launch() {
+  state.shipMotion={heading:-Math.PI/2,thrust:0};state.followBody=null;
   const body=findBody(state.save.landed);
   if(body){const p=bodyPosition(body,state.save.days,state.system);
     state.save.ship={x:p.x+visualRadius(body.diameter,body.kind)+44,y:p.y+12};}
@@ -162,8 +211,14 @@ function launch() {
 }
 function surfaceSamples() {
   const body=findBody(state.save.landed);const r=rng('samples:'+body?.id);
-  return Array.from({length:12},(_,i)=>({id:`${body.id}:sample${i}`,
-    x:(r()-.5)*1450,y:(r()-.5)*1450}));
+  if(state.sampleBody===body.id)return state.samples;
+  const sample=terrain.sampler(body),items=[];
+  for(let i=0;i<12;i++){
+    let x,y;
+    for(let attempt=0;attempt<40;attempt++){x=(r()-.5)*1450;y=(r()-.5)*1450;if(!sample(x,y).water)break;}
+    items.push({id:`${body.id}:sample${i}`,x,y});
+  }
+  state.sampleBody=body.id;state.samples=items;return items;
 }
 function nearestSample() {
   if(state.scene!=='surface')return null;
@@ -184,6 +239,7 @@ function primary() {
     const body=state.selected,pos=bodyPosition(body,state.save.days,state.system);
     const dist=Math.hypot(pos.x-state.save.ship.x,pos.y-state.save.ship.y);
     if(dist<visualRadius(body.diameter,body.kind)+48){enterSurface(body);return;}
+    state.panUntil=0;state.followBody=null;
     state.autopilot={type:'body',id:body.id};toast(`Course set for ${body.name}`);return;
   }
   const star=state.selected;
@@ -198,14 +254,22 @@ $('mapButton').onclick=()=>state.scene==='chart'?enterSystem(currentStar()):stat
 $('homeButton').onclick=()=>{state.panUntil=0;state.autopilot=null;
   state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};};
 $('journalButton').onclick=showJournal;
-$('zoneToggle').onclick=()=>{settings.zone=!settings.zone;localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));updateUI();};
+$('zoneToggle').onclick=()=>{settings.zone=!settings.zone;saveSettings();updateUI();};
 $('zoomIn').onclick=()=>zoom(1.22);$('zoomOut').onclick=()=>zoom(1/1.22);
-function zoom(factor){state.zoom=clamp(state.zoom*factor,.34,2.4);$('zoomLabel').textContent=Math.round(state.zoom*100)+'%';}
+$('fitSystem').onclick=()=>{
+  if(state.scene!=='system')return;
+  const outer=Math.max(...state.system.planets.map(p=>orbitRadius(p.au,state.system.star)+(p.moons.at(-1)?.orbitPx||visualRadius(p.diameter))))+60;
+  state.camera={x:0,y:0};state.panUntil=Infinity;
+  state.zoom=clamp(Math.min(state.width*.44,state.height*.37)/outer,.025,1);
+  updateUI();
+};
+function zoom(factor){state.zoom=clamp(state.zoom*factor,state.scene==='system'?.025:state.scene==='surface'?.65:.34,2.4);$('zoomLabel').textContent=Math.round(state.zoom*100)+'%';}
 
 function addMetric(parent,label,value) {
   const div=document.createElement('div');div.className='metric';
   const a=document.createElement('span'),b=document.createElement('strong');a.textContent=label;b.textContent=value;div.append(a,b);parent.append(div);
 }
+function diameterText(km){return Math.round(settings.units==='mi'?km/1.609344:km).toLocaleString()+' '+settings.units;}
 function updateUI() {
   if(!state.save)return;
   const scene=state.scene,sys=state.system,sel=state.selected;
@@ -252,24 +316,34 @@ function updateUI() {
     const zone=habitableZone(sys.star.luminosity),inhab=sel.kind==='planet'&&sel.au>=zone.inner&&sel.au<=zone.outer;
     text=inhab?'Inside the temperate orbit band. Surface conditions still vary.':sel.kind==='moon'?'A small world orbiting its parent planet.':'Select a course, then descend when you reach orbit.';
     const p=bodyPosition(sel,state.save.days,sys);const distance=Math.hypot(p.x-state.save.ship.x,p.y-state.save.ship.y);
-    action=distance<visualRadius(sel.diameter,sel.kind)+48?'LAND':'TRAVEL TO '+sel.name.toUpperCase();
-    addMetric(metric,'DIAMETER',Math.round(sel.diameter).toLocaleString()+' km');
+    action=distance<visualRadius(sel.diameter,sel.kind)+48?(sel.solid?'LAND':'NO SOLID SURFACE'):'TRAVEL TO '+sel.name.toUpperCase();
+    if(!sel.solid)text='A giant atmosphere with no solid ground. Explore its moons for a landing site.';
+    addMetric(metric,'DIAMETER',diameterText(sel.diameter));
     addMetric(metric,sel.kind==='moon'?'ORBIT':'YEAR',sel.period<100?sel.period.toFixed(1)+' days':Math.round(sel.period)+' days');
     if(inhab)addMetric(metric,'ZONE','TEMPERATE');
   } else {title='Chart a course';tag='FLIGHT COMPUTER';glyph='✧';text='Tap a world or pick one from the system list.';action='SELECT A WORLD';}
   $('targetName').textContent=title;$('targetTag').textContent=tag;$('targetText').textContent=text;$('targetGlyph').textContent=glyph;
   $('primaryAction').textContent=action;$('secondaryAction').hidden=!details;
+  $('primaryAction').disabled=action==='NO SOLID SURFACE';
+  $('fitSystem').hidden=scene!=='system';
   $('mapButton').querySelector('span').textContent=scene==='chart'?'RETURN TO SYSTEM':'STAR CHART';
   $('mapButton').disabled=scene==='surface';
-  $('clock').textContent=new Date(EPOCH+state.save.days*DAY_MS).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).toUpperCase();
+  const date=new Date(EPOCH+state.save.days*DAY_MS);
+  $('clock').textContent=date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'}).toUpperCase()+' '+date.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
+  $('clock').title='1 real minute = 1 game hour'+(settings.paused?' · paused':'');
   $('statusText').textContent=scene==='chart'?'JUMP DRIVE // ONLINE':scene==='surface'?'SUIT // NOMINAL':`SYSTEM // ${sys.name.toUpperCase()}`;
   $('zoomLabel').textContent=Math.round(state.zoom*100)+'%';
+  const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship;
+  $('telemetry').hidden=!settings.showCoords&&!settings.showFPS;
+  $('telemetry').textContent=[settings.showCoords?`X ${Math.round(pos.x)} · Y ${Math.round(pos.y)}`:'',settings.showFPS?`${Math.round(state.fps)} FPS`:''].filter(Boolean).join('  /  ');
 }
 function setModal(eyebrow,title,content) {
+  state.previousFocus=document.activeElement;resetInput();
   $('modalEyebrow').textContent=eyebrow;$('modalTitle').textContent=title;
   $('modalContent').replaceChildren(content);$('modal').hidden=false;$('modal').classList.add('visible');
+  $('modalClose').focus();
 }
-function closeModal(){$('modal').hidden=true;$('modal').classList.remove('visible');}
+function closeModal(){$('modal').hidden=true;$('modal').classList.remove('visible');state.previousFocus?.focus();}
 $('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 function detailTile(grid,key,value){const tile=document.createElement('div');tile.className='detail-tile';const a=document.createElement('small'),b=document.createElement('strong');a.textContent=key;b.textContent=value;tile.append(a,b);grid.append(tile);}
 function showDetails(body) {
@@ -278,15 +352,22 @@ function showDetails(body) {
     const sys=makeSystem(body.seed);detailTile(grid,'SPECTRAL CLASS',sys.star.type);detailTile(grid,'SOLAR MASS',sys.star.mass.toFixed(2)+' M☉');
     detailTile(grid,'LUMINOSITY',sys.star.luminosity.toFixed(2)+' L☉');detailTile(grid,'PLANETS',String(sys.planets.length));
   }else if(body.kind==='star'){
-    detailTile(grid,'SPECTRAL CLASS',body.type);detailTile(grid,'DIAMETER',Math.round(body.diameter).toLocaleString()+' km');
+    detailTile(grid,'SPECTRAL CLASS',body.type);detailTile(grid,'DIAMETER',diameterText(body.diameter));
     detailTile(grid,'SOLAR MASS',body.mass.toFixed(2)+' M☉');detailTile(grid,'LUMINOSITY',body.luminosity.toFixed(2)+' L☉');
   }else{
-    detailTile(grid,'DIAMETER',Math.round(body.diameter).toLocaleString()+' km');detailTile(grid,'ORBIT PERIOD',body.period.toFixed(1)+' days');
+    detailTile(grid,'DIAMETER',diameterText(body.diameter));detailTile(grid,'ORBIT PERIOD',body.period.toFixed(2)+' days');
     detailTile(grid,'TYPE',body.type.toUpperCase());detailTile(grid,body.kind==='moon'?'HOST':'DISTANCE',body.kind==='moon'?findBody(body.parent)?.name||'Planet':body.au.toFixed(3)+' AU');
-  }box.append(grid);
+  }
+  if(body.rotationDays)detailTile(grid,'ROTATION',(Math.abs(body.rotationDays)*24).toFixed(1)+' h'+(body.rotationDays<0?' · retrograde':''));
+  box.append(grid);
   const note=document.createElement('p');note.textContent=state.scene==='chart'?'Stellar systems use mass based luminosity and Kepler orbital periods. This chart uses game distances for travel.':
     'Physical values are shown here. On screen, body sizes and orbital distances are compressed for navigation; the temperate band marks possible liquid water from stellar light alone, not guaranteed habitability.';
-  box.append(note);setModal('ATLAS / OBJECT DETAILS',state.scene==='chart'?starName(body.seed):body.name,box);
+  box.append(note);
+  if(settings.cheats && (state.scene==='chart'||body.kind!=='star')){const jump=document.createElement('button');jump.className='button subtle';jump.textContent='INSTANT TRAVEL';
+    jump.onclick=()=>{closeModal();if(state.scene==='chart')enterSystem(body);else if(body.kind!=='star'){
+      const pos=bodyPosition(body,state.save.days,state.system);state.save.ship={x:pos.x+visualRadius(body.diameter,body.kind)+35,y:pos.y};state.camera={...state.save.ship};state.panUntil=0;state.zoom=1;updateUI();}
+    };box.append(jump);}
+  setModal('ATLAS / OBJECT DETAILS',state.scene==='chart'?starName(body.seed):body.name,box);
 }
 function showJournal() {
   const box=document.createElement('div');const p=document.createElement('p');p.textContent=`${state.save.discoveries.length} discoveries recorded in ${state.save.name}.`;
@@ -296,19 +377,48 @@ function showJournal() {
   }if(!state.save.log.length){const empty=document.createElement('p');empty.textContent='Your discoveries will appear here.';box.append(empty);}
   setModal('CAPTAIN’S LOG','Voyage logbook',box);
 }
-$('settingsOpen').onclick=()=>{
-  const box=document.createElement('div');const intro=document.createElement('p');intro.textContent='Drag or use WASD to move; tap a world to set a course. Pinch, scroll or use + / − to zoom. Progress saves on this device.';box.append(intro);
-  const row=document.createElement('label');row.className='setting-row';row.textContent='Simulation speed';const speed=document.createElement('select');
-  for(const [value,label] of [[0,'Paused'],[1,'1 day / second'],[7,'7 days / second'],[30,'30 days / second']]){
-    const opt=document.createElement('option');opt.value=value;opt.textContent=label;speed.append(opt);
-  }speed.value=String(settings.speed);speed.onchange=()=>{settings.speed=Number(speed.value);localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));};row.append(speed);box.append(row);
-  const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-  save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;$('app').hidden=true;$('welcome').classList.add('visible');renderSaves();};box.append(save);
-  const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
-  exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
-    const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};box.append(exportButton);
+function openSettings(){
+  const box=document.createElement('div');box.className='settings-content';
+  const intro=document.createElement('p');intro.textContent='1 real minute = 1 game hour. Earth rotates once in 24 real minutes. Time pauses in menus and while the app is in the background.';box.append(intro);
+  const heading=text=>{const h=document.createElement('h3');h.textContent=text;box.append(h);};
+  function control(key,label,kind,options){
+    const row=document.createElement('label');row.className='setting-row';
+    const name=document.createElement('span');name.textContent=label;row.append(name);
+    const input=document.createElement(kind==='select'?'select':'input');input.id='setting-'+key;
+    if(kind==='select')for(const [value,label]of options){const opt=document.createElement('option');opt.value=value;opt.textContent=label;input.append(opt);}
+    else input.type=kind;
+    if(kind==='checkbox')input.checked=settings[key];
+    else if(kind==='range'){input.min=options[0];input.max=options[1];input.step=options[2];input.value=settings[key];}
+    else input.value=settings[key];
+    const value=document.createElement('output');
+    const sync=()=>{if(kind==='range')value.textContent=key==='volume'?Math.round(settings[key]*100)+'%':String(settings[key]);};sync();
+    input.addEventListener(kind==='range'?'input':'change',()=>{
+      settings[key]=kind==='checkbox'?input.checked:typeof DEFAULT_SETTINGS[key]==='number'?Number(input.value):input.value;
+      if(key==='pixelSize')terrain.clear();sync();saveSettings();applySettings();
+    });
+    const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
+  }
+  heading('Sound & sky');control('music','Original soundtrack','checkbox');control('volume','Music volume','range',[0,1,.05]);
+  control('starMotion','Moving starfield','checkbox');control('twinkle','Star twinkle','checkbox');control('reducedMotion','Reduce decorative motion','checkbox');
+  heading('View & display');control('orbits','Orbit paths','checkbox');control('zone','Goldilocks zone','checkbox');control('labels','Planet & moon labels','checkbox');
+  control('travelLines','Star chart travel trail','checkbox');control('showCoords','Coordinates','checkbox');control('showFPS','Frame rate','checkbox');
+  control('units','Distance units','select',[['km','Kilometres'],['mi','Miles']]);
+  control('pixelSize','Terrain detail','select',[[2,'Fine pixels'],[3,'Balanced'],[4,'Low power']]);
+  control('resolution','Canvas resolution','select',[['auto','Automatic'],['1','1× · low power'],['2','2× · sharp']]);
+  heading('Controls');control('controls','Input mode','select',[['auto','Automatic'],['touch','Touch joystick'],['desktop','Keyboard / mouse']]);
+  control('joyX','Joystick position (%)','range',[8,92,1]);control('joyOffset','Joystick height (px)','range',[-70,120,1]);
+  const hint=document.createElement('p');hint.textContent='WASD / arrows to move · Space to interact · drag to pan · pinch or + / − to zoom · ⌗ to fit the whole system.';box.append(hint);
+  heading('Voyage');control('paused','Pause simulation clock','checkbox');control('cheats','Enable instant travel in Details','checkbox');
+  if(state.save){
+    const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
+    save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');renderSaves();};box.append(save);
+    const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
+    exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};box.append(exportButton);
+  }
   setModal('FLIGHT OPTIONS','Settings',box);
-};
+}
+$('settingsOpen').onclick=openSettings;$('menuSettings').onclick=openSettings;
 
 function targetPoint() {
   if(!state.autopilot)return null;
@@ -317,24 +427,39 @@ function targetPoint() {
   if(state.autopilot.type==='star'){const s=starAt(state.autopilot.id);return {x:s.x,y:s.y};}
   return null;
 }
-function update(dt) {
+function update(dt,clockDt=dt) {
   if(!state.save || $('modal').classList.contains('visible'))return;
-  state.save.days+=dt/1000*(settings.speed??7);
+  state.save.days=advanceDays(state.save.days,clockDt,settings.paused);
   const dx=Number(state.keys.has('ArrowRight')||state.keys.has('d'))-Number(state.keys.has('ArrowLeft')||state.keys.has('a'))+state.joy.x;
   const dy=Number(state.keys.has('ArrowDown')||state.keys.has('s'))-Number(state.keys.has('ArrowUp')||state.keys.has('w'))+state.joy.y;
   const magnitude=Math.hypot(dx,dy), manual=magnitude>.08;
   const p=state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship;
-  if(manual){const speed=state.scene==='surface'?155:state.scene==='chart'?180:185;
+  const before={...p};
+  if(manual){let speed=state.scene==='surface'?90:state.scene==='chart'?180:260;
+    if(state.scene==='surface'&&terrain.sampler(findBody(state.save.landed))(p.x,p.y).water)speed*=.45;
     p.x+=dx/Math.max(1,magnitude)*speed*dt/1000;p.y+=dy/Math.max(1,magnitude)*speed*dt/1000;
-    state.autopilot=null;state.panUntil=0;
-  }else if(state.autopilot){const goal=targetPoint();
-    if(goal){const vx=goal.x-p.x,vy=goal.y-p.y,d=Math.hypot(vx,vy);
+    state.autopilot=null;state.followBody=null;state.panUntil=0;
+  }else if(state.autopilot){const destination=targetPoint();
+    if(destination){
+      const goal=state.scene==='system'?navigationTarget(p,destination,visualRadius(state.system.star.diameter,'star')):destination;
+      const vx=goal.x-p.x,vy=goal.y-p.y,d=Math.hypot(vx,vy),remaining=Math.hypot(destination.x-p.x,destination.y-p.y);
       const arrival=state.scene==='system'?visualRadius(findBody(state.autopilot.id)?.diameter||10000,findBody(state.autopilot.id)?.kind)+38:state.scene==='chart'?22:32;
-      if(d<=arrival){state.autopilot=null;updateUI();toast(state.scene==='chart'?'Star reached · enter the system':state.scene==='surface'?'Lander reached':'Orbit achieved · ready to land');}
-      else {const step=Math.min(d-arrival,(state.scene==='surface'?200:state.scene==='chart'?360:310)*dt/1000);
-        p.x+=vx/d*step;p.y+=vy/d*step;}
+      if(remaining<=arrival+.2){
+        if(state.scene==='system')state.followBody={id:state.autopilot.id,x:p.x-destination.x,y:p.y-destination.y};
+        state.autopilot=null;updateUI();toast(state.scene==='chart'?'Star reached · enter the system':state.scene==='surface'?'Lander reached':'Orbit achieved · station keeping active');
+      }else if(d>0){const step=Math.min(goal===destination?remaining-arrival:d,(state.scene==='surface'?110:state.scene==='chart'?360:500)*dt/1000);
+        p.x+=vx/d*step;p.y+=vy/d*step;state.panUntil=0;}
     }else state.autopilot=null;
+  }else if(state.scene==='system'&&state.followBody){
+    const body=findBody(state.followBody.id);if(body){const pos=bodyPosition(body,state.save.days,state.system);p.x=pos.x+state.followBody.x;p.y=pos.y+state.followBody.y;}
   }
+  if(state.scene==='system'){
+    const safe=visualRadius(state.system.star.diameter,'star')+22,d=Math.hypot(p.x,p.y);
+    if(d<safe){const a=Math.atan2(p.y,p.x);p.x=Math.cos(a)*safe;p.y=Math.sin(a)*safe;}
+  }
+  const motion=state.scene==='surface'?state.actorMotion:state.shipMotion;
+  updateMotion(motion,p.x-before.x,p.y-before.y,dt);
+  if(state.followBody && !manual && !state.autopilot){motion.thrust=0;motion.moving=false;}
   if(performance.now()>state.panUntil){const ease=1-Math.exp(-dt/145);state.camera.x+=(p.x-state.camera.x)*ease;state.camera.y+=(p.y-state.camera.y)*ease;}
   state.elapsed+=dt;
   if(state.elapsed>4500){state.elapsed=0;persist();}
@@ -351,10 +476,24 @@ function backdrop(now) {
   ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
   ctx.save();ctx.globalAlpha=.22;const neb=ctx.createRadialGradient(w*.7,h*.4,15,w*.7,h*.4,w*.48);
   neb.addColorStop(0,'#338e9c');neb.addColorStop(1,'#338e9c00');ctx.fillStyle=neb;ctx.fillRect(0,0,w,h);ctx.restore();
-  for(const star of state.stars){const x=((star.x*w-state.camera.x*.04)%w+w)%w;
-    const y=((star.y*h-state.camera.y*.04)%h+h)%h;
-    ctx.fillStyle=`rgba(195,226,248,${star.alpha*(.82+.18*Math.sin(now*.001+star.phase))})`;
-    ctx.fillRect(x,y,star.size,star.size);
+  const drift=settings.starMotion&&!settings.reducedMotion;
+  for(const star of state.stars){
+    let x,y,z=star.depth;
+    if(state.scene==='menu'){
+      if(drift)z=((star.depth-now*.000014*star.speed)%1+1)%1;
+      x=w/2+(star.x-.5)*w*.75/(z+.25);y=h/2+(star.y-.5)*h*.75/(z+.25);
+    }else{
+      const motion=drift?now*.002*star.speed:0;
+      x=((star.x*w-state.camera.x*.025*(1+z)+motion)%w+w)%w;
+      y=((star.y*h-state.camera.y*.025*(1+z)+motion*.22)%h+h)%h;
+    }
+    if(x<0||x>w||y<0||y>h)continue;
+    const twinkle=settings.twinkle&&!settings.reducedMotion?.55+.45*Math.sin(now*.002*star.speed+star.phase):.85;
+    const alpha=clamp(star.alpha*twinkle+(1-z)*.18,.1,1),size=Math.max(1,Math.round(star.size*(1.6-z)));
+    x=Math.round(x/2)*2;y=Math.round(y/2)*2;
+    ctx.fillStyle=`rgba(${star.color<.15?'137,197,230':star.color>.9?'255,218,153':'210,232,232'},${alpha})`;
+    ctx.fillRect(x,y,size,size);
+    if(size>=3&&twinkle>.83){ctx.globalAlpha=.45;ctx.fillRect(x-2,y+1,size+4,1);ctx.fillRect(x+1,y-2,1,size+4);ctx.globalAlpha=1;}
   }
 }
 function drawOrbit(x,y,r,color='#a3bed3') {
@@ -369,10 +508,10 @@ function label(text,x,y,selected=false) {
   ctx.fillStyle=selected?'#e8fff9':'#c3d5e2';ctx.fillText(text,x,y);
 }
 function drawSelection(x,y,r,now) {
-  ctx.save();ctx.translate(x,y);ctx.rotate(now*.00035);ctx.strokeStyle='#8ff5d9';ctx.lineWidth=1.5;
+  ctx.save();ctx.translate(x,y);ctx.rotate(settings.reducedMotion?0:now*.00035);ctx.strokeStyle='#8ff5d9';ctx.lineWidth=1.5;
   ctx.setLineDash([12,9]);circle(0,0,r+11);ctx.stroke();ctx.setLineDash([]);ctx.restore();
 }
-function drawStar(x,y,r,color,now) {
+function drawStar(x,y,r,color,now,body=null) {
   if(x<-r*4||x>state.width+r*4||y<-r*4||y>state.height+r*4)return;
   const glow=ctx.createRadialGradient(x,y,0,x,y,r*3.6);
   glow.addColorStop(0,color+'c9');glow.addColorStop(.28,color+'69');glow.addColorStop(1,color+'00');
@@ -381,25 +520,7 @@ function drawStar(x,y,r,color,now) {
   ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x-r*3,y);ctx.lineTo(x+r*3,y);ctx.moveTo(x,y-r*3);ctx.lineTo(x,y+r*3);ctx.stroke();ctx.restore();
   const core=ctx.createRadialGradient(x-r*.3,y-r*.3,0,x,y,r);
   core.addColorStop(0,'#fffefa');core.addColorStop(.55,color);core.addColorStop(1,'#bd6552');ctx.fillStyle=core;circle(x,y,r);ctx.fill();
-}
-function texture(body) {
-  if(state.textureCache.has(body.id))return state.textureCache.get(body.id);
-  const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');const r=rng('surface:'+body.id);
-  const base=g.createLinearGradient(0,0,128,128);base.addColorStop(0,'#dbe6e5');base.addColorStop(.23,body.color);base.addColorStop(1,'#263d59');
-  g.fillStyle=base;g.fillRect(0,0,128,128);
-  if(body.type==='gas'||body.type==='ice-giant'){
-    for(let i=0;i<26;i++){const y=r()*128,h=1+r()*9;g.fillStyle=`rgba(${r()<.5?'255,239,206':'65,77,110'},${.06+r()*.22})`;g.fillRect(0,y,128,h);}
-    if(body.type==='gas'){g.fillStyle='#ad71605e';g.beginPath();g.ellipse(92,82,15,6,-.2,0,TAU);g.fill();}
-  }else{
-    for(let i=0;i<120;i++){
-      const x=r()*128,y=r()*128,s=1+r()*13;
-      g.fillStyle=body.type==='temperate'?(r()<.58?'#2f785965':'#e1f8e460'):
-        r()<.5?'#f4e8cb31':'#1a324539';
-      g.beginPath();g.ellipse(x,y,s,s*(.3+r()*.6),r()*TAU,0,TAU);g.fill();
-    }
-    if(body.type==='temperate'){g.fillStyle='#ffffff99';g.fillRect(0,4,128,8);g.fillRect(0,116,128,9);}
-  }
-  state.textureCache.set(body.id,c);return c;
+  if(body){ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(celestialSprite(body,state.save.days),x-r,y-r,r*2,r*2);ctx.restore();}
 }
 function drawPlanet(body,p,now) {
   const sr=visualRadius(body.diameter,body.kind)*state.zoom;
@@ -410,48 +531,37 @@ function drawPlanet(body,p,now) {
     ctx.beginPath();ctx.ellipse(0,0,r*1.85,r*.48,0,0,TAU);ctx.stroke();ctx.restore();
   }
   ctx.save();ctx.shadowColor=body.color;ctx.shadowBlur=Math.min(30,r*.7);circle(p.x,p.y,r);ctx.fillStyle=body.color;ctx.fill();ctx.restore();
-  ctx.save();circle(p.x,p.y,r);ctx.clip();ctx.drawImage(texture(body),p.x-r,p.y-r,2*r,2*r);
-  const shade=ctx.createLinearGradient(p.x-r,p.y-r,p.x+r,p.y+r);
-  shade.addColorStop(0,'#ffffff44');shade.addColorStop(.4,'#ffffff00');shade.addColorStop(1,'#001328c9');
-  ctx.fillStyle=shade;ctx.fillRect(p.x-r,p.y-r,r*2,r*2);ctx.restore();
+  ctx.save();ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(celestialSprite(body,state.save.days,bodyPosition(body,state.save.days,state.system)),p.x-r,p.y-r,2*r,2*r);ctx.restore();
   ctx.strokeStyle='#d9f8fb42';ctx.lineWidth=1;circle(p.x,p.y,r);ctx.stroke();
   if(selected){drawSelection(p.x,p.y,r,now);label(body.name,p.x,p.y-r-25,true);}
-  else if(state.zoom>.66 || body.kind==='planet')label(body.name,p.x,p.y-r-17);
-}
-function drawShip(x,y,now,size=13) {
-  ctx.save();ctx.translate(x,y);ctx.rotate(-Math.PI/2);
-  ctx.shadowColor='#76ece2';ctx.shadowBlur=17;
-  ctx.fillStyle='#4cc6dc';ctx.beginPath();ctx.moveTo(-size*.35,-size*.8);ctx.lineTo(0,-size*(1.5+.3*Math.sin(now*.026)));
-  ctx.lineTo(size*.35,-size*.8);ctx.fill();ctx.shadowBlur=0;
-  ctx.fillStyle='#d6edee';ctx.strokeStyle='#557b98';ctx.lineWidth=1.5;
-  ctx.beginPath();ctx.moveTo(0,size);ctx.lineTo(-size*.54,-size*.65);ctx.lineTo(0,-size*.35);ctx.lineTo(size*.54,-size*.65);ctx.closePath();ctx.fill();ctx.stroke();
-  ctx.fillStyle='#6ccdc8';circle(0,size*.13,size*.26);ctx.fill();
-  ctx.fillStyle='#d09b62';ctx.fillRect(-size*.8,-size*.48,size*.28,size*.35);ctx.fillRect(size*.52,-size*.48,size*.28,size*.35);
-  ctx.restore();
+  else if(settings.labels&&(state.zoom>.35 || body.kind==='planet'))label(body.name,p.x,p.y-r-17);
 }
 function drawSystem(now) {
   const sys=state.system,days=state.save.days,zone=habitableZone(sys.star.luminosity);
   const center=screen(0,0);
   if(settings.zone){ctx.save();ctx.fillStyle='#67e5ad0b';ctx.strokeStyle='#6de6ad36';ctx.lineWidth=1;
-    circle(center.x,center.y,orbitRadius(zone.outer)*state.zoom);
-    circle(center.x,center.y,orbitRadius(zone.inner)*state.zoom);
-    ctx.fill('evenodd');ctx.setLineDash([3,7]);circle(center.x,center.y,orbitRadius(zone.inner)*state.zoom);ctx.stroke();
-    circle(center.x,center.y,orbitRadius(zone.outer)*state.zoom);ctx.stroke();ctx.restore();}
-  for(const planet of sys.planets){drawOrbit(0,0,orbitRadius(planet.au));
+    ctx.beginPath();ctx.arc(center.x,center.y,orbitRadius(zone.outer,sys.star)*state.zoom,0,TAU);
+    ctx.arc(center.x,center.y,orbitRadius(zone.inner,sys.star)*state.zoom,0,TAU,true);
+    ctx.fill('evenodd');ctx.setLineDash([3,7]);circle(center.x,center.y,orbitRadius(zone.inner,sys.star)*state.zoom);ctx.stroke();
+    circle(center.x,center.y,orbitRadius(zone.outer,sys.star)*state.zoom);ctx.stroke();ctx.restore();}
+  if(settings.orbits)for(const planet of sys.planets){drawOrbit(0,0,orbitRadius(planet.au,sys.star));
     const host=bodyPosition(planet,days,sys);
     for(const moon of planet.moons)drawOrbit(host.x,host.y,moon.orbitPx,'#9ebcc4');
   }
-  drawStar(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,sys.star.color,now);
+  drawStar(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,sys.star.color,now,sys.star);
   if(state.selected?.id===sys.star.id)drawSelection(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,now);
-  if(center.x>-60&&center.x<state.width+60&&center.y>-60&&center.y<state.height+60)label(sys.star.name,center.x,center.y-visualRadius(sys.star.diameter,'star')*state.zoom-25);
+  if(settings.labels&&center.x>-60&&center.x<state.width+60&&center.y>-60&&center.y<state.height+60)label(sys.star.name,center.x,center.y-visualRadius(sys.star.diameter,'star')*state.zoom-25);
   for(const planet of sys.planets){const pos=bodyPosition(planet,days,sys);drawPlanet(planet,screen(pos.x,pos.y),now);
     for(const moon of planet.moons){const mp=bodyPosition(moon,days,sys);drawPlanet(moon,screen(mp.x,mp.y),now);}}
   if(state.autopilot?.type==='body'){const body=findBody(state.autopilot.id);if(body){const end=bodyPosition(body,days,sys),a=screen(state.save.ship.x,state.save.ship.y),b=screen(end.x,end.y);
     ctx.strokeStyle='#77e2d586';ctx.lineWidth=1;ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);}}
-  const ship=screen(state.save.ship.x,state.save.ship.y);drawShip(ship.x,ship.y,now);
+  const ship=screen(state.save.ship.x,state.save.ship.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now);
 }
 function drawChart(now) {
   const stars=nearbyStars();
+  if(settings.travelLines && state.save.route.length>1){ctx.save();ctx.strokeStyle='#8ebcab50';ctx.setLineDash([3,7]);ctx.beginPath();
+    state.save.route.forEach((seed,i)=>{const star=starAt(seed),p=screen(star.x,star.y);if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});ctx.stroke();ctx.restore();}
   for(const star of stars){const p=screen(star.x,star.y);if(p.x<-45||p.x>state.width+45||p.y<-45||p.y>state.height+45)continue;
     const type=star.seed==='sol'?'#ffcf7d':['#ff9d8d','#f5dfab','#c2daff'][hash(star.seed)%3];
     drawStar(p.x,p.y,star.id==='origin'?7:4,type,now);
@@ -460,46 +570,61 @@ function drawChart(now) {
   }
   if(state.autopilot?.type==='star'){const s=starAt(state.autopilot.id);const a=screen(state.save.chart.x,state.save.chart.y),b=screen(s.x,s.y);
     ctx.strokeStyle='#76dac680';ctx.lineWidth=1;ctx.setLineDash([5,7]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);}
-  const ship=screen(state.save.chart.x,state.save.chart.y);drawShip(ship.x,ship.y,now,11);
+  const ship=screen(state.save.chart.x,state.save.chart.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,36);
   ctx.font='10px DM Mono,monospace';ctx.fillStyle='#91b1be';ctx.fillText('LOCAL SECTOR  /  DISTANCES ARE GAME UNITS',state.width/2,Math.max(70,state.height*.14));
 }
 function drawGround(now) {
   const body=findBody(state.save.landed);if(!body)return;
-  const palette={temperate:['#153a43','#24595b','#396b58'],desert:['#503b3c','#755047','#956c50'],rock:['#293b4a','#445462','#626970'],ice:['#456d82','#6590a3','#a5bfca'],gas:['#405474','#647c91','#98a2ac'],'ice-giant':['#4a7490','#6b9cb4','#94c3d0']}[body.type]||['#253b4a','#3c5965','#78929d'];
-  ctx.fillStyle=palette[0];ctx.fillRect(0,0,state.width,state.height);
-  const tile=86,range=Math.ceil(Math.max(state.width,state.height)/state.zoom/tile/2)+2;
-  const cx=Math.floor(state.camera.x/tile),cy=Math.floor(state.camera.y/tile);
-  for(let y=cy-range;y<=cy+range;y++)for(let x=cx-range;x<=cx+range;x++){
-    const p=screen(x*tile,y*tile);if(p.x<-tile*state.zoom||p.x>state.width||p.y<-tile*state.zoom||p.y>state.height)continue;
-    const r=rng(body.id+':'+x+','+y);const shade=Math.floor(r()*3);
-    ctx.fillStyle=palette[shade];ctx.globalAlpha=.27;ctx.fillRect(p.x,p.y,tile*state.zoom+1,tile*state.zoom+1);ctx.globalAlpha=1;
-    for(let j=0;j<8;j++){const sx=p.x+r()*tile*state.zoom,sy=p.y+r()*tile*state.zoom;
-      const sz=(1+r()*5)*state.zoom;ctx.fillStyle=body.type==='temperate'?'#80b69a77':'#d7e0de51';
-      circle(sx,sy,sz);ctx.fill();if(j===0 && body.type!=='temperate'){ctx.strokeStyle='#d3e3e743';circle(sx,sy,sz*2.2);ctx.stroke();}}
-  }
+  terrain.draw(ctx,body,state.camera,state.zoom,state.width,state.height,settings.pixelSize);
+  const sampleTerrain=terrain.sampler(body),cell=110;
+  const hw=state.width/state.zoom/2,hh=state.height/state.zoom/2;
+  // Sparse, independently placed vegetation and rocks. Placement is keyed to
+  // world space, not to the terrain cache or the visible screen.
+  for(let cy=Math.floor((state.camera.y-hh)/cell)-1;cy<=Math.floor((state.camera.y+hh)/cell)+1;cy++)
+    for(let cx=Math.floor((state.camera.x-hw)/cell)-1;cx<=Math.floor((state.camera.x+hw)/cell)+1;cx++){
+      const rand=rng(`props:${body.id}:${cx},${cy}`);if(rand()<.38)continue;
+      const wx=(cx+rand())*cell,wy=(cy+rand())*cell,t=sampleTerrain(wx,wy);
+      if(t.water||Math.hypot(wx,wy)<85)continue;
+      const p=screen(wx,wy),z=state.zoom,tree=t.biome==='forest'&&rand()<.65;
+      ctx.save();ctx.translate(Math.round(p.x),Math.round(p.y));ctx.scale(z,z);
+      ctx.fillStyle='#0d243447';ctx.fillRect(-5,2,14,4);
+      if(tree){
+        ctx.fillStyle='#4f493b';ctx.fillRect(-2,-2,4,9);
+        ctx.fillStyle='#244c43';ctx.fillRect(-9,-13,18,9);ctx.fillRect(-6,-18,12,17);
+        ctx.fillStyle='#4d8054';ctx.fillRect(-6,-17,9,9);ctx.fillRect(-9,-11,10,5);
+        ctx.fillStyle='#83a868';ctx.fillRect(-4,-16,5,3);
+      }else{
+        const size=3+Math.floor(rand()*5);ctx.fillStyle='#414d53';ctx.fillRect(-size,-size,size*2,size+4);
+        ctx.fillStyle=body.type==='desert'?'#bf9466':'#a5b1b2';ctx.fillRect(-size,-size,size+3,3);
+        ctx.fillStyle=body.type==='desert'?'#86634f':'#687f88';ctx.fillRect(-size+2,-size+3,size*2-2,size-1);
+      }
+      ctx.restore();
+    }
+  const lander=screen(0,0);paintShip(ctx,lander.x,lander.y,{},now,62,true);
+  const astronaut=screen(state.save.surface.x,state.save.surface.y);
+  paintAstronaut(ctx,astronaut.x,astronaut.y,state.actorMotion);
+  const sunlight=Math.cos(rotationAngle(body,state.save.days)-(body.phase||0));
+  ctx.fillStyle=`rgba(6,16,44,${.08+(1-sunlight)*.18})`;ctx.fillRect(0,0,state.width,state.height);
   for(const sample of surfaceSamples()){
     if(state.save.discoveries.includes(sample.id))continue;const p=screen(sample.x,sample.y);
     if(p.x<0||p.x>state.width||p.y<0||p.y>state.height)continue;
-    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(now*.0005);ctx.fillStyle='#92f5d9';ctx.shadowColor='#60e9cd';ctx.shadowBlur=18;
-    ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(6,0);ctx.lineTo(0,8);ctx.lineTo(-6,0);ctx.closePath();ctx.fill();ctx.restore();
+    const pulse=settings.reducedMotion?1:.8+.2*Math.sin(now*.004+hash(sample.id));
+    ctx.save();ctx.translate(Math.round(p.x),Math.round(p.y));ctx.globalAlpha=pulse;
+    ctx.shadowColor='#60e9cd';ctx.shadowBlur=12;
+    ctx.fillStyle='#377e9a';ctx.fillRect(-5,-3,10,8);ctx.fillStyle='#6cddc8';ctx.fillRect(-3,-8,6,13);
+    ctx.fillStyle='#d6ffe1';ctx.fillRect(-2,-6,2,7);ctx.restore();
   }
-  const lander=screen(0,0);drawShip(lander.x,lander.y,now,19);
   if(Math.hypot(lander.x-state.width/2,lander.y-state.height/2)>125){
     const a=Math.atan2(lander.y-state.height/2,lander.x-state.width/2),r=Math.min(state.width,state.height)*.3;
     const x=state.width/2+Math.cos(a)*r,y=state.height/2+Math.sin(a)*r;
-    ctx.fillStyle='#8ee9d5';ctx.font='12px DM Mono,monospace';ctx.fillText('⌖ LANDER',x,y);
+    ctx.fillStyle='#8ee9d5';ctx.font='11px ui-monospace,monospace';ctx.textAlign='center';ctx.fillText('⌖ LANDER',x,y);
   }
-  const astronaut=screen(state.save.surface.x,state.save.surface.y);
-  ctx.save();ctx.translate(astronaut.x,astronaut.y);const bob=Math.sin(now*.012)*(state.keys.size||Math.hypot(state.joy.x,state.joy.y)>.1?2:0);
-  ctx.fillStyle='#081d29a0';ctx.beginPath();ctx.ellipse(0,14,12,4,0,0,TAU);ctx.fill();
-  ctx.fillStyle='#dae7e8';ctx.fillRect(-7,3+bob,14,13);ctx.fillStyle='#6689a4';ctx.fillRect(-12,4+bob,5,9);ctx.fillRect(7,4+bob,5,9);
-  ctx.fillStyle='#eee9d5';circle(0,-3+bob,10);ctx.fill();ctx.fillStyle='#71cdd0';ctx.beginPath();ctx.ellipse(0,-4+bob,7,4.5,0,0,TAU);ctx.fill();
-  ctx.fillStyle='#97abba';ctx.fillRect(-6,16+bob,5,7);ctx.fillRect(2,16-bob,5,7);ctx.restore();
 }
 function frame(now) {
-  const dt=Math.min(50,Math.max(0,now-state.last));state.last=now;
+  const realDt=Math.max(0,now-state.last),dt=Math.min(100,realDt);state.last=now;
+  if(realDt>0)state.fps+=(1000/realDt-state.fps)*.06;
   if(!document.hidden){
-    if(state.save)update(dt);
+    if(state.save)update(dt,realDt);
     ctx.setTransform(state.dpr,0,0,state.dpr,0,0);backdrop(now);
     if(state.scene==='system')drawSystem(now);
     else if(state.scene==='chart')drawChart(now);
@@ -509,7 +634,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-document.addEventListener('visibilitychange',()=>{state.last=performance.now();if(document.hidden)persist();});
+document.addEventListener('visibilitychange',()=>{state.last=performance.now();music.visibility(document.hidden);if(document.hidden){resetInput();persist();}});
 window.addEventListener('pagehide',persist);
 
 // Pointer picking and camera panning. A tap selects; a drag pans; two fingers pinch.
@@ -544,16 +669,27 @@ canvas.addEventListener('pointerup',e=>{if(!pointers.has(e.pointerId))return;poi
 canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);gesture=null;state.pinch=null;});
 canvas.addEventListener('wheel',e=>{if(!state.save)return;e.preventDefault();zoom(e.deltaY<0?1.12:1/1.12);},{passive:false});
 window.addEventListener('keydown',e=>{
-  if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName))return;
   if(e.key==='Escape'){if($('modal').classList.contains('visible'))closeModal();return;}
+  if($('modal').classList.contains('visible')){
+    if(e.key==='Tab'){
+      const focusable=[...$('modal').querySelectorAll('button,input,select,a[href]')].filter(el=>!el.disabled&&!el.hidden);
+      const first=focusable[0],last=focusable.at(-1);
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
+    }return;
+  }
+  if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName))return;
   if(!state.save)return;
   const k=e.key.length===1?e.key.toLowerCase():e.key;
+  if(k===' '&&['BUTTON','A'].includes(document.activeElement?.tagName))return;
   if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d',' ','+','-','='].includes(k))e.preventDefault();
-  if(k==='+'||k==='=')zoom(1.2);else if(k==='-')zoom(1/1.2);else if(k===' ')primary();else state.keys.add(k);
+  if(k==='+'||k==='=')zoom(1.2);else if(k==='-')zoom(1/1.2);else if(k===' '){if(!e.repeat)primary();}
+  else if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(k))state.keys.add(k);
 });
 window.addEventListener('keyup',e=>state.keys.delete(e.key.length===1?e.key.toLowerCase():e.key));
-window.addEventListener('blur',()=>{state.keys.clear();state.joy={x:0,y:0};});
+window.addEventListener('blur',resetInput);
 const joy=$('joystick'),stick=$('stick');let joyPointer=null;
+function resetInput(){state.keys.clear();state.joy={x:0,y:0};joyPointer=null;stick.style.setProperty('--jx','0px');stick.style.setProperty('--jy','0px');}
 function moveJoy(e){const r=joy.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;
   const limit=r.width*.33,d=Math.hypot(x,y),scale=d>limit?limit/d:1;
   state.joy={x:x*scale/limit,y:y*scale/limit};stick.style.setProperty('--jx',x*scale+'px');stick.style.setProperty('--jy',y*scale+'px');}
@@ -561,3 +697,4 @@ joy.addEventListener('pointerdown',e=>{if(joyPointer!==null)return;joyPointer=e.
 joy.addEventListener('pointermove',e=>{if(e.pointerId===joyPointer)moveJoy(e);});
 function releaseJoy(e){if(e.pointerId!==joyPointer)return;joyPointer=null;state.joy={x:0,y:0};stick.style.setProperty('--jx','0px');stick.style.setProperty('--jy','0px');}
 joy.addEventListener('pointerup',releaseJoy);joy.addEventListener('pointercancel',releaseJoy);
+joy.addEventListener('lostpointercapture',releaseJoy);

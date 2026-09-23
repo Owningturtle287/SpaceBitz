@@ -33,7 +33,8 @@
       <div id="targetMetrics" class="metrics"></div>
       <div class="target-actions"><button id="primaryAction" class="button primary">Explore Earth</button><button id="secondaryAction" class="button subtle" hidden>Details</button></div>
     </section>
-    <div class="zoom glass" aria-label="Zoom controls"><button id="zoomOut" aria-label="Zoom out">−</button><span id="zoomLabel">100%</span><button id="zoomIn" aria-label="Zoom in">+</button></div>
+    <div id="telemetry" hidden></div>
+    <div class="zoom glass" aria-label="Zoom controls"><button id="fitSystem" aria-label="Fit entire system">⌗</button><button id="zoomOut" aria-label="Zoom out">−</button><span id="zoomLabel">100%</span><button id="zoomIn" aria-label="Zoom in">+</button></div>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
     <div class="bottom">
       <div class="status glass"><span class="status-led"></span><span id="statusText">SYSTEM // SOL</span><span class="key-help">WASD / ARROWS · DRAG TO PAN · SCROLL TO ZOOM</span></div>
@@ -42,12 +43,14 @@
   </div>
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
-      <div class="eyebrow accent">AN EXPLORER'S POCKET UNIVERSE</div>
+      <div class="menu-top"><span class="eyebrow accent">DEEP SPACE EXPLORER</span><span class="version-chip">v1.1</span></div>
       <h1 id="welcomeTitle">SPACE<span>BITZ</span><b>✦</b></h1>
       <p>Follow the planets. Cross the temperate zone. Find a little place among the stars.</p>
+      <div class="menu-console"><span class="console-light"></span><span>FLIGHT SYSTEMS READY</span><button id="menuMusic" class="text-button" type="button">♪ ENABLE MUSIC</button></div>
       <div class="create-row"><label for="universeName">UNIVERSE NAME</label><input id="universeName" maxlength="40" value="My Universe" autocomplete="off"></div>
       <div class="create-row"><label for="universeSeed">SEED <small>OPTIONAL</small></label><input id="universeSeed" maxlength="64" placeholder="Leave blank for a surprise" autocomplete="off"></div>
       <div class="welcome-actions"><button id="newGame" class="button primary">START EXPLORING <span>↗</span></button><button id="solGame" class="button subtle">VISIT SOL</button></div>
+      <button id="menuSettings" class="button menu-settings">⚙ SETTINGS & CONTROLS</button>
       <div class="saved-heading">CONTINUE A VOYAGE</div><div id="savedGames" class="saved-games"></div>
       <div class="welcome-foot"><span>SAVED ON THIS DEVICE</span><button id="importButton" class="text-button">IMPORT SAVE ↑</button><input id="importFile" type="file" accept="application/json,.json" hidden><button id="installButton" class="text-button" hidden>INSTALL APP ↓</button></div>
     </div>

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeSystem,habitableZone,periodDays,bodyPosition,visualRadius} from '../model.js';
+import {makeSystem,habitableZone,periodDays,bodyPosition,visualRadius,advanceDays,rotationAngle,TAU,orbitRadius} from '../model.js';
 
 test('Sol preserves orbital order, factual diameters and approximate year',()=>{
   const sol=makeSystem('sol');
@@ -27,5 +27,42 @@ test('generated systems and moon locations are stable and finite',()=>{
 });
 test('visual hierarchy keeps stars larger than gas giants',()=>{
   const sol=makeSystem('sol');
-  assert.ok(visualRadius(sol.star.diameter,'star')>visualRadius(sol.planets[4].diameter));
+  assert.ok(visualRadius(sol.star.diameter,'star')>visualRadius(sol.planets[4].diameter)*6);
+  assert.ok(visualRadius(sol.star.diameter,'star')>visualRadius(sol.planets[2].diameter)*50);
+});
+test('one real minute is exactly one game hour; Earth turns in 24 real minutes',()=>{
+  assert.equal(advanceDays(0,60_000),1/24);
+  const days=advanceDays(0,24*60_000),earth=makeSystem('sol').planets[2];
+  assert.equal(days,1);
+  assert.ok(Math.abs(Math.sin(rotationAngle(earth,days)-rotationAngle(earth,0)))<1e-10);
+  const quarter=rotationAngle(earth,advanceDays(0,6*60_000))-rotationAngle(earth,0);
+  assert.ok(Math.abs(Math.atan2(Math.sin(quarter),Math.cos(quarter))-TAU/4)<1e-10);
+  assert.equal(advanceDays(10,60_000,true),10);
+});
+test('lunar orbit and Earth year follow the same real clock',()=>{
+  const sol=makeSystem('sol'),earth=sol.planets[2],moon=earth.moons[0];
+  for(const body of [earth,moon]){
+    const elapsed=body.period*24*60_000;
+    const days=advanceDays(0,elapsed);
+    const a=bodyPosition(body,0,sol),b=bodyPosition(body,days,sol);
+    if(body===earth)assert.ok(Math.hypot(a.x-b.x,a.y-b.y)<1e-8);
+    else{
+      const hostA=bodyPosition(earth,0,sol),hostB=bodyPosition(earth,days,sol);
+      assert.ok(Math.hypot(a.x-hostA.x-(b.x-hostB.x),a.y-hostA.y-(b.y-hostB.y))<1e-8);
+      assert.equal(moon.rotationDays,moon.period);
+    }
+  }
+});
+test('large stars have clear orbital space and generated moons stay in their Hill spheres',()=>{
+  for(let i=0;i<30;i++){
+    const system=makeSystem('scale-'+i),starR=visualRadius(system.star.diameter,'star');
+    for(const planet of system.planets){
+      assert.ok(orbitRadius(planet.au,system.star)-visualRadius(planet.diameter)>starR);
+      for(const [j,moon]of planet.moons.entries()){
+        assert.ok(moon.orbitPx>visualRadius(planet.diameter)+visualRadius(moon.diameter,'moon'));
+        assert.ok(Number.isFinite(moon.period)&&moon.period>0);
+        if(j>0)assert.ok(moon.orbitKm>planet.moons[j-1].orbitKm);
+      }
+    }
+  }
 });

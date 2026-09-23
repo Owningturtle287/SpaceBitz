@@ -3,6 +3,14 @@
 export const TAU = Math.PI * 2;
 export const DAY_MS = 86400000;
 export const EPOCH = Date.UTC(2026, 0, 1);
+// 60 real seconds = 1 game hour; 1,440 real seconds = 1 Earth day.
+export const REAL_MS_PER_GAME_DAY = 1_440_000;
+export function advanceDays(days, elapsedMs, paused = false) {
+  return days + (paused ? 0 : Math.max(0, elapsedMs) / REAL_MS_PER_GAME_DAY);
+}
+export function rotationAngle(body, days) {
+  return ((body.phase || 0) + TAU * days / (body.rotationDays || 1)) % TAU;
+}
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 export function hash(value) {
   let h = 2166136261;
@@ -19,27 +27,28 @@ export function rng(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-export function orbitRadius(au) { return 160 + 275 * Math.log1p(au * 2); }
+export function orbitRadius(au, star = {diameter:1392700}) {
+  return visualRadius(star.diameter, 'star') + 180 + 900 * Math.log1p(au * 2);
+}
 export function visualRadius(km, kind = 'planet') {
-  // Keep stars visibly larger than even gas giants while retaining their ordering.
-  if (kind === 'star') return clamp(39 * Math.pow(km / 1392700, .22), 38, 55);
-  if (kind === 'moon') return clamp(3.5 + 3.7 * Math.sqrt(km / 12742), 4, 12);
-  return clamp(5 + 8 * Math.sqrt(km / 12742), 6, 37);
+  // One common scale for stars, planets and moons, mildly compressed in radius.
+  // Sol is ~650 px, Jupiter ~92 px, Earth 12 px. Tiny moons stay visible.
+  return Math.max(kind === 'moon' ? 2.5 : 3, 12 * Math.pow(km / 12742, .85));
 }
 export function habitableZone(luminosity) {
   return { inner: .95 * Math.sqrt(luminosity), outer: 1.67 * Math.sqrt(luminosity) };
 }
 export function periodDays(au, solarMass) { return 365.256 * Math.sqrt(au ** 3 / solarMass); }
-export function position(body, days, mass = 1) {
-  const angle = body.phase + TAU * days / (body.period || periodDays(body.au, mass));
-  const radius = body.kind === 'moon' ? body.orbitPx : orbitRadius(body.au);
+export function position(body, days, mass = 1, star) {
+  const angle = body.phase + (body.orbitDirection || 1) * TAU * days / (body.period || periodDays(body.au, mass));
+  const radius = body.kind === 'moon' ? body.orbitPx : orbitRadius(body.au, star);
   return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
 }
 export function bodyPosition(body, days, system) {
-  const p = position(body, days, system.star.mass);
+  const p = position(body, days, system.star.mass, system.star);
   if (body.kind !== 'moon') return p;
   const host = system.planets.find(planet => planet.id === body.parent);
-  const h = position(host, days, system.star.mass);
+  const h = position(host, days, system.star.mass, system.star);
   return { x: h.x + p.x, y: h.y + p.y };
 }
 const SOL = [
@@ -70,7 +79,7 @@ export function makeSystem(seed) {
         period, phase: j * 2.4 + .5
       }))
     }));
-    return { seed, name: 'Sol', star: { id:'sol:star', name:'Sol', kind:'star', mass:1, luminosity:1, diameter:1392700, color:'#ffcf7d', type:'G2V' }, planets };
+    return completeSystem({ seed, name: 'Sol', star: { id:'sol:star', name:'Sol', kind:'star', mass:1, luminosity:1, diameter:1392700, color:'#ffcf7d', type:'G2V' }, planets });
   }
   const r = rng('system:' + seed);
   const types = [
@@ -107,7 +116,39 @@ export function makeSystem(seed) {
     }
     planets.push(planet);
   }
-  return {seed,name:star.name,star,planets};
+  return completeSystem({seed,name:star.name,star,planets});
+}
+function completeSystem(system) {
+  // Approximate NASA rotation periods in Earth days. Earth intentionally uses
+  // a 24-hour gameplay day, rather than the 23.9345-hour sidereal value.
+  const spins = {Mercury:58.646,Venus:-243.025,Earth:1,Mars:1.026,
+    Jupiter:.41354,Saturn:.444,Uranus:-.718,Neptune:.671};
+  system.star.rotationDays = system.seed === 'sol' ? 25.05 : 10 + rng('spin:'+system.seed)()*30;
+  for (const p of system.planets) {
+    const r=rng('rotation:'+p.id);
+    p.rotationDays=system.seed==='sol'?spins[p.name]:p.type==='gas'?.3+r()*.4:.65+r()*2;
+    p.solid=!['gas','ice-giant'].includes(p.type);
+    let edge=visualRadius(p.diameter)+20;
+    p.moons=p.moons.filter((m,index)=>{
+      const mRadius=visualRadius(m.diameter,'moon');
+      m.orbitPx=Math.max(m.orbitPx,edge+mRadius+18);edge=m.orbitPx+mRadius;
+      m.orbitDirection=m.name==='Triton'?-1:1;
+      if(system.seed!=='sol'){
+        const massEarth=(p.diameter/12742)**3*(p.type==='gas'?.24:.95);
+        const hillKm=p.au*149597870.7*Math.cbrt(massEarth*3.003e-6/(3*system.star.mass));
+        const minimum=p.diameter*1.8,maximum=hillKm*.35;
+        if(maximum<minimum)return false;
+        const desired=p.diameter*(9+index*20+r()*12);
+        if(index>0&&desired>maximum)return false;
+        m.orbitKm=clamp(desired,minimum,maximum);
+        m.period=TAU*Math.sqrt(m.orbitKm**3/(398600.44*massEarth))/86400;
+      }
+      m.rotationDays=m.period*m.orbitDirection; // tidally locked moons
+      m.solid=true;
+      return true;
+    });
+  }
+  return system;
 }
 export function roman(n) { return ['I','II','III','IV','V','VI','VII','VIII'][n-1] || String(n); }
 export function starName(seed) {
