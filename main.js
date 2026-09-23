@@ -235,6 +235,11 @@ function updateUI() {
     text=sel?'Travel to this star to enter its planetary system.':'Tap a star to chart a jump.';
     action=!sel?'SELECT A STAR':distance<38?'ENTER SYSTEM':'JUMP TO STAR';
     if(sel){addMetric(metric,'DISTANCE',Math.round(distance)+' ly*');addMetric(metric,'CLASS',makeSystem(sel.seed).star.type);details=true;}
+  } else if(sel?.kind==='star'){
+    title=sel.name;tag='STELLAR PRIMARY';glyph='✦';details=true;
+    text='This star powers the orbital clock and sets the temperate band.';
+    action='SELECT A WORLD';
+    addMetric(metric,'CLASS',sel.type);addMetric(metric,'DIAMETER',Math.round(sel.diameter).toLocaleString()+' km');
   } else if(sel){
     title=sel.name;tag=sel.kind==='moon'?'NATURAL SATELLITE':'PLANETARY TARGET';glyph=sel.type==='gas'?'◌':'◉';details=true;
     const zone=habitableZone(sys.star.luminosity),inhab=sel.kind==='planet'&&sel.au>=zone.inner&&sel.au<=zone.outer;
@@ -265,6 +270,9 @@ function showDetails(body) {
   if(state.scene==='chart'){
     const sys=makeSystem(body.seed);detailTile(grid,'SPECTRAL CLASS',sys.star.type);detailTile(grid,'SOLAR MASS',sys.star.mass.toFixed(2)+' M☉');
     detailTile(grid,'LUMINOSITY',sys.star.luminosity.toFixed(2)+' L☉');detailTile(grid,'PLANETS',String(sys.planets.length));
+  }else if(body.kind==='star'){
+    detailTile(grid,'SPECTRAL CLASS',body.type);detailTile(grid,'DIAMETER',Math.round(body.diameter).toLocaleString()+' km');
+    detailTile(grid,'SOLAR MASS',body.mass.toFixed(2)+' M☉');detailTile(grid,'LUMINOSITY',body.luminosity.toFixed(2)+' L☉');
   }else{
     detailTile(grid,'DIAMETER',Math.round(body.diameter).toLocaleString()+' km');detailTile(grid,'ORBIT PERIOD',body.period.toFixed(1)+' days');
     detailTile(grid,'TYPE',body.type.toUpperCase());detailTile(grid,body.kind==='moon'?'HOST':'DISTANCE',body.kind==='moon'?findBody(body.parent)?.name||'Planet':body.au.toFixed(3)+' AU');
@@ -427,6 +435,7 @@ function drawSystem(now) {
     for(const moon of planet.moons)drawOrbit(host.x,host.y,moon.orbitPx,'#9ebcc4');
   }
   drawStar(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,sys.star.color,now);
+  if(state.selected?.id===sys.star.id)drawSelection(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,now);
   if(center.x>-60&&center.x<state.width+60&&center.y>-60&&center.y<state.height+60)label(sys.star.name,center.x,center.y-visualRadius(sys.star.diameter,'star')*state.zoom-25);
   for(const planet of sys.planets){const pos=bodyPosition(planet,days,sys);drawPlanet(planet,screen(pos.x,pos.y),now);
     for(const moon of planet.moons){const mp=bodyPosition(moon,days,sys);drawPlanet(moon,screen(mp.x,mp.y),now);}}
@@ -517,6 +526,7 @@ function pick(e){const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left
       return {body,d:Math.hypot(x-p.x,y-p.y),radius:visualRadius(body.diameter,body.kind)*state.zoom};})
       .filter(v=>v.d<Math.max(20,v.radius+10)).sort((a,b)=>a.d-b.d);
     if(matches.length)select(matches[0].body);
+    else{const star=screen(0,0);if(Math.hypot(x-star.x,y-star.y)<Math.max(24,visualRadius(state.system.star.diameter,'star')*state.zoom+8))select(state.system.star);}
   }else if(state.scene==='chart'){
     const match=nearbyStars().map(star=>{const p=screen(star.x,star.y);return {star,d:Math.hypot(x-p.x,y-p.y)};})
       .filter(v=>v.d<26).sort((a,b)=>a.d-b.d)[0];if(match)select(match.star);

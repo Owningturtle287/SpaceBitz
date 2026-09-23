@@ -70,7 +70,7 @@ export function makeSystem(seed) {
         period, phase: j * 2.4 + .5
       }))
     }));
-    return { seed, name: 'Sol', star: { id:'sol:star', name:'Sol', mass:1, luminosity:1, diameter:1392700, color:'#ffcf7d', type:'G2V' }, planets };
+    return { seed, name: 'Sol', star: { id:'sol:star', name:'Sol', kind:'star', mass:1, luminosity:1, diameter:1392700, color:'#ffcf7d', type:'G2V' }, planets };
   }
   const r = rng('system:' + seed);
   const types = [
@@ -81,7 +81,7 @@ export function makeSystem(seed) {
   const spectral = types[Math.min(types.length - 1, Math.floor(r() * types.length))];
   const mass = spectral.mass * (.91 + r() * .18);
   const luminosity = Math.pow(mass, 3.5);
-  const star = { id:seed + ':star', name:starName(seed), mass, luminosity,
+  const star = { id:seed + ':star', name:starName(seed), kind:'star', mass, luminosity,
     diameter: Math.round(1392700 * mass ** .8), color:spectral.color, type:spectral.type + 'V' };
   const zone = habitableZone(luminosity);
   const count = 4 + Math.floor(r() * 4);
