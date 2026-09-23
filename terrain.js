@@ -54,7 +54,10 @@ export function createTerrainSampler(body) {
     let a,b,t,biome;
     if(h<sea){a=pal.deep;b=pal.water;t=clamp((h-(sea-.2))/.2,0,1);biome='water';}
     else if(h<sea+.027){a=pal.sand;b=pal.low;t=(h-sea)/.027;biome='shore';}
-    else if(h>.72){a=pal.rock;b=pal.snow;t=clamp((h-.72)*6,0,1);biome='ridge';}
+    else if(h>.69){
+      const rock=smooth(clamp((h-.69)/.09,0,1));
+      a=pal.high;b=pal.rock.map((v,i)=>mix(v,pal.snow[i],clamp((h-.78)*6,0,1)));t=rock;biome='ridge';
+    }
     else{a=pal.low;b=pal.high;t=clamp((h-.38)*2.4,0,1);biome=moisture>.54&&type==='temperate'?'forest':'plain';}
     const slope=(elevation(x+6,y)-h)*5-(elevation(x,y+6)-h)*3;
     const grain=(lattice(Math.floor(x/3),Math.floor(y/3),seed+772)-.5)*7;

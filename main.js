@@ -78,7 +78,7 @@ function fit() {
   canvas.width=Math.round(rect.width*state.dpr); canvas.height=Math.round(rect.height*state.dpr);
   ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
   state.stars=Array.from({length:Math.max(110,Math.min(400,Math.round(rect.width*rect.height/2600)))},(_,i)=>{
-    const r=rng('background:'+i);return {x:r(),y:r(),size:r()<.87?1:2,alpha:.25+r()*.6,phase:r()*TAU,depth:r(),speed:.4+r(),color:r()};
+    const r=rng('background:'+i);return {x:r(),y:r(),size:r()<.7?1:2,alpha:.25+r()*.6,phase:r()*TAU,depth:r(),speed:.4+r(),color:r()};
   });
 }
 window.addEventListener('resize',fit); applySettings();
@@ -489,7 +489,7 @@ function backdrop(now) {
     }
     if(x<0||x>w||y<0||y>h)continue;
     const twinkle=settings.twinkle&&!settings.reducedMotion?.55+.45*Math.sin(now*.002*star.speed+star.phase):.85;
-    const alpha=clamp(star.alpha*twinkle+(1-z)*.18,.1,1),size=Math.max(1,Math.round(star.size*(1.6-z)));
+    const alpha=clamp(star.alpha*twinkle+(1-z)*.18,.1,1),size=Math.max(1,Math.round(star.size*(1.9-z)));
     x=Math.round(x/2)*2;y=Math.round(y/2)*2;
     ctx.fillStyle=`rgba(${star.color<.15?'137,197,230':star.color>.9?'255,218,153':'210,232,232'},${alpha})`;
     ctx.fillRect(x,y,size,size);

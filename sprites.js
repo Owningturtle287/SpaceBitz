@@ -63,7 +63,7 @@ export function paintShip(ctx,x,y,motion,now,size=42,parked=false) {
 export function paintAstronaut(ctx,x,y,motion) {
   const frame=motion.moving?Math.floor((motion.steps||0)/7)%4:0;
   ctx.save();ctx.imageSmoothingEnabled=false;
-  ctx.fillStyle='#071a2866';ctx.beginPath();ctx.ellipse(Math.round(x),Math.round(y)+17,12,4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#071a2866';ctx.beginPath();ctx.ellipse(Math.round(x),Math.round(y)+17,12,4,0,0,Math.PI*2);ctx.fill();
   ctx.drawImage(astronautSprite(motion.direction||'down',frame),Math.round(x)-18,Math.round(y)-28,36,51);
   ctx.restore();
 }
