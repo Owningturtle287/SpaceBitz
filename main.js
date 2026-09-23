@@ -10,7 +10,10 @@ const settings = readJSON(SETTINGS_KEY, {zone:true, speed:7});
 const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,y:0}, zoom:1,
   panUntil:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, particles:[], textureCache:new Map()};
-const loadSaves = () => readJSON(SAVE_KEY, []).filter(s => s && s.id && s.seed);
+const loadSaves = () => {
+  const value=readJSON(SAVE_KEY, []);
+  return Array.isArray(value)?value.filter(s=>s && s.id && s.seed):[];
+};
 function readJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function persist() {
   if (!state.save) return;
@@ -210,12 +213,16 @@ function updateUI() {
   $('placeLabel').textContent=scene==='chart'?'The Reach':scene==='surface'?findBody(state.save.landed)?.name||'Surface':sys.name;
   $('hint').textContent=scene==='chart'?'Select a star, then set a jump course.':scene==='surface'?'Collect samples and return to your lander.':`${sys.star.type} STAR · ${sys.planets.length} PLANETS`;
   $('zoneLegend').hidden=scene!=='system';$('zoneToggle').textContent=settings.zone?'VISIBLE':'HIDDEN';$('zoneToggle').setAttribute('aria-pressed',String(settings.zone));
-  const list=$('bodyList');list.replaceChildren();
-  if(scene==='system') for(const body of allBodies()){
-    const b=document.createElement('button');b.className='body-entry'+(body.kind==='moon'?' moon':'')+(sel?.id===body.id?' active':'');
-    b.style.setProperty('--dot',body.color);b.innerHTML='<span class="body-dot"></span>';
-    const name=document.createElement('span');name.textContent=body.name;const au=document.createElement('small');au.textContent=body.kind==='moon'?'MOON':body.au.toFixed(2)+' AU';
-    b.append(name,au);b.onclick=()=>select(body);list.append(b);
+  const list=$('bodyList'),listKey=`${scene}:${sys.seed}:${sel?.id||''}`;
+  if(state.listKey!==listKey){
+    const scroll=list.scrollLeft;list.replaceChildren();
+    if(scene==='system')for(const body of allBodies()){
+      const b=document.createElement('button');b.className='body-entry'+(body.kind==='moon'?' moon':'')+(sel?.id===body.id?' active':'');
+      b.style.setProperty('--dot',body.color);b.innerHTML='<span class="body-dot"></span>';
+      const name=document.createElement('span');name.textContent=body.name;const au=document.createElement('small');au.textContent=body.kind==='moon'?'MOON':body.au.toFixed(2)+' AU';
+      b.append(name,au);b.onclick=()=>select(body);list.append(b);
+    }
+    list.scrollLeft=scroll;state.listKey=listKey;
   }
   $('bodyList').hidden=scene!=='system';
   const metric=$('targetMetrics');metric.replaceChildren();
@@ -234,7 +241,7 @@ function updateUI() {
     const distance=sel?Math.hypot(sel.x-state.save.chart.x,sel.y-state.save.chart.y):0;
     text=sel?'Travel to this star to enter its planetary system.':'Tap a star to chart a jump.';
     action=!sel?'SELECT A STAR':distance<38?'ENTER SYSTEM':'JUMP TO STAR';
-    if(sel){addMetric(metric,'DISTANCE',Math.round(distance)+' ly*');addMetric(metric,'CLASS',makeSystem(sel.seed).star.type);details=true;}
+    if(sel){addMetric(metric,'DISTANCE',Math.round(distance)+' units');addMetric(metric,'CLASS',makeSystem(sel.seed).star.type);details=true;}
   } else if(sel?.kind==='star'){
     title=sel.name;tag='STELLAR PRIMARY';glyph='✦';details=true;
     text='This star powers the orbital clock and sets the temperate band.';
