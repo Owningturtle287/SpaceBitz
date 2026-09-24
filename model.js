@@ -95,6 +95,24 @@ const SOL_MOONS = {
   Saturn: [['Enceladus', 504, 1.37, 46], ['Titan', 5150, 15.95, 72]],
   Neptune: [['Triton', 2707, 5.877, 54]]
 };
+const STELLAR_CLASSES=[
+  {max:.7650,type:'M',mass:.32,color:'#ff5c54'},
+  {max:.8850,type:'K',mass:.73,color:'#ff9845'},
+  {max:.9600,type:'G',mass:1.02,color:'#ffd75a'},
+  {max:.9900,type:'F',mass:1.25,color:'#f7f9ff'},
+  {max:.9985,type:'A',mass:1.65,color:'#f7f9ff'},
+  {max:1.0000,type:'B',mass:5.0,color:'#78a8ff'}
+];
+function proceduralStar(seed,r){
+  const roll=r(),spectral=STELLAR_CLASSES.find(entry=>roll<entry.max)||STELLAR_CLASSES.at(-1);
+  const mass=spectral.mass*(.91+r()*.18),luminosity=Math.pow(mass,3.5);
+  return {id:seed+':star',name:starName(seed),kind:'star',mass,luminosity,
+    diameter:Math.round(1392700*mass**.8),color:spectral.color,type:spectral.type+'V'};
+}
+export function starAppearance(seed){
+  if(seed==='sol')return {color:'#ffd75a',type:'G2V',mass:1,luminosity:1,diameter:1392700};
+  return proceduralStar(seed,rng('system:'+seed));
+}
 export function makeSystem(seed) {
   if (seed === 'sol') {
     const planets = SOL.map(([name, au, diameter, color, type], i) => ({
@@ -106,19 +124,10 @@ export function makeSystem(seed) {
         period, phase: j * 2.4 + .5
       }))
     }));
-    return completeSystem({ seed, name: 'Sol', star: { id:'sol:star', name:'Sol', kind:'star', mass:1, luminosity:1, diameter:1392700, color:'#ffcf7d', type:'G2V' }, planets });
+    return completeSystem({ seed, name: 'Sol', star: { id:'sol:star', name:'Sol', kind:'star', mass:1, luminosity:1, diameter:1392700, color:'#ffd75a', type:'G2V' }, planets });
   }
   const r = rng('system:' + seed);
-  const types = [
-    { type:'M', mass:.32, color:'#ff917c' }, { type:'K', mass:.73, color:'#ffbc85' },
-    { type:'G', mass:1.02, color:'#ffda9d' }, { type:'F', mass:1.25, color:'#f9edd5' },
-    { type:'A', mass:1.65, color:'#bfdcff' }
-  ];
-  const spectral = types[Math.min(types.length - 1, Math.floor(r() * types.length))];
-  const mass = spectral.mass * (.91 + r() * .18);
-  const luminosity = Math.pow(mass, 3.5);
-  const star = { id:seed + ':star', name:starName(seed), kind:'star', mass, luminosity,
-    diameter: Math.round(1392700 * mass ** .8), color:spectral.color, type:spectral.type + 'V' };
+  const star=proceduralStar(seed,r),mass=star.mass,luminosity=star.luminosity;
   const zone = habitableZone(luminosity);
   const count = 4 + Math.floor(r() * 4);
   const planets = [];

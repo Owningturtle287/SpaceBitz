@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeSystem,habitableZone,periodDays,bodyPosition,visualRadius,advanceDays,rotationAngle,TAU,orbitRadius} from '../model.js';
+import {makeSystem,starAppearance,habitableZone,periodDays,bodyPosition,visualRadius,advanceDays,rotationAngle,TAU,orbitRadius} from '../model.js';
 
 test('Sol preserves orbital order, factual diameters and approximate year',()=>{
   const sol=makeSystem('sol');
@@ -67,4 +67,28 @@ test('large stars have clear orbital space and generated moons stay in their Hil
       }
     }
   }
+});
+
+
+test('travelable stars keep one spectral color across chart and system with realistic rarity weighting',()=>{
+  const allowed=new Set(['#ff5c54','#ff9845','#ffd75a','#f7f9ff','#78a8ff']);
+  for(let i=0;i<120;i++){
+    const seed='color-consistency-'+i,appearance=starAppearance(seed),star=makeSystem(seed).star;
+    assert.equal(appearance.color,star.color);
+    assert.equal(appearance.type,star.type);
+    assert.ok(allowed.has(star.color));
+  }
+
+  const counts=new Map([...allowed].map(color=>[color,0]));
+  const sample=10000;
+  for(let i=0;i<sample;i++){
+    const color=starAppearance('rarity-'+i).color;
+    counts.set(color,counts.get(color)+1);
+  }
+  const fraction=color=>counts.get(color)/sample;
+  assert.ok(fraction('#ff5c54')>.70&&fraction('#ff5c54')<.82);
+  assert.ok(fraction('#ff9845')>.08&&fraction('#ff9845')<.16);
+  assert.ok(fraction('#ffd75a')>.04&&fraction('#ffd75a')<.11);
+  assert.ok(fraction('#f7f9ff')>.02&&fraction('#f7f9ff')<.065);
+  assert.ok(fraction('#78a8ff')<.006);
 });

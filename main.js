@@ -1,5 +1,5 @@
 import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
-  habitableZone, makeSystem, bodyPosition, galaxyStars, starName} from './model.js';
+  habitableZone, makeSystem, bodyPosition, galaxyStars, starName, starAppearance} from './model.js';
 import {Soundtrack} from './music.js';
 import {DEFAULT_SETTINGS,normalizeSettings} from './settings.js';
 import {TerrainRenderer} from './terrain.js';
@@ -18,6 +18,11 @@ const settings = normalizeSettings({
 const terrain=new TerrainRenderer();
 const music=new Soundtrack(()=>{});
 const CHANGELOG=[
+  {version:'1.2.5',items:[
+    'Reworked soundtrack startup so each voyage begins the melody once from note one after a two-second delay, with no action-driven duplicate starts.',
+    'Weighted travelable star colors toward real stellar rarity: red dwarfs dominate, orange/yellow stars are less common, white stars are uncommon and blue stars are rare.',
+    'Made each travelable star use the exact same deterministic spectral color in the interstellar chart and its system view.'
+  ]},
   {version:'1.2.4',items:[
     'Removed crosshair flares from stars in both system and interstellar views.',
     'Compacted Settings, added miles/AU display choices, improved visual defaults, preferred time zones and accelerated/real-time clock modes.',
@@ -75,11 +80,6 @@ function applySettings(){
   document.documentElement.style.setProperty('--joy-offset',settings.joyOffset+'px');
   music.configure(settings.music,settings.volume);fit();updateUI();
 }
-music.start();
-window.addEventListener('pageshow',()=>music.start(),{passive:true});
-window.addEventListener('focus',()=>music.start(),{passive:true});
-document.addEventListener('pointerdown',()=>music.start(),{capture:true,passive:true});
-document.addEventListener('keydown',()=>music.start(),{capture:true});
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 let lastSingleTouchEnd=0;
 document.addEventListener('touchend',e=>{
@@ -188,6 +188,7 @@ function start(save) {
   else if(state.scene==='surface') state.camera={...save.surface};
   else state.camera={...save.ship};
   $('welcome').classList.remove('visible'); $('app').hidden=false;
+  music.startFromBeginning(2);
   persist(); updateUI();
 }
 function create(sol=false) {
@@ -513,6 +514,7 @@ function openSettings(){
       if(key==='pixelSize')terrain.clear();
       if(key==='timeMode'&&state.save&&settings.timeMode==='realtime')state.save.days=currentDays();
       sync();saveSettings();applySettings();
+      if(key==='music'&&settings.music&&state.save)music.startFromBeginning(2);
     });
     const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
   }
@@ -560,7 +562,7 @@ function openSettings(){
   details.append(changelog);box.append(details);
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-    save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
+    save.onclick=()=>{persist();music.stop();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
     const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
     exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};box.append(exportButton);
@@ -789,8 +791,8 @@ function drawChart(now) {
   if(settings.travelLines && state.save.route.length>1){ctx.save();ctx.strokeStyle='#8ebcab50';ctx.setLineDash([3,7]);ctx.beginPath();
     state.save.route.forEach((seed,i)=>{const star=starAt(seed),p=screen(star.x,star.y);if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});ctx.stroke();ctx.restore();}
   for(const star of stars){const p=screen(star.x,star.y);if(p.x<-45||p.x>state.width+45||p.y<-45||p.y>state.height+45)continue;
-    const type=star.seed==='sol'?'#ffcf7d':['#ff9d8d','#f5dfab','#c2daff'][hash(star.seed)%3];
-    drawStar(p.x,p.y,star.id==='origin'?7:4,type,now);
+    const starColor=starAppearance(star.seed).color;
+    drawStar(p.x,p.y,star.id==='origin'?7:4,starColor,now);
     if(state.selected?.seed===star.seed){drawSelection(p.x,p.y,9,now);label(starName(star.seed),p.x,p.y-27,true);}
     else if(star.id==='origin')label(starName(star.seed)+' · HOME',p.x,p.y-26);
   }

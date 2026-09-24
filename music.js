@@ -1,16 +1,17 @@
 // SpaceBitz's original 48 BPM melody, preserved from v0.0.98.
 const PHRASE = [60,64,67,64,62,67,59,67,57,60,64,60,57,60,65,60];
 export const MELODY = [...Array.from({length:6},()=>PHRASE).flat(),null,null,null,null,null];
+
 export class Soundtrack {
   constructor(onStatus=()=>{}) {
     this.onStatus=onStatus;this.enabled=true;this.volume=.65;this.context=null;
-    this.timer=null;this.step=0;this.nextTime=0;this.hidden=false;
+    this.timer=null;this.step=0;this.nextTime=0;this.hidden=false;this.active=false;this.generation=0;
   }
   configure(enabled,volume) {
     this.enabled=enabled;this.volume=volume;
-    if(this.master && this.context.state!=='closed')
+    if(this.master && this.context?.state!=='closed')
       this.master.gain.setTargetAtTime(enabled?volume*.215:0,this.context.currentTime,.05);
-    if(enabled)this.start();else this.pause();
+    if(!enabled)this.stop();
   }
   ensure() {
     if(this.context)return true;
@@ -21,32 +22,31 @@ export class Soundtrack {
       this.master.gain.value=this.enabled?this.volume*.215:0;
       this.master.connect(this.context.destination);
       this.context.onstatechange=()=>{
-        if(this.context.state==='running' && this.enabled && !this.hidden)this.schedule();
-        else this.onStatus(this.enabled?'ready':'off');
+        if(this.context.state!=='running')this.onStatus(this.enabled?'ready':'off');
       };
       return true;
     }catch{this.onStatus('unavailable');return false;}
   }
-  start() {
-    if(!this.enabled||this.hidden||!this.ensure())return;
-    if(this.context.state==='running'){this.schedule();return;}
-    // Attempt autoplay; a browser that requires interaction resumes from the
-    // first pointer/key gesture. Never mark playback active while suspended.
+  startFromBeginning(delaySeconds=2) {
+    if(!this.enabled||this.hidden||this.active||!this.ensure())return;
+    this.active=true;this.step=0;this.generation++;
+    const generation=this.generation,begin=()=>{
+      if(generation!==this.generation||!this.active||!this.enabled||this.hidden)return;
+      this.schedule(delaySeconds,generation);
+    };
+    if(this.context.state==='running'){begin();return;}
     this.onStatus('ready');
-    const resume=()=>this.context.resume().then(()=>{
-      if(this.context.state==='running' && this.enabled && !this.hidden)this.schedule();
-      else this.onStatus('ready');
-    }).catch(()=>this.onStatus('ready'));
-    resume();
-    setTimeout(()=>{if(this.enabled&&!this.hidden&&this.context?.state==='suspended')resume();},250);
+    this.context.resume().then(begin).catch(()=>this.onStatus('ready'));
   }
-  schedule() {
-    if(this.timer!==null)return;
+  schedule(delaySeconds=.06,generation=this.generation) {
+    if(this.timer!==null||generation!==this.generation||!this.active)return;
     const c=this.context;
     if(!this.enabled||this.hidden||c.state!=='running')return;
-    this.nextTime=c.currentTime+.06;
+    this.nextTime=c.currentTime+Math.max(0,delaySeconds);
     const tick=()=>{
-      if(!this.enabled||this.hidden||c.state!=='running'){this.pause();return;}
+      if(generation!==this.generation||!this.active||!this.enabled||this.hidden||c.state!=='running'){
+        this.clearScheduler();return;
+      }
       if(this.nextTime<c.currentTime-.2)this.nextTime=c.currentTime+.04;
       while(this.nextTime<c.currentTime+.18){
         this.note(MELODY[this.step++%MELODY.length],this.nextTime);
@@ -54,6 +54,14 @@ export class Soundtrack {
       }
     };
     this.timer=setInterval(tick,75);tick();this.onStatus('playing');
+  }
+  resume() {
+    if(!this.active||!this.enabled||this.hidden||!this.ensure())return;
+    const generation=this.generation,begin=()=>{
+      if(generation===this.generation&&this.active&&this.enabled&&!this.hidden)this.schedule(.06,generation);
+    };
+    if(this.context.state==='running')begin();
+    else this.context.resume().then(begin).catch(()=>this.onStatus('ready'));
   }
   note(midi,time) {
     if(midi===null)return;
@@ -68,13 +76,18 @@ export class Soundtrack {
     o.onended=()=>{o.disconnect();lfo.disconnect();depth.disconnect();g.disconnect();filter.disconnect();};
     o.start(time);lfo.start(time);o.stop(time+.74);lfo.stop(time+.74);
   }
-  pause() {
+  clearScheduler() {
     if(this.timer!==null){clearInterval(this.timer);this.timer=null;}
+  }
+  stop() {
+    this.active=false;this.generation++;this.step=0;this.nextTime=0;this.clearScheduler();
     this.onStatus(this.enabled?'ready':'off');
   }
   visibility(hidden) {
     this.hidden=hidden;
-    if(hidden){this.pause();this.context?.suspend().catch(()=>{});}
-    else this.start();
+    if(hidden){
+      this.clearScheduler();
+      this.context?.suspend().catch(()=>{});
+    }else this.resume();
   }
 }
