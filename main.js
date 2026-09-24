@@ -12,14 +12,29 @@ const canvas = $('sky');
 const ctx = canvas.getContext('2d', {alpha:false});
 const SAVE_KEY = 'spacebitz:field:v1';
 const SETTINGS_KEY = 'spacebitz:field:settings';
-const settings = normalizeSettings({music:readJSON('spacebitz:musicEnabled',true),
+const settings = normalizeSettings({
   reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   ...readJSON(SETTINGS_KEY,{})});
 const terrain=new TerrainRenderer();
-const music=new Soundtrack(status=>{
-  $('menuMusic').textContent=status==='playing'?'♪ MUSIC ON':status==='off'?'♪ MUSIC OFF':status==='unavailable'?'♪ AUDIO UNAVAILABLE':'♪ ENABLE MUSIC';
-  $('menuMusic').dataset.status=status;
-});
+const music=new Soundtrack(()=>{});
+const CHANGELOG=[
+  {version:'1.2',items:[
+    'Introduced the two-stage retro main menu with Start Game, Multiplayer placeholder and Settings.',
+    'Opened the menu layout so more of the starfield remains visible and shifted outer space toward near-black.',
+    'Made the menu starfield faster with stronger depth, smoother motion, brightness-only twinkle and varied pixel-star silhouettes.',
+    'Music now defaults on for new players, with audio controls kept inside Settings.'
+  ]},
+  {version:'1.1',items:[
+    'Restored the original soundtrack and expanded sound, sky, display and control settings.',
+    'Refined the retro moving sky, simulation clock, celestial scale, terrain rendering and character sprites.',
+    'Improved responsive/mobile navigation, stellar details and orbital/deployment checks.'
+  ]},
+  {version:'1.0',items:[
+    'Launched the responsive, installable SpaceBitz Field Edition.',
+    'Added procedural star systems, orbiting worlds, exploration, landing, star-chart travel and local save support.',
+    'Established the core flight HUD, logbook, touch/keyboard controls and offline app shell.'
+  ]}
+];
 const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,y:0}, zoom:1,
   panUntil:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, fps:60, particles:[], textureCache:new Map(),
@@ -37,12 +52,8 @@ function applySettings(){
   document.documentElement.style.setProperty('--joy-offset',settings.joyOffset+'px');
   music.configure(settings.music,settings.volume);fit();updateUI();
 }
-document.addEventListener('pointerdown',e=>{if(!e.target.closest('#menuMusic'))music.start();},{capture:true,passive:true});
+document.addEventListener('pointerdown',()=>music.start(),{capture:true,passive:true});
 document.addEventListener('keydown',()=>music.start(),{capture:true});
-$('menuMusic').onclick=()=>{
-  if($('menuMusic').dataset.status==='ready'){music.start();return;}
-  settings.music=!settings.music;saveSettings();music.configure(settings.music,settings.volume);
-};
 function persist() {
   if (!state.save) return;
   state.save.updated = Date.now();
@@ -78,8 +89,22 @@ function fit() {
   canvas.width=Math.round(rect.width*state.dpr); canvas.height=Math.round(rect.height*state.dpr);
   ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
   state.stars=Array.from({length:Math.max(110,Math.min(400,Math.round(rect.width*rect.height/2600)))},(_,i)=>{
-    const r=rng('background:'+i);return {x:r(),y:r(),size:r()<.7?1:2,alpha:.25+r()*.6,phase:r()*TAU,depth:r(),speed:.4+r(),color:r()};
+    const r=rng('background:'+i),color=r();
+    return {x:r(),y:r(),size:r()<.7?1:2,alpha:.25+r()*.6,phase:r()*TAU,depth:r(),speed:.4+r(),
+      rgb:color<.15?'137,197,230':color>.9?'255,218,153':'210,232,232',shape:Math.floor(r()*4)};
   });
+  buildSkyBackdrop();
+}
+function buildSkyBackdrop(){
+  const bg=document.createElement('canvas');bg.width=canvas.width;bg.height=canvas.height;
+  const b=bg.getContext('2d',{alpha:false});b.setTransform(state.dpr,0,0,state.dpr,0,0);
+  const {width:w,height:h}=state;
+  const grad=b.createRadialGradient(w*.5,h*.42,10,w*.5,h*.42,Math.max(w,h)*.9);
+  grad.addColorStop(0,'#080b12');grad.addColorStop(.55,'#03050a');grad.addColorStop(1,'#000104');
+  b.fillStyle=grad;b.fillRect(0,0,w,h);
+  b.save();b.globalAlpha=.11;const neb=b.createRadialGradient(w*.7,h*.4,15,w*.7,h*.4,w*.48);
+  neb.addColorStop(0,'#338e9c');neb.addColorStop(1,'#338e9c00');b.fillStyle=neb;b.fillRect(0,0,w,h);b.restore();
+  state.skyBackdrop=bg;
 }
 window.addEventListener('resize',fit); applySettings();
 function start(save) {
@@ -420,6 +445,16 @@ function openSettings(){
   control('joyX','Joystick position (%)','range',[8,92,1]);control('joyOffset','Joystick height (px)','range',[-70,120,1]);
   const hint=document.createElement('p');hint.textContent='WASD / arrows to move · Space to interact · drag to pan · pinch or + / − to zoom · ⌗ to fit the whole system.';box.append(hint);
   heading('Voyage');control('paused','Pause simulation clock','checkbox');control('cheats','Enable instant travel in Details','checkbox');
+  heading('Change log');
+  const changelog=document.createElement('div');changelog.className='changelog';
+  for(const release of CHANGELOG){
+    const entry=document.createElement('section');entry.className='changelog-version';
+    const title=document.createElement('h4');title.textContent='v'+release.version;entry.append(title);
+    const list=document.createElement('ul');
+    for(const note of release.items){const item=document.createElement('li');item.textContent=note;list.append(item);}
+    entry.append(list);changelog.append(entry);
+  }
+  box.append(changelog);
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
     save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
@@ -482,12 +517,9 @@ const screen=(x,y)=>({x:state.width/2+(x-state.camera.x)*state.zoom,y:state.heig
 const world=(x,y)=>({x:(x-state.width/2)/state.zoom+state.camera.x,y:(y-state.height/2)/state.zoom+state.camera.y});
 function backdrop(now) {
   const {width:w,height:h}=state;
-  const grad=ctx.createRadialGradient(w*.5,h*.42,10,w*.5,h*.42,Math.max(w,h)*.9);
-  grad.addColorStop(0,'#080b12');grad.addColorStop(.55,'#03050a');grad.addColorStop(1,'#000104');
-  ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
-  ctx.save();ctx.globalAlpha=.11;const neb=ctx.createRadialGradient(w*.7,h*.4,15,w*.7,h*.4,w*.48);
-  neb.addColorStop(0,'#338e9c');neb.addColorStop(1,'#338e9c00');ctx.fillStyle=neb;ctx.fillRect(0,0,w,h);ctx.restore();
-  const drift=settings.starMotion&&!settings.reducedMotion;
+  if(state.skyBackdrop)ctx.drawImage(state.skyBackdrop,0,0,w,h);
+  else{ctx.fillStyle='#000104';ctx.fillRect(0,0,w,h);}
+  const drift=settings.starMotion&&!settings.reducedMotion,step=1/state.dpr;
   for(const star of state.stars){
     let x,y,z=star.depth;
     if(state.scene==='menu'){
@@ -498,14 +530,26 @@ function backdrop(now) {
       x=((star.x*w-state.camera.x*.025*(1+z)+motion)%w+w)%w;
       y=((star.y*h-state.camera.y*.025*(1+z)+motion*.22)%h+h)%h;
     }
-    if(x<0||x>w||y<0||y>h)continue;
-    const twinkle=settings.twinkle&&!settings.reducedMotion?.55+.45*Math.sin(now*.002*star.speed+star.phase):.85;
-    const alpha=clamp(star.alpha*twinkle+(1-z)*(state.scene==='menu'?.32:.18),.1,1),size=Math.max(1,Math.round(star.size*(state.scene==='menu'?(2.05+(1-z)*2.25):(1.9-z))));
-    x=Math.round(x/2)*2;y=Math.round(y/2)*2;
-    ctx.fillStyle=`rgba(${star.color<.15?'137,197,230':star.color>.9?'255,218,153':'210,232,232'},${alpha})`;
-    ctx.fillRect(x,y,size,size);
-    if(size>=3&&twinkle>.83){ctx.globalAlpha=.45;ctx.fillRect(x-2,y+1,size+4,1);ctx.fillRect(x+1,y-2,1,size+4);ctx.globalAlpha=1;}
+    if(x<-8||x>w+8||y<-8||y>h+8)continue;
+    const twinkle=settings.twinkle&&!settings.reducedMotion?.62+.38*Math.sin(now*.00155*star.speed+star.phase):.88;
+    const alpha=clamp(star.alpha*twinkle+(1-z)*(state.scene==='menu'?.32:.18),.08,1);
+    const size=Math.max(1,Math.round(star.size*(state.scene==='menu'?(2.05+(1-z)*2.25):(1.9-z))));
+    x=Math.round(x/step)*step;y=Math.round(y/step)*step;
+    ctx.globalAlpha=alpha;ctx.fillStyle=`rgb(${star.rgb})`;
+    if(star.shape===0){
+      ctx.fillRect(x,y,size,size);
+    }else if(star.shape===1){
+      ctx.fillRect(x,y,Math.max(1,size-1),size+1);
+    }else if(star.shape===2){
+      ctx.fillRect(x,y,size+1,Math.max(1,size-1));
+    }else{
+      const mid=Math.max(1,size),wing=Math.max(1,size-1);
+      ctx.fillRect(x+1,y,wing,1);
+      ctx.fillRect(x,y+1,mid+1,Math.max(1,size-1));
+      if(size>2)ctx.fillRect(x+1,y+size,wing,1);
+    }
   }
+  ctx.globalAlpha=1;
 }
 function drawOrbit(x,y,r,color='#a3bed3') {
   const p=screen(x,y);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.22;

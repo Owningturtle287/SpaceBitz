@@ -121,3 +121,10 @@ html,body{background:#010205}
   .menu-choice{min-height:47px}
 }
 
+/* Settings release history. */
+.changelog{display:grid;gap:8px;margin:9px 0 15px}
+.changelog-version{border:1px solid #2d4d5c;background:#0b1b27b8;padding:10px 11px}
+.changelog-version h4{margin:0 0 7px;font:800 11px ui-monospace,monospace;letter-spacing:.16em;color:#8de6cf}
+.changelog-version ul{margin:0;padding-left:17px;color:#aebfc8;font-size:11px;line-height:1.5}
+.changelog-version li+li{margin-top:4px}
+
