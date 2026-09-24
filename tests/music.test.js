@@ -7,8 +7,9 @@ test('original melody is preserved with the inaudible invalid MIDI tail repaired
   assert.deepEqual(MELODY.slice(0,16),[60,64,67,64,62,67,59,67,57,60,64,60,57,60,65,60]);
   assert.ok(MELODY.every(n=>n===null||(n>=0&&n<=127)));
 });
-test('repeated voyage starts collapse to one delayed scheduler',async t=>{
-  let scheduled=0,cleared=0;
+test('repeated voyage starts leave only one live two-second start and one scheduler',async t=>{
+  let scheduled=0,nextTimer=1;
+  const liveTimeouts=new Map();
   const param=()=>({value:0,setValueAtTime(){},linearRampToValueAtTime(){},setTargetAtTime(){}});
   const node=()=>({frequency:param(),Q:param(),gain:param(),detune:param(),connect(){},disconnect(){},start(){},stop(){}});
   class AudioContext{
@@ -18,15 +19,19 @@ test('repeated voyage starts collapse to one delayed scheduler',async t=>{
     createGain(){return node();}createOscillator(){return node();}createBiquadFilter(){return node();}
   }
   globalThis.window={AudioContext};t.after(()=>{delete globalThis.window;});
+  t.mock.method(globalThis,'setTimeout',(fn,ms)=>{const id=nextTimer++;liveTimeouts.set(id,{fn,ms});return id;});
+  t.mock.method(globalThis,'clearTimeout',id=>liveTimeouts.delete(id));
   t.mock.method(globalThis,'setInterval',()=>{scheduled++;return 42;});
-  t.mock.method(globalThis,'clearInterval',()=>{cleared++;});
+  t.mock.method(globalThis,'clearInterval',()=>{});
   const music=new Soundtrack();
   music.startFromBeginning(2);music.startFromBeginning(2);music.startFromBeginning(2);
   await Promise.resolve();await Promise.resolve();
-  assert.equal(scheduled,1);assert.equal(music.step,0);assert.equal(music.nextTime,12);assert.equal(music.generation,3);
-  music.configure(false,.65);assert.equal(cleared,1);
+  assert.equal(liveTimeouts.size,1);
+  const pending=[...liveTimeouts.values()][0];assert.equal(pending.ms,2000);
+  assert.equal(scheduled,0);pending.fn();
+  assert.equal(scheduled,1);assert.equal(music.generation,3);
 });
-test('restart explicitly cancels already-created voices before scheduling again',t=>{
+test('restart explicitly cancels already-created voices before arming again',t=>{
   let stopped=0;
   const param=()=>({value:0,setValueAtTime(){},linearRampToValueAtTime(){},setTargetAtTime(){}});
   const node=()=>({frequency:param(),Q:param(),gain:param(),detune:param(),connect(){},disconnect(){},start(){},stop(){stopped++;}});
@@ -36,6 +41,7 @@ test('restart explicitly cancels already-created voices before scheduling again'
     createGain(){return node();}createOscillator(){return node();}createBiquadFilter(){return node();}
   }
   globalThis.window={AudioContext};t.after(()=>{delete globalThis.window;});
+  t.mock.method(globalThis,'setTimeout',()=>11);t.mock.method(globalThis,'clearTimeout',()=>{});
   t.mock.method(globalThis,'setInterval',()=>77);t.mock.method(globalThis,'clearInterval',()=>{});
   const music=new Soundtrack();music.ensure();music.note(60,4.1,music.generation);
   assert.equal(music.voices.size,1);music.startFromBeginning(2);assert.equal(music.voices.size,0);assert.ok(stopped>=2);

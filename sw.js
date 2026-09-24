@@ -1,4 +1,4 @@
-const CACHE='spacebitz-field-v1.2.6-landscape';
+const CACHE='spacebitz-field-v1.2.6-landscape2';
 const SHELL=['./','./index.html','./main.js','./model.js','./music.js','./settings.js','./terrain.js','./motion.js','./sprites.js','./celestial.js','./style.css','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));

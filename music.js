@@ -5,7 +5,7 @@ export const MELODY = [...Array.from({length:6},()=>PHRASE).flat(),null,null,nul
 export class Soundtrack {
   constructor(onStatus=()=>{}) {
     this.onStatus=onStatus;this.enabled=true;this.volume=.65;this.context=null;
-    this.timer=null;this.step=0;this.nextTime=0;this.hidden=false;this.active=false;
+    this.timer=null;this.delayTimer=null;this.step=0;this.nextTime=0;this.hidden=false;this.active=false;
     this.generation=0;this.voices=new Set();
   }
   configure(enabled,volume) {
@@ -31,20 +31,25 @@ export class Soundtrack {
   startFromBeginning(delaySeconds=2) {
     if(!this.enabled||this.hidden)return;
     const generation=++this.generation;
-    this.clearScheduler();this.cancelVoices();
+    this.clearScheduler();this.clearDelay();this.cancelVoices();
     this.active=true;this.step=0;this.nextTime=0;
     if(!this.ensure()){this.active=false;return;}
-    const begin=()=>{
+    const armDelay=()=>{
       if(generation!==this.generation||!this.active||!this.enabled||this.hidden)return;
-      this.schedule(delaySeconds,generation);
+      this.clearDelay();
+      this.delayTimer=setTimeout(()=>{
+        this.delayTimer=null;
+        if(generation===this.generation&&this.active&&this.enabled&&!this.hidden)this.schedule(.04,generation);
+      },Math.max(0,delaySeconds)*1000);
+      this.onStatus('ready');
     };
-    if(this.context.state==='running'){begin();return;}
+    if(this.context.state==='running'){armDelay();return;}
     this.onStatus('ready');
-    this.context.resume().then(begin).catch(()=>{
+    this.context.resume().then(armDelay).catch(()=>{
       if(generation===this.generation){this.active=false;this.onStatus('ready');}
     });
   }
-  schedule(delaySeconds=.06,generation=this.generation) {
+  schedule(delaySeconds=.04,generation=this.generation) {
     if(this.timer!==null||generation!==this.generation||!this.active)return;
     const c=this.context;
     if(!this.enabled||this.hidden||c.state!=='running')return;
@@ -64,7 +69,7 @@ export class Soundtrack {
   resume() {
     if(!this.active||!this.enabled||this.hidden||!this.ensure())return;
     const generation=this.generation,begin=()=>{
-      if(generation===this.generation&&this.active&&this.enabled&&!this.hidden)this.schedule(.06,generation);
+      if(generation===this.generation&&this.active&&this.enabled&&!this.hidden)this.schedule(.04,generation);
     };
     if(this.context.state==='running')begin();
     else this.context.resume().then(begin).catch(()=>this.onStatus('ready'));
@@ -95,18 +100,21 @@ export class Soundtrack {
     }
     this.voices.clear();
   }
+  clearDelay() {
+    if(this.delayTimer!==null){clearTimeout(this.delayTimer);this.delayTimer=null;}
+  }
   clearScheduler() {
     if(this.timer!==null){clearInterval(this.timer);this.timer=null;}
   }
   stop() {
     this.active=false;this.generation++;this.step=0;this.nextTime=0;
-    this.clearScheduler();this.cancelVoices();
+    this.clearDelay();this.clearScheduler();this.cancelVoices();
     this.onStatus(this.enabled?'ready':'off');
   }
   visibility(hidden) {
     this.hidden=hidden;
     if(hidden){
-      this.clearScheduler();this.cancelVoices();
+      this.clearDelay();this.clearScheduler();this.cancelVoices();
       this.context?.suspend().catch(()=>{});
     }else this.resume();
   }
