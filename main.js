@@ -18,6 +18,12 @@ const settings = normalizeSettings({
 const terrain=new TerrainRenderer();
 const music=new Soundtrack(()=>{});
 const CHANGELOG=[
+  {version:'1.2.3',items:[
+    'Refined the SpaceBitz title with cleaner pixel-space detailing, removed the vertical side rails and restyled the version label without a border.',
+    'Sped up only the main-menu fly-through starfield while leaving in-game background-star speed unchanged.',
+    'Disabled native double-tap page zoom while preserving the game canvas pinch zoom.',
+    'Improved close-planet rendering performance with cheaper large-body halos, better texture-frame cache reuse and less duplicate orbital work.'
+  ]},
   {version:'1.2.2',items:[
     'Redesigned the SpaceBitz wordmark with sharper pixel-space detailing, more breathing room above the menu buttons and a clear version badge.',
     'Simplified the universe creation screen by removing redundant descriptive, status, version and device text.',
@@ -64,6 +70,14 @@ function applySettings(){
 }
 document.addEventListener('pointerdown',()=>music.start(),{capture:true,passive:true});
 document.addEventListener('keydown',()=>music.start(),{capture:true});
+document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
+let lastSingleTouchEnd=0;
+document.addEventListener('touchend',e=>{
+  if(e.touches.length||e.changedTouches.length!==1)return;
+  const now=performance.now();
+  if(now-lastSingleTouchEnd<320)e.preventDefault();
+  lastSingleTouchEnd=now;
+},{passive:false});
 function persist() {
   if (!state.save) return;
   state.save.updated = Date.now();
@@ -580,7 +594,7 @@ function backdrop(now) {
   for(const star of state.stars){
     let x,y,z=star.depth;
     if(state.scene==='menu'){
-      if(drift)z=((star.depth-now*.000068*star.speed)%1+1)%1;
+      if(drift)z=((star.depth-now*.000085*star.speed)%1+1)%1;
       x=w/2+(star.x-.5)*w*.72/(z+.12);y=h/2+(star.y-.5)*h*.72/(z+.12);
     }else{
       const motion=drift?now*.004*star.speed:0;
@@ -623,7 +637,7 @@ function drawStar(x,y,r,color,now,body=null) {
   core.addColorStop(0,'#fffefa');core.addColorStop(.55,color);core.addColorStop(1,'#bd6552');ctx.fillStyle=core;circle(x,y,r);ctx.fill();
   if(body){ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(celestialSprite(body,state.save.days),x-r,y-r,r*2,r*2);ctx.restore();}
 }
-function drawPlanet(body,p,now) {
+function drawPlanet(body,p,now,worldPos) {
   const sr=visualRadius(body.diameter,body.kind)*state.zoom;
   if(p.x<-sr-100||p.x>state.width+sr+100||p.y<-sr-100||p.y>state.height+sr+100)return;
   const r=Math.max(3,sr);const selected=state.selected?.id===body.id;
@@ -631,9 +645,17 @@ function drawPlanet(body,p,now) {
     ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-.31);ctx.strokeStyle='#d6cbad88';ctx.lineWidth=Math.max(2,r*.16);
     ctx.beginPath();ctx.ellipse(0,0,r*1.85,r*.48,0,0,TAU);ctx.stroke();ctx.restore();
   }
-  ctx.save();ctx.shadowColor=body.color;ctx.shadowBlur=Math.min(30,r*.7);circle(p.x,p.y,r);ctx.fillStyle=body.color;ctx.fill();ctx.restore();
+  ctx.save();
+  if(r<86){
+    ctx.shadowColor=body.color;ctx.shadowBlur=Math.min(26,r*.62);
+    circle(p.x,p.y,r);ctx.fillStyle=body.color;ctx.fill();
+  }else{
+    ctx.globalAlpha=.16;ctx.fillStyle=body.color;circle(p.x,p.y,r+Math.min(14,r*.08));ctx.fill();
+    ctx.globalAlpha=1;circle(p.x,p.y,r);ctx.fillStyle=body.color;ctx.fill();
+  }
+  ctx.restore();
   ctx.save();ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(celestialSprite(body,state.save.days,bodyPosition(body,state.save.days,state.system)),p.x-r,p.y-r,2*r,2*r);ctx.restore();
+  ctx.drawImage(celestialSprite(body,state.save.days,worldPos),p.x-r,p.y-r,2*r,2*r);ctx.restore();
   ctx.strokeStyle='#d9f8fb42';ctx.lineWidth=1;circle(p.x,p.y,r);ctx.stroke();
   if(selected){drawSelection(p.x,p.y,r,now);label(body.name,p.x,p.y-r-25,true);}
   else if(settings.labels&&(state.zoom>.35 || body.kind==='planet'))label(body.name,p.x,p.y-r-17);
@@ -653,8 +675,8 @@ function drawSystem(now) {
   drawStar(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,sys.star.color,now,sys.star);
   if(state.selected?.id===sys.star.id)drawSelection(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,now);
   if(settings.labels&&center.x>-60&&center.x<state.width+60&&center.y>-60&&center.y<state.height+60)label(sys.star.name,center.x,center.y-visualRadius(sys.star.diameter,'star')*state.zoom-25);
-  for(const planet of sys.planets){const pos=bodyPosition(planet,days,sys);drawPlanet(planet,screen(pos.x,pos.y),now);
-    for(const moon of planet.moons){const mp=bodyPosition(moon,days,sys);drawPlanet(moon,screen(mp.x,mp.y),now);}}
+  for(const planet of sys.planets){const pos=bodyPosition(planet,days,sys);drawPlanet(planet,screen(pos.x,pos.y),now,pos);
+    for(const moon of planet.moons){const mp=bodyPosition(moon,days,sys);drawPlanet(moon,screen(mp.x,mp.y),now,mp);}}
   if(state.autopilot?.type==='body'){const body=findBody(state.autopilot.id);if(body){const end=bodyPosition(body,days,sys),a=screen(state.save.ship.x,state.save.ship.y),b=screen(end.x,end.y);
     ctx.strokeStyle='#77e2d586';ctx.lineWidth=1;ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);}}
   const ship=screen(state.save.ship.x,state.save.ship.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now);

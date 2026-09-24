@@ -37,7 +37,7 @@ function surfaceMap(body){
 export function celestialSprite(body,days,worldPosition={x:0,y:0}) {
   const rotation=((rotationAngle(body,days)%TAU)+TAU)%TAU;
   const lightAngle=Math.atan2(-worldPosition.y,-worldPosition.x);
-  const frame=Math.floor(rotation/TAU*256),light=Math.round(lightAngle/TAU*128);
+  const frame=Math.floor(rotation/TAU*96),light=Math.round(lightAngle/TAU*48);
   const key=`${body.id}:${frame}:${light}`;
   if(frames.has(key))return frames.get(key);
   const map=surfaceMap(body),size=body.kind==='star'?144:80;
@@ -54,6 +54,6 @@ export function celestialSprite(body,days,worldPosition={x:0,y:0}) {
     img.data[index+3]=255;
   }
   g.putImageData(img,0,0);frames.set(key,c);
-  if(frames.size>80)frames.delete(frames.keys().next().value);
+  if(frames.size>160)frames.delete(frames.keys().next().value);
   return c;
 }
