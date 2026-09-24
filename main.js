@@ -472,15 +472,15 @@ const world=(x,y)=>({x:(x-state.width/2)/state.zoom+state.camera.x,y:(y-state.he
 function backdrop(now) {
   const {width:w,height:h}=state;
   const grad=ctx.createRadialGradient(w*.5,h*.42,10,w*.5,h*.42,Math.max(w,h)*.9);
-  grad.addColorStop(0,'#101f3b');grad.addColorStop(.55,'#09152b');grad.addColorStop(1,'#040b19');
+  grad.addColorStop(0,'#080b12');grad.addColorStop(.55,'#03050a');grad.addColorStop(1,'#000104');
   ctx.fillStyle=grad;ctx.fillRect(0,0,w,h);
-  ctx.save();ctx.globalAlpha=.22;const neb=ctx.createRadialGradient(w*.7,h*.4,15,w*.7,h*.4,w*.48);
+  ctx.save();ctx.globalAlpha=.11;const neb=ctx.createRadialGradient(w*.7,h*.4,15,w*.7,h*.4,w*.48);
   neb.addColorStop(0,'#338e9c');neb.addColorStop(1,'#338e9c00');ctx.fillStyle=neb;ctx.fillRect(0,0,w,h);ctx.restore();
   const drift=settings.starMotion&&!settings.reducedMotion;
   for(const star of state.stars){
     let x,y,z=star.depth;
     if(state.scene==='menu'){
-      if(drift)z=((star.depth-now*.000014*star.speed)%1+1)%1;
+      if(drift)z=((star.depth-now*.000019*star.speed)%1+1)%1;
       x=w/2+(star.x-.5)*w*.75/(z+.25);y=h/2+(star.y-.5)*h*.75/(z+.25);
     }else{
       const motion=drift?now*.002*star.speed:0;

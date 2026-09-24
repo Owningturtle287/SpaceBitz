@@ -41,3 +41,46 @@ body[data-reduced-motion=true] *,body[data-reduced-motion=true] *:before,body[da
 @media(min-width:601px){body[data-controls=touch] #joystick{bottom:calc(94px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}
 @media(max-width:600px){.welcome-card{padding:19px}.welcome-card>p{font-size:12px;margin-bottom:14px}.menu-top .eyebrow{font-size:9px}.setting-row{font-size:12px}.setting-row select{max-width:160px}.setting-row input[type=range]{width:94px}#telemetry{top:calc(61px + env(safe-area-inset-top));right:12px;font-size:8px}.top-actions{gap:5px}.clock{font-size:8px;letter-spacing:.02em}}
 @media(max-height:510px) and (max-width:600px){#joystick{bottom:calc(114px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}
+
+/* SpaceBitz v1.2: compact, open main menu with more visible starfield. */
+html,body{background:#010205}
+#welcome{background:transparent}
+#welcome:before{display:none}
+#welcome .welcome-card{
+  width:min(450px,100%);
+  padding:clamp(14px,3vw,24px);
+  background:transparent;
+  border:0;
+  box-shadow:none;
+  backdrop-filter:none;
+}
+#welcome .welcome-card:after{display:none}
+#welcome .welcome-card h1{
+  text-align:center;
+  margin:10px 0 9px;
+}
+#welcome .welcome-card>p{
+  max-width:390px;
+  margin:0 auto 15px;
+  text-align:center;
+  text-shadow:0 2px 8px #000;
+}
+#welcome .menu-top{margin-bottom:0}
+#welcome .menu-console{margin:0 0 11px}
+#welcome .create-row{margin-bottom:8px}
+#welcome .welcome-actions{margin:11px 0 7px}
+#welcome .menu-settings{margin:2px 0 10px}
+#welcome .saved-heading{padding:10px 0 6px}
+#welcome .welcome-foot{margin-top:10px;padding-top:8px}
+#welcome .menu-top,
+#welcome .menu-console,
+#welcome .create-row label,
+#welcome .saved-heading,
+#welcome .welcome-foot{filter:drop-shadow(0 2px 4px #000)}
+@media(max-width:600px){
+  #welcome .welcome-card{width:min(430px,100%);padding:12px 14px}
+  #welcome .welcome-card h1{margin:7px 0 7px}
+  #welcome .welcome-card>p{margin-bottom:11px}
+  #welcome .menu-console{margin-bottom:8px}
+}
+
