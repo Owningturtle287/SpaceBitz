@@ -18,6 +18,12 @@ const settings = normalizeSettings({
 const terrain=new TerrainRenderer();
 const music=new Soundtrack(()=>{});
 const CHANGELOG=[
+  {version:'1.2.6',items:[
+    'Hardened soundtrack playback so every voyage restart cancels all existing schedulers and active voices before one delayed copy starts.',
+    'Set travelable star rarity to 50% red, 20% orange, 20% yellow, 9% white and 1% blue while keeping chart/system colors identical.',
+    'Upgraded interstellar stars with smoother colored halos, bright cores and subtle non-crosshair shimmer.',
+    'Added a landscape-first rotating phone layout plus Auto, Landscape and Portrait orientation preferences.'
+  ]},
   {version:'1.2.5',items:[
     'Reworked soundtrack startup so each voyage begins the melody once from note one after a two-second delay, with no action-driven duplicate starts.',
     'Weighted travelable star colors toward real stellar rarity: red dwarfs dominate, orange/yellow stars are less common, white stars are uncommon and blue stars are rare.',
@@ -76,6 +82,7 @@ function saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(set
 function applySettings(){
   document.body.dataset.controls=settings.controls;
   document.body.dataset.reducedMotion=String(settings.reducedMotion);
+  document.body.dataset.orientation=settings.orientation;
   document.documentElement.style.setProperty('--joy-x',settings.joyX+'%');
   document.documentElement.style.setProperty('--joy-offset',settings.joyOffset+'px');
   music.configure(settings.music,settings.volume);fit();updateUI();
@@ -142,6 +149,19 @@ function makeBackgroundStar(){
     rgb:STAR_PALETTE[Math.floor(r()*STAR_PALETTE.length)],shape:Math.floor(r()*3)
   };
 }
+function applyOrientationPreference(){
+  document.body.dataset.orientation=settings.orientation;
+  const orientation=globalThis.screen?.orientation;
+  if(!orientation)return Promise.resolve(false);
+  try{
+    if(settings.orientation==='auto'){
+      orientation.unlock?.();
+      return Promise.resolve(true);
+    }
+    if(typeof orientation.lock!=='function')return Promise.resolve(false);
+    return Promise.resolve(orientation.lock(settings.orientation)).then(()=>true).catch(()=>false);
+  }catch{return Promise.resolve(false);}
+}
 function fit() {
   const rect = canvas.getBoundingClientRect();
   state.width=rect.width; state.height=rect.height;
@@ -165,7 +185,10 @@ function buildSkyBackdrop(){
   neb.addColorStop(0,'#338e9c');neb.addColorStop(1,'#338e9c00');b.fillStyle=neb;b.fillRect(0,0,w,h);b.restore();
   state.skyBackdrop=bg;
 }
-window.addEventListener('resize',fit); applySettings();
+window.addEventListener('resize',fit);
+window.addEventListener('orientationchange',()=>setTimeout(()=>{fit();updateUI();},120),{passive:true});
+globalThis.screen?.orientation?.addEventListener?.('change',()=>setTimeout(()=>{fit();updateUI();},80));
+applySettings();
 function start(save) {
   state.save=save; state.scene=save.scene || 'system';
   state.system=makeSystem(save.currentSystem || save.homeSeed);
@@ -188,6 +211,7 @@ function start(save) {
   else if(state.scene==='surface') state.camera={...save.surface};
   else state.camera={...save.ship};
   $('welcome').classList.remove('visible'); $('app').hidden=false;
+  applyOrientationPreference();
   music.startFromBeginning(2);
   persist(); updateUI();
 }
@@ -515,6 +539,7 @@ function openSettings(){
       if(key==='timeMode'&&state.save&&settings.timeMode==='realtime')state.save.days=currentDays();
       sync();saveSettings();applySettings();
       if(key==='music'&&settings.music&&state.save)music.startFromBeginning(2);
+      if(key==='orientation')applyOrientationPreference();
     });
     const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
   }
@@ -546,6 +571,7 @@ function openSettings(){
 
   heading('Controls');
   control('controls','Input mode','select',[['auto','Automatic'],['touch','Touch joystick'],['desktop','Keyboard / mouse']]);
+  control('orientation','Screen orientation','select',[['landscape','Landscape · preferred'],['portrait','Portrait · lock'],['auto','Follow device']]);
   control('joyX','Joystick position (%)','range',[8,92,1]);control('joyOffset','Joystick height (px)','range',[-70,120,1]);
   control('cheats','Instant travel','checkbox');
 
@@ -786,13 +812,35 @@ function drawSystem(now) {
     ctx.strokeStyle='#77e2d586';ctx.lineWidth=1;ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);}}
   const ship=screen(state.save.ship.x,state.save.ship.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now);
 }
+function drawChartStar(x,y,r,color,now,seed){
+  const phase=(hash(seed)%6283)/1000;
+  const pulse=settings.reducedMotion?1:.94+.06*Math.sin(now*.0018+phase);
+  const haloR=r*4.6;
+  ctx.save();
+  ctx.globalAlpha=pulse;
+  const halo=ctx.createRadialGradient(x,y,0,x,y,haloR);
+  halo.addColorStop(0,'#ffffff');
+  halo.addColorStop(.10,color);
+  halo.addColorStop(.32,color+'a8');
+  halo.addColorStop(.68,color+'42');
+  halo.addColorStop(1,color+'00');
+  ctx.fillStyle=halo;circle(x,y,haloR);ctx.fill();
+  ctx.globalAlpha=1;
+  ctx.fillStyle=color;circle(x,y,r*1.18);ctx.fill();
+  ctx.fillStyle='#ffffff';circle(x,y,Math.max(1.25,r*.48));ctx.fill();
+  const q=Math.max(1,Math.round(r*.32)),d=Math.round(r*1.05);
+  ctx.globalAlpha=.72*pulse;ctx.fillStyle=color;
+  ctx.fillRect(Math.round(x-d-q/2),Math.round(y-d-q/2),q,q);
+  ctx.fillRect(Math.round(x+d-q/2),Math.round(y+d-q/2),q,q);
+  ctx.restore();
+}
 function drawChart(now) {
   const stars=nearbyStars();
   if(settings.travelLines && state.save.route.length>1){ctx.save();ctx.strokeStyle='#8ebcab50';ctx.setLineDash([3,7]);ctx.beginPath();
     state.save.route.forEach((seed,i)=>{const star=starAt(seed),p=screen(star.x,star.y);if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});ctx.stroke();ctx.restore();}
   for(const star of stars){const p=screen(star.x,star.y);if(p.x<-45||p.x>state.width+45||p.y<-45||p.y>state.height+45)continue;
     const starColor=starAppearance(star.seed).color;
-    drawStar(p.x,p.y,star.id==='origin'?7:4,starColor,now);
+    drawChartStar(p.x,p.y,star.id==='origin'?7:4.5,starColor,now,star.seed);
     if(state.selected?.seed===star.seed){drawSelection(p.x,p.y,9,now);label(starName(star.seed),p.x,p.y-27,true);}
     else if(star.id==='origin')label(starName(star.seed)+' · HOME',p.x,p.y-26);
   }

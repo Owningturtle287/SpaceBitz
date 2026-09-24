@@ -86,9 +86,9 @@ test('travelable stars keep one spectral color across chart and system with real
     counts.set(color,counts.get(color)+1);
   }
   const fraction=color=>counts.get(color)/sample;
-  assert.ok(fraction('#ff5c54')>.70&&fraction('#ff5c54')<.82);
-  assert.ok(fraction('#ff9845')>.08&&fraction('#ff9845')<.16);
-  assert.ok(fraction('#ffd75a')>.04&&fraction('#ffd75a')<.11);
-  assert.ok(fraction('#f7f9ff')>.02&&fraction('#f7f9ff')<.065);
-  assert.ok(fraction('#78a8ff')<.006);
+  assert.ok(fraction('#ff5c54')>.47&&fraction('#ff5c54')<.53);
+  assert.ok(fraction('#ff9845')>.17&&fraction('#ff9845')<.23);
+  assert.ok(fraction('#ffd75a')>.17&&fraction('#ffd75a')<.23);
+  assert.ok(fraction('#f7f9ff')>.07&&fraction('#f7f9ff')<.11);
+  assert.ok(fraction('#78a8ff')>.004&&fraction('#78a8ff')<.016);
 });

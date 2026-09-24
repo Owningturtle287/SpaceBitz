@@ -96,12 +96,12 @@ const SOL_MOONS = {
   Neptune: [['Triton', 2707, 5.877, 54]]
 };
 const STELLAR_CLASSES=[
-  {max:.7650,type:'M',mass:.32,color:'#ff5c54'},
-  {max:.8850,type:'K',mass:.73,color:'#ff9845'},
-  {max:.9600,type:'G',mass:1.02,color:'#ffd75a'},
-  {max:.9900,type:'F',mass:1.25,color:'#f7f9ff'},
-  {max:.9985,type:'A',mass:1.65,color:'#f7f9ff'},
-  {max:1.0000,type:'B',mass:5.0,color:'#78a8ff'}
+  {max:.50,type:'M',mass:.32,color:'#ff5c54'},
+  {max:.70,type:'K',mass:.73,color:'#ff9845'},
+  {max:.90,type:'G',mass:1.02,color:'#ffd75a'},
+  {max:.96,type:'F',mass:1.25,color:'#f7f9ff'},
+  {max:.99,type:'A',mass:1.65,color:'#f7f9ff'},
+  {max:1.00,type:'B',mass:5.0,color:'#78a8ff'}
 ];
 function proceduralStar(seed,r){
   const roll=r(),spectral=STELLAR_CLASSES.find(entry=>roll<entry.max)||STELLAR_CLASSES.at(-1);
