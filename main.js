@@ -132,7 +132,18 @@ function renderSaves() {
     row.append(play,date,del);list.append(row);
   }
 }
-renderSaves(); $('newGame').onclick=()=>create(false); $('solGame').onclick=()=>create(true);
+function showMenuStage(stage='main'){
+  const mainStage=$('mainMenuStage'),generationStage=$('universeMenuStage');
+  const generation=stage==='generation';
+  mainStage.hidden=generation;generationStage.hidden=!generation;
+  if(generation){renderSaves();setTimeout(()=>$('universeName')?.focus(),0);}
+  else setTimeout(()=>$('startGame')?.focus(),0);
+}
+renderSaves();
+$('startGame').onclick=()=>showMenuStage('generation');
+$('backToMain').onclick=()=>showMenuStage('main');
+$('multiplayerGame').onclick=()=>toast('Multiplayer is coming in a future update.');
+$('newGame').onclick=()=>create(false); $('solGame').onclick=()=>create(true);
 $('importButton').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{
   const file=e.target.files?.[0];if(!file)return;
@@ -411,7 +422,7 @@ function openSettings(){
   heading('Voyage');control('paused','Pause simulation clock','checkbox');control('cheats','Enable instant travel in Details','checkbox');
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-    save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');renderSaves();};box.append(save);
+    save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
     const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
     exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};box.append(exportButton);
@@ -480,8 +491,8 @@ function backdrop(now) {
   for(const star of state.stars){
     let x,y,z=star.depth;
     if(state.scene==='menu'){
-      if(drift)z=((star.depth-now*.000019*star.speed)%1+1)%1;
-      x=w/2+(star.x-.5)*w*.75/(z+.25);y=h/2+(star.y-.5)*h*.75/(z+.25);
+      if(drift)z=((star.depth-now*.000034*star.speed)%1+1)%1;
+      x=w/2+(star.x-.5)*w*.72/(z+.12);y=h/2+(star.y-.5)*h*.72/(z+.12);
     }else{
       const motion=drift?now*.002*star.speed:0;
       x=((star.x*w-state.camera.x*.025*(1+z)+motion)%w+w)%w;
@@ -489,7 +500,7 @@ function backdrop(now) {
     }
     if(x<0||x>w||y<0||y>h)continue;
     const twinkle=settings.twinkle&&!settings.reducedMotion?.55+.45*Math.sin(now*.002*star.speed+star.phase):.85;
-    const alpha=clamp(star.alpha*twinkle+(1-z)*.18,.1,1),size=Math.max(1,Math.round(star.size*(1.9-z)));
+    const alpha=clamp(star.alpha*twinkle+(1-z)*(state.scene==='menu'?.32:.18),.1,1),size=Math.max(1,Math.round(star.size*(state.scene==='menu'?(2.05+(1-z)*2.25):(1.9-z))));
     x=Math.round(x/2)*2;y=Math.round(y/2)*2;
     ctx.fillStyle=`rgba(${star.color<.15?'137,197,230':star.color>.9?'255,218,153':'210,232,232'},${alpha})`;
     ctx.fillRect(x,y,size,size);
@@ -669,7 +680,7 @@ canvas.addEventListener('pointerup',e=>{if(!pointers.has(e.pointerId))return;poi
 canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);gesture=null;state.pinch=null;});
 canvas.addEventListener('wheel',e=>{if(!state.save)return;e.preventDefault();zoom(e.deltaY<0?1.12:1/1.12);},{passive:false});
 window.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){if($('modal').classList.contains('visible'))closeModal();return;}
+  if(e.key==='Escape'){if($('modal').classList.contains('visible'))closeModal();else if(!$('universeMenuStage').hidden&&!state.save)showMenuStage('main');return;}
   if($('modal').classList.contains('visible')){
     if(e.key==='Tab'){
       const focusable=[...$('modal').querySelectorAll('button,input,select,a[href]')].filter(el=>!el.disabled&&!el.hidden);

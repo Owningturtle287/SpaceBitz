@@ -84,3 +84,40 @@ html,body{background:#010205}
   #welcome .menu-console{margin-bottom:8px}
 }
 
+/* Main menu stage refresh: stronger retro identity, two-step start flow. */
+#welcome .welcome-card{width:min(470px,100%);overflow:visible}
+.menu-stage{width:100%}
+.main-menu-stage{display:grid;gap:18px;text-align:center}
+.main-menu-stage .menu-top{margin-bottom:3px}
+.hero-logo{position:relative;display:grid;place-items:center;padding:13px 8px 8px;isolation:isolate}
+.hero-logo:before,.hero-logo:after{content:'';position:absolute;top:22%;bottom:25%;width:1px;background:linear-gradient(transparent,#68ead6 26%,#68ead6 74%,transparent);opacity:.72}
+.hero-logo:before{left:3px}.hero-logo:after{right:3px}
+.hero-logo-mark{position:absolute;top:-3px;left:50%;transform:translateX(-50%);font:700 16px ui-monospace,monospace;color:#f4d68f;text-shadow:0 0 16px #eacb7c}
+.hero-logo-word{display:block;font-family:ui-monospace,'Courier New',monospace;font-weight:1000;font-size:clamp(48px,11vw,76px);line-height:.88;letter-spacing:-.11em;color:#f0f4df;text-shadow:2px 0 #69d9c7,-2px 0 #446d9c,0 5px 0 #081219,0 0 26px #6ddfc744;transform:scaleX(1.04)}
+.hero-logo-word span{color:#93ead0;text-shadow:2px 0 #eff4d8,-2px 0 #397985,0 5px 0 #071219,0 0 28px #7af3d05c}
+.hero-logo-rule{width:min(330px,82%);height:5px;margin-top:13px;border-top:1px solid #7ce8d1;border-bottom:1px solid #31586c;box-shadow:0 3px 0 #071118}
+.hero-logo small{margin-top:7px;font:700 8px ui-monospace,monospace;letter-spacing:.36em;color:#90aeb8;text-shadow:0 2px #000}
+.main-menu-tagline{max-width:390px!important;margin:0 auto!important;font-size:12px!important;letter-spacing:.02em;color:#aebfc7!important}
+.main-menu-actions{display:grid;gap:8px;width:min(360px,100%);margin:2px auto 0}
+.menu-choice{width:100%;min-height:50px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;border-radius:2px!important;background:linear-gradient(90deg,#0a151fda,#0b2029d9)!important;border:1px solid #31586c!important;color:#dcebee!important;font:800 12px ui-monospace,monospace!important;letter-spacing:.16em!important;box-shadow:3px 3px 0 #03080d}
+.menu-choice span{pointer-events:none}
+.menu-choice b{font-size:9px;color:#668c98;font-weight:700}
+.menu-choice:hover{background:linear-gradient(90deg,#102633ef,#10323aef)!important;border-color:#77dcca!important;transform:translate(-1px,-1px);box-shadow:4px 4px 0 #03080d;filter:none!important}
+.menu-choice-primary{color:#07171d!important;background:linear-gradient(90deg,#91ead6,#62c9ba)!important;border-color:#c1fff0!important;box-shadow:3px 3px 0 #285c61,0 0 22px #6ce5ca2b}
+.menu-choice-primary b{color:#275c62}
+.main-menu-foot{width:min(360px,100%);margin:2px auto 0;padding-top:9px;border-top:1px solid #263d49;display:flex;align-items:center;justify-content:space-between;gap:10px;color:#75909a;font:8px ui-monospace,monospace;letter-spacing:.12em}
+.main-menu-foot .text-button{font-size:9px}
+.generation-stage{width:min(430px,100%);margin:auto}
+.generation-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.generation-back{margin-left:0!important;padding-left:0!important}
+.generation-intro{max-width:390px!important;margin:0 0 13px!important;font-size:12px!important;line-height:1.5!important;text-align:left!important;color:#9fb2bd!important}
+.generation-stage .menu-console{margin-bottom:12px}
+@media(max-width:600px){
+  #welcome .welcome-card{padding:10px 13px}
+  .main-menu-stage{gap:13px}
+  .hero-logo{padding-top:12px}
+  .hero-logo-word{font-size:clamp(43px,16vw,64px)}
+  .main-menu-tagline{font-size:11px!important}
+  .menu-choice{min-height:47px}
+}
+
