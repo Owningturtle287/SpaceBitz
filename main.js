@@ -22,7 +22,7 @@ const CHANGELOG=[
     'Refined the SpaceBitz title with cleaner pixel-space detailing, removed the vertical side rails and restyled the version label without a border.',
     'Sped up only the main-menu fly-through starfield while leaving in-game background-star speed unchanged.',
     'Disabled native double-tap page zoom while preserving the game canvas pinch zoom.',
-    'Improved close-planet rendering performance with cheaper large-body halos, better texture-frame cache reuse and less duplicate orbital work.'
+    'Improved close-planet rendering performance with cheaper large-body halos, better texture-frame cache reuse, zoom-aware orbit rendering and aggressive off-screen stellar-glow culling.'
   ]},
   {version:'1.2.2',items:[
     'Redesigned the SpaceBitz wordmark with sharper pixel-space detailing, more breathing room above the menu buttons and a clear version badge.',
@@ -612,8 +612,25 @@ function backdrop(now) {
   ctx.globalAlpha=1;
 }
 function drawOrbit(x,y,r,color='#a3bed3') {
-  const p=screen(x,y);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.22;
-  circle(p.x,p.y,r*state.zoom);ctx.stroke();ctx.globalAlpha=1;
+  const p=screen(x,y),sr=r*state.zoom,w=state.width,h=state.height;
+  if(sr<1)return;
+  const nearX=clamp(p.x,0,w),nearY=clamp(p.y,0,h);
+  const minD=Math.hypot(nearX-p.x,nearY-p.y);
+  const maxD=Math.max(
+    Math.hypot(p.x,p.y),Math.hypot(p.x-w,p.y),
+    Math.hypot(p.x,p.y-h),Math.hypot(p.x-w,p.y-h)
+  );
+  if(sr<minD-2||sr>maxD+2)return;
+  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.22;
+  if(sr>Math.max(w,h)*1.65){
+    const vx=w*.5-p.x,vy=h*.5-p.y,d=Math.hypot(vx,vy)||1;
+    const qx=p.x+vx/d*sr,qy=p.y+vy/d*sr,tx=-vy/d,ty=vx/d;
+    const span=Math.hypot(w,h)*.8;
+    ctx.beginPath();ctx.moveTo(qx-tx*span,qy-ty*span);ctx.lineTo(qx+tx*span,qy+ty*span);ctx.stroke();
+  }else{
+    circle(p.x,p.y,sr);ctx.stroke();
+  }
+  ctx.restore();
 }
 function label(text,x,y,selected=false) {
   ctx.font=`${selected?'600':'500'} 11px 'Space Grotesk',sans-serif`;
@@ -627,15 +644,42 @@ function drawSelection(x,y,r,now) {
   ctx.setLineDash([12,9]);circle(0,0,r+11);ctx.stroke();ctx.setLineDash([]);ctx.restore();
 }
 function drawStar(x,y,r,color,now,body=null) {
-  if(x<-r*4||x>state.width+r*4||y<-r*4||y>state.height+r*4)return;
-  const glow=ctx.createRadialGradient(x,y,0,x,y,r*3.6);
-  glow.addColorStop(0,color+'c9');glow.addColorStop(.28,color+'69');glow.addColorStop(1,color+'00');
-  ctx.fillStyle=glow;circle(x,y,r*3.6);ctx.fill();
+  const w=state.width,h=state.height,maxDim=Math.max(w,h);
+  const coreVisible=x+r>0&&x-r<w&&y+r>0&&y-r<h;
+  const nearViewport=x>-maxDim*.7&&x<w+maxDim*.7&&y>-maxDim*.7&&y<h+maxDim*.7;
+  if(!coreVisible&&!nearViewport)return;
+
+  if(r>maxDim*.32){
+    // Close/large stars use a cheap clipped halo instead of a multi-thousand-pixel radial gradient.
+    if(nearViewport){
+      ctx.save();ctx.globalAlpha=.08;ctx.fillStyle=color;
+      const haloR=Math.min(r*1.32,maxDim*.78);
+      circle(x,y,haloR);ctx.fill();ctx.restore();
+    }
+  }else{
+    const glowR=Math.min(r*3.2,maxDim*.72);
+    const glow=ctx.createRadialGradient(x,y,0,x,y,glowR);
+    glow.addColorStop(0,color+'b8');glow.addColorStop(.3,color+'5f');glow.addColorStop(1,color+'00');
+    ctx.fillStyle=glow;circle(x,y,glowR);ctx.fill();
+  }
+
+  if(!coreVisible)return;
   ctx.save();ctx.globalAlpha=.4+.08*Math.sin(now*.002);
-  ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x-r*3,y);ctx.lineTo(x+r*3,y);ctx.moveTo(x,y-r*3);ctx.lineTo(x,y+r*3);ctx.stroke();ctx.restore();
-  const core=ctx.createRadialGradient(x-r*.3,y-r*.3,0,x,y,r);
-  core.addColorStop(0,'#fffefa');core.addColorStop(.55,color);core.addColorStop(1,'#bd6552');ctx.fillStyle=core;circle(x,y,r);ctx.fill();
-  if(body){ctx.save();ctx.imageSmoothingEnabled=false;ctx.drawImage(celestialSprite(body,state.save.days),x-r,y-r,r*2,r*2);ctx.restore();}
+  ctx.strokeStyle=color;ctx.lineWidth=1;
+  const ray=Math.min(r*2.3,maxDim*.55);
+  ctx.beginPath();ctx.moveTo(x-ray,y);ctx.lineTo(x+ray,y);ctx.moveTo(x,y-ray);ctx.lineTo(x,y+ray);ctx.stroke();ctx.restore();
+
+  if(r>maxDim*.38){
+    ctx.fillStyle=color;circle(x,y,r);ctx.fill();
+  }else{
+    const core=ctx.createRadialGradient(x-r*.3,y-r*.3,0,x,y,r);
+    core.addColorStop(0,'#fffefa');core.addColorStop(.55,color);core.addColorStop(1,'#bd6552');
+    ctx.fillStyle=core;circle(x,y,r);ctx.fill();
+  }
+  if(body){
+    ctx.save();ctx.imageSmoothingEnabled=false;
+    ctx.drawImage(celestialSprite(body,state.save.days),x-r,y-r,r*2,r*2);ctx.restore();
+  }
 }
 function drawPlanet(body,p,now,worldPos) {
   const sr=visualRadius(body.diameter,body.kind)*state.zoom;
@@ -663,14 +707,24 @@ function drawPlanet(body,p,now,worldPos) {
 function drawSystem(now) {
   const sys=state.system,days=state.save.days,zone=habitableZone(sys.star.luminosity);
   const center=screen(0,0);
-  if(settings.zone){ctx.save();ctx.fillStyle='#67e5ad0b';ctx.strokeStyle='#6de6ad36';ctx.lineWidth=1;
-    ctx.beginPath();ctx.arc(center.x,center.y,orbitRadius(zone.outer,sys.star)*state.zoom,0,TAU);
-    ctx.arc(center.x,center.y,orbitRadius(zone.inner,sys.star)*state.zoom,0,TAU,true);
-    ctx.fill('evenodd');ctx.setLineDash([3,7]);circle(center.x,center.y,orbitRadius(zone.inner,sys.star)*state.zoom);ctx.stroke();
-    circle(center.x,center.y,orbitRadius(zone.outer,sys.star)*state.zoom);ctx.stroke();ctx.restore();}
-  if(settings.orbits)for(const planet of sys.planets){drawOrbit(0,0,orbitRadius(planet.au,sys.star));
-    const host=bodyPosition(planet,days,sys);
-    for(const moon of planet.moons)drawOrbit(host.x,host.y,moon.orbitPx,'#9ebcc4');
+  if(settings.zone){
+    const zoneInner=orbitRadius(zone.inner,sys.star),zoneOuter=orbitRadius(zone.outer,sys.star);
+    if(state.zoom<1.25){
+      ctx.save();ctx.fillStyle='#67e5ad0b';ctx.strokeStyle='#6de6ad36';ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(center.x,center.y,zoneOuter*state.zoom,0,TAU);
+      ctx.arc(center.x,center.y,zoneInner*state.zoom,0,TAU,true);
+      ctx.fill('evenodd');ctx.setLineDash([3,7]);circle(center.x,center.y,zoneInner*state.zoom);ctx.stroke();
+      circle(center.x,center.y,zoneOuter*state.zoom);ctx.stroke();ctx.restore();
+    }else{
+      drawOrbit(0,0,zoneInner,'#6de6ad36');drawOrbit(0,0,zoneOuter,'#6de6ad36');
+    }
+  }
+  if(settings.orbits)for(const planet of sys.planets){
+    drawOrbit(0,0,orbitRadius(planet.au,sys.star));
+    const host=bodyPosition(planet,days,sys),hostScreen=screen(host.x,host.y);
+    const moonOrbitMargin=Math.max(state.width,state.height)*.75;
+    if(hostScreen.x>-moonOrbitMargin&&hostScreen.x<state.width+moonOrbitMargin&&hostScreen.y>-moonOrbitMargin&&hostScreen.y<state.height+moonOrbitMargin)
+      for(const moon of planet.moons)drawOrbit(host.x,host.y,moon.orbitPx,'#9ebcc4');
   }
   drawStar(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,sys.star.color,now,sys.star);
   if(state.selected?.id===sys.star.id)drawSelection(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,now);
