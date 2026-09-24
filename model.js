@@ -3,13 +3,15 @@
 export const TAU = Math.PI * 2;
 export const DAY_MS = 86400000;
 export const EPOCH = Date.UTC(2026, 0, 1);
-// 60 real seconds = 1 game hour; 1,440 real seconds = 1 Earth day.
+export const J2000_OFFSET_DAYS = 9496.5;
+// Accelerated clock: 60 real seconds = 1 game hour; 1,440 real seconds = 1 Earth day.
 export const REAL_MS_PER_GAME_DAY = 1_440_000;
+export const currentDays = (now=Date.now()) => (now-EPOCH)/DAY_MS;
 export function advanceDays(days, elapsedMs, paused = false) {
   return days + (paused ? 0 : Math.max(0, elapsedMs) / REAL_MS_PER_GAME_DAY);
 }
 export function rotationAngle(body, days) {
-  return ((body.phase || 0) + TAU * days / (body.rotationDays || 1)) % TAU;
+  return ((body.rotationPhase ?? body.phase ?? 0) + TAU * days / (body.rotationDays || 1)) % TAU;
 }
 export const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 export function hash(value) {
@@ -39,7 +41,20 @@ export function habitableZone(luminosity) {
   return { inner: .95 * Math.sqrt(luminosity), outer: 1.67 * Math.sqrt(luminosity) };
 }
 export function periodDays(au, solarMass) { return 365.256 * Math.sqrt(au ** 3 / solarMass); }
+const DEG=Math.PI/180;
+function solEphemerisPosition(body,days,star){
+  const e=body.ephemeris,T=(J2000_OFFSET_DAYS+days)/36525;
+  const a=e.a[0]+e.a[1]*T, ecc=e.e[0]+e.e[1]*T;
+  const meanLong=(e.L[0]+e.L[1]*T)*DEG,peri=(e.p[0]+e.p[1]*T)*DEG;
+  let M=((meanLong-peri)%TAU+TAU)%TAU,E=M;
+  for(let i=0;i<7;i++)E-= (E-ecc*Math.sin(E)-M)/(1-ecc*Math.cos(E));
+  const v=Math.atan2(Math.sqrt(1-ecc*ecc)*Math.sin(E),Math.cos(E)-ecc);
+  const lon=v+peri,rAu=a*(1-ecc*Math.cos(E));
+  const radius=orbitRadius(body.au,star)*(rAu/body.au);
+  return {x:Math.cos(lon)*radius,y:Math.sin(lon)*radius};
+}
 export function position(body, days, mass = 1, star) {
+  if(body.ephemeris)return solEphemerisPosition(body,days,star);
   const angle = body.phase + (body.orbitDirection || 1) * TAU * days / (body.period || periodDays(body.au, mass));
   const radius = body.kind === 'moon' ? body.orbitPx : orbitRadius(body.au, star);
   return { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius };
@@ -52,15 +67,27 @@ export function bodyPosition(body, days, system) {
   return { x: h.x + p.x, y: h.y + p.y };
 }
 const SOL = [
-  ['Mercury', .387, 4879, '#aeb3b9', 'rock'],
-  ['Venus', .723, 12104, '#dfbc82', 'desert'],
-  ['Earth', 1, 12742, '#4f9fe8', 'temperate'],
-  ['Mars', 1.524, 6779, '#da8060', 'desert'],
-  ['Jupiter', 5.203, 139820, '#dcb994', 'gas'],
-  ['Saturn', 9.537, 116460, '#e1cb98', 'gas'],
-  ['Uranus', 19.191, 50724, '#9be1e4', 'ice-giant'],
-  ['Neptune', 30.07, 49244, '#648bdf', 'ice-giant']
+  ['Mercury', .387098, 4879, '#aeb3b9', 'rock'],
+  ['Venus', .723332, 12104, '#dfbc82', 'desert'],
+  ['Earth', 1.000000, 12742, '#4f9fe8', 'temperate'],
+  ['Mars', 1.523679, 6779, '#da8060', 'desert'],
+  ['Jupiter', 5.20260, 139820, '#dcb994', 'gas'],
+  ['Saturn', 9.55491, 116460, '#e1cb98', 'gas'],
+  ['Uranus', 19.2184, 50724, '#9be1e4', 'ice-giant'],
+  ['Neptune', 30.1104, 49244, '#648bdf', 'ice-giant']
 ];
+const SOL_PERIODS={Mercury:87.9691,Venus:224.701,Earth:365.25636,Mars:686.980,
+  Jupiter:4332.589,Saturn:10759.22,Uranus:30685.4,Neptune:60189};
+const SOL_EPHEMERIS={
+  Mercury:{a:[.38709927,.00000037],e:[.20563593,.00001906],L:[252.25032350,149472.67411175],p:[77.45779628,.16047689]},
+  Venus:{a:[.72333566,.00000390],e:[.00677672,-.00004107],L:[181.97909950,58517.81538729],p:[131.60246718,.00268329]},
+  Earth:{a:[1.00000261,.00000562],e:[.01671123,-.00004392],L:[100.46457166,35999.37244981],p:[102.93768193,.32327364]},
+  Mars:{a:[1.52371034,.00001847],e:[.09339410,.00007882],L:[-4.55343205,19140.30268499],p:[-23.94362959,.44441088]},
+  Jupiter:{a:[5.20288700,-.00011607],e:[.04838624,-.00013253],L:[34.39644051,3034.74612775],p:[14.72847983,.21252668]},
+  Saturn:{a:[9.53667594,-.00125060],e:[.05386179,-.00050991],L:[49.95424423,1222.49362201],p:[92.59887831,-.41897216]},
+  Uranus:{a:[19.18916464,-.00196176],e:[.04725744,-.00004397],L:[313.23810451,428.48202785],p:[170.95427630,.40805281]},
+  Neptune:{a:[30.06992276,.00026291],e:[.00859048,.00005105],L:[-55.12002969,218.45945325],p:[44.96476227,-.32241464]}
+};
 const SOL_MOONS = {
   Earth: [['Moon', 3475, 27.32, 38]],
   Mars: [['Phobos', 23, .319, 22], ['Deimos', 12, 1.263, 33]],
@@ -72,7 +99,7 @@ export function makeSystem(seed) {
   if (seed === 'sol') {
     const planets = SOL.map(([name, au, diameter, color, type], i) => ({
       id: `sol:${name}`, name, kind: 'planet', type, au, diameter, color,
-      phase: i * 2.39996 + .3, period: periodDays(au, 1),
+      phase: i * 2.39996 + .3, period: SOL_PERIODS[name], ephemeris:SOL_EPHEMERIS[name],
       moons: (SOL_MOONS[name] || []).map(([moon, d, period, orbitPx], j) => ({
         id: `sol:${name}:${moon}`, parent: `sol:${name}`, name: moon, kind: 'moon',
         type: 'rock', diameter: d, color: '#b8bec5', orbitPx,
@@ -119,14 +146,14 @@ export function makeSystem(seed) {
   return completeSystem({seed,name:star.name,star,planets});
 }
 function completeSystem(system) {
-  // Approximate NASA rotation periods in Earth days. Earth intentionally uses
-  // a 24-hour gameplay day, rather than the 23.9345-hour sidereal value.
-  const spins = {Mercury:58.646,Venus:-243.025,Earth:1,Mars:1.026,
-    Jupiter:.41354,Saturn:.444,Uranus:-.718,Neptune:.671};
+  // Approximate sidereal rotation periods in Earth days.
+  const spins = {Mercury:58.646,Venus:-243.025,Earth:.99726968,Mars:1.025957,
+    Jupiter:.41354,Saturn:.444,Uranus:-.71833,Neptune:.67125};
   system.star.rotationDays = system.seed === 'sol' ? 25.05 : 10 + rng('spin:'+system.seed)()*30;
   for (const p of system.planets) {
     const r=rng('rotation:'+p.id);
     p.rotationDays=system.seed==='sol'?spins[p.name]:p.type==='gas'?.3+r()*.4:.65+r()*2;
+    if(system.seed==='sol'&&p.name==='Earth')p.rotationPhase=100.66085856687278*DEG;
     p.solid=!['gas','ice-giant'].includes(p.type);
     let edge=visualRadius(p.diameter)+20;
     p.moons=p.moons.filter((m,index)=>{

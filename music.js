@@ -17,7 +17,7 @@ export class Soundtrack {
     const Audio=window.AudioContext||window.webkitAudioContext;
     if(!Audio){this.onStatus('unavailable');return false;}
     try{
-      this.context=new Audio();this.master=this.context.createGain();
+      this.context=new Audio({latencyHint:'playback'});this.master=this.context.createGain();
       this.master.gain.value=this.enabled?this.volume*.215:0;
       this.master.connect(this.context.destination);
       this.context.onstatechange=()=>{
@@ -33,9 +33,12 @@ export class Soundtrack {
     // Attempt autoplay; a browser that requires interaction resumes from the
     // first pointer/key gesture. Never mark playback active while suspended.
     this.onStatus('ready');
-    this.context.resume().then(()=>{
+    const resume=()=>this.context.resume().then(()=>{
       if(this.context.state==='running' && this.enabled && !this.hidden)this.schedule();
+      else this.onStatus('ready');
     }).catch(()=>this.onStatus('ready'));
+    resume();
+    setTimeout(()=>{if(this.enabled&&!this.hidden&&this.context?.state==='suspended')resume();},250);
   }
   schedule() {
     if(this.timer!==null)return;

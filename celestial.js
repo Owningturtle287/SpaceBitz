@@ -3,6 +3,29 @@ import {noise} from './terrain.js';
 
 const maps=new Map(),frames=new Map();
 const cap=(n,a,b)=>Math.max(a,Math.min(b,n));
+const unit=seed=>(hash(seed)%1000000)/1000000;
+function drawSunspots(g,body,days,size,rotation){
+  for(let i=0;i<7;i++){
+    const prefix=body.id+':sunspot:'+i;
+    const cycle=18+unit(prefix+':cycle')*34;
+    const active=.50+unit(prefix+':active')*.18;
+    const age=((days/cycle+unit(prefix+':phase'))%1+1)%1;
+    if(age>=active)continue;
+    const life=Math.sin(Math.PI*age/active);
+    if(life<.08)continue;
+    const lon=unit(prefix+':lon')*TAU;
+    const lat=(unit(prefix+':lat')-.5)*.8;
+    const rel=lon-rotation,z=Math.cos(rel)*Math.cos(lat);
+    if(z<=.08)continue;
+    const x=size*.5+Math.sin(rel)*Math.cos(lat)*size*.5;
+    const y=size*.5+Math.sin(lat)*size*.5;
+    const radius=(1.2+unit(prefix+':size')*2.2)*life*(.6+.4*z);
+    const d=Math.max(1,Math.round(radius*2)),px=Math.round(x-d/2),py=Math.round(y-d/2);
+    g.globalAlpha=.16+.42*life;g.fillStyle='#4a2524';g.fillRect(px,py,d,d);
+    if(d>=3){g.globalAlpha=.18+.28*life;g.fillStyle='#2b1718';g.fillRect(Math.round(x),Math.round(y),Math.max(1,Math.floor(d/2)),Math.max(1,Math.floor(d/2)));}
+  }
+  g.globalAlpha=1;
+}
 function surfaceMap(body){
   if(maps.has(body.id))return maps.get(body.id);
   const width=192,height=96,pixels=new Uint8ClampedArray(width*height*3),seed=hash(body.id);
@@ -14,8 +37,7 @@ function surfaceMap(body){
     const fine=noise(nx*18+nz*3+22,ny*18+nz*7+22,seed+11);
     let color;
     if(body.kind==='star'){
-      const spots=n<.22?.40:1;
-      color=base.map((v,i)=>cap(v*(.85+fine*.28)*spots+(i===0?14:0),0,255));
+      color=base.map((v,i)=>cap(v*(.85+fine*.28)+(i===0?14:0),0,255));
     }else if(['gas','ice-giant'].includes(body.type)){
       const bands=.82+.13*Math.sin(latitude*42+n*2)+fine*.11;
       color=base.map(v=>v*bands);
@@ -38,7 +60,8 @@ export function celestialSprite(body,days,worldPosition={x:0,y:0}) {
   const rotation=((rotationAngle(body,days)%TAU)+TAU)%TAU;
   const lightAngle=Math.atan2(-worldPosition.y,-worldPosition.x);
   const frame=Math.floor(rotation/TAU*96),light=Math.round(lightAngle/TAU*48);
-  const key=`${body.id}:${frame}:${light}`;
+  const spotFrame=body.kind==='star'?Math.floor(days*2):0;
+  const key=`${body.id}:${frame}:${light}:${spotFrame}`;
   if(frames.has(key))return frames.get(key);
   const map=surfaceMap(body),size=body.kind==='star'?144:80;
   const c=document.createElement('canvas');c.width=c.height=size;const g=c.getContext('2d'),img=g.createImageData(size,size);
@@ -53,7 +76,7 @@ export function celestialSprite(body,days,worldPosition={x:0,y:0}) {
     for(let k=0;k<3;k++)img.data[index+k]=map.pixels[source+k]*shade;
     img.data[index+3]=255;
   }
-  g.putImageData(img,0,0);frames.set(key,c);
+  g.putImageData(img,0,0);if(body.kind==='star')drawSunspots(g,body,days,size,rotation);frames.set(key,c);
   if(frames.size>160)frames.delete(frames.keys().next().value);
   return c;
 }

@@ -335,3 +335,48 @@ html,body,#welcome,#app,.overlay,button{touch-action:manipulation}
   .main-menu-stage .hero-logo{transform:translateY(-12px);margin-bottom:25px}
 }
 
+/* SpaceBitz 1.2.4: compact settings layout. */
+.settings-content.settings-compact{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:3px 14px;
+  align-items:center;
+}
+.settings-compact .settings-intro,
+.settings-compact h3,
+.settings-compact .changelog-details,
+.settings-compact>.button{grid-column:1/-1}
+.settings-compact .settings-intro{margin:0 0 3px;color:#91a8b3;font-size:11px;line-height:1.35}
+.settings-compact h3{padding:9px 0 3px;margin-top:1px}
+.settings-compact .setting-row{
+  min-height:35px;
+  padding:4px 0;
+  gap:7px;
+  font-size:11px;
+}
+.settings-compact .setting-row select{max-width:190px;min-width:0}
+.settings-compact .setting-row input[type=checkbox]{width:18px;height:18px}
+.settings-compact .setting-row input[type=range]{width:92px}
+.changelog-details{
+  margin-top:8px;
+  border-top:1px solid #365160;
+  padding-top:8px;
+}
+.changelog-details summary{
+  cursor:pointer;
+  color:#89e0cb;
+  font:700 11px ui-monospace,monospace;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+.changelog-details .changelog{margin-bottom:4px}
+@media(max-width:640px){
+  .settings-content.settings-compact{grid-template-columns:1fr;gap:2px}
+  .settings-compact .settings-intro,
+  .settings-compact h3,
+  .settings-compact .changelog-details,
+  .settings-compact>.button{grid-column:1}
+  .settings-compact .setting-row{min-height:34px}
+  .settings-compact .setting-row select{max-width:170px}
+}
+

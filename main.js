@@ -1,4 +1,4 @@
-import {TAU, DAY_MS, EPOCH, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
+import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
   habitableZone, makeSystem, bodyPosition, galaxyStars, starName} from './model.js';
 import {Soundtrack} from './music.js';
 import {DEFAULT_SETTINGS,normalizeSettings} from './settings.js';
@@ -18,6 +18,13 @@ const settings = normalizeSettings({
 const terrain=new TerrainRenderer();
 const music=new Soundtrack(()=>{});
 const CHANGELOG=[
+  {version:'1.2.4',items:[
+    'Removed crosshair flares from stars in both system and interstellar views.',
+    'Compacted Settings, added miles/AU display choices, improved visual defaults, preferred time zones and accelerated/real-time clock modes.',
+    'New voyages now begin at the current real date/time; Sol uses a date-driven low-precision Kepler ephemeris and real sidereal spin rates.',
+    'Replaced oversized stellar dark regions with small procedural sunspots that slowly emerge and fade.',
+    'Improved soundtrack startup retries while retaining first-interaction fallback for browsers that enforce autoplay restrictions.'
+  ]},
   {version:'1.2.3',items:[
     'Refined the SpaceBitz title with cleaner pixel-space detailing, removed the vertical side rails and restyled the version label without a border.',
     'Sped up only the main-menu fly-through starfield while leaving in-game background-star speed unchanged.',
@@ -68,6 +75,9 @@ function applySettings(){
   document.documentElement.style.setProperty('--joy-offset',settings.joyOffset+'px');
   music.configure(settings.music,settings.volume);fit();updateUI();
 }
+music.start();
+window.addEventListener('pageshow',()=>music.start(),{passive:true});
+window.addEventListener('focus',()=>music.start(),{passive:true});
 document.addEventListener('pointerdown',()=>music.start(),{capture:true,passive:true});
 document.addEventListener('keydown',()=>music.start(),{capture:true});
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
@@ -162,7 +172,8 @@ function start(save) {
   save.currentSystem=state.system.seed;
   save.chart ||= {x:0,y:0}; save.ship ||= {x:0,y:0};
   save.surface ||= {x:0,y:0}; save.discoveries ||= []; save.log ||= [];
-  save.days=Number.isFinite(save.days)?save.days:0;
+  save.days=Number.isFinite(save.days)?save.days:currentDays();
+  if(settings.timeMode==='realtime')save.days=currentDays();
   if(save.layoutVersion!==2 && state.scene==='system'){
     const nearest=state.system.planets.map(p=>{const a=p.phase+TAU*save.days/p.period,r=160+275*Math.log1p(p.au*2);
       return {p,d:Math.hypot(Math.cos(a)*r-save.ship.x,Math.sin(a)*r-save.ship.y)};}).sort((a,b)=>a.d-b.d)[0].p;
@@ -185,10 +196,10 @@ function create(sol=false) {
   const homeSeed=sol?'sol':'home:'+seed;
   const system=makeSystem(homeSeed);
   const home=sol?system.planets[2]:system.planets.find(p=>p.type==='temperate') || system.planets.find(p=>p.solid) || system.planets[0];
-  const h=bodyPosition(home,0,system);
+  const startDays=currentDays(),h=bodyPosition(home,startDays,system);
   const save={id:crypto.randomUUID?.()||String(Date.now()),name,seed,homeSeed,currentSystem:homeSeed,
     scene:'system',ship:{x:h.x+visualRadius(home.diameter)+70,y:h.y},chart:{x:0,y:0},
-    surface:{x:0,y:0},landed:null,days:0,discoveries:[],log:[],layoutVersion:2,updated:Date.now()};
+    surface:{x:0,y:0},landed:null,days:startDays,discoveries:[],log:[],layoutVersion:2,updated:Date.now()};
   start(save); select(home); toast(`Welcome to ${system.name}. Select a world to chart a course.`);
 }
 function renderSaves() {
@@ -232,7 +243,7 @@ $('importFile').onchange=async e=>{
       const system=makeSystem(homeSeed),body=system.planets[0],p=bodyPosition(body,0,system);
       return {id:crypto.randomUUID?.()||String(Date.now()+Math.random()),name:String(raw.name||'Imported universe').slice(0,40),
         seed,homeSeed,currentSystem:homeSeed,scene:'system',ship:{x:p.x+80,y:p.y+20},chart:{x:0,y:0},
-        surface:{x:0,y:0},landed:null,layoutVersion:2,days:Number.isFinite(raw.days)?raw.days:0,
+        surface:{x:0,y:0},landed:null,layoutVersion:2,days:Number.isFinite(raw.days)?raw.days:currentDays(),
         discoveries:Array.isArray(raw.discoveries)?raw.discoveries.filter(x=>typeof x==='string').slice(0,1000):[],
         log:Array.isArray(raw.log)?raw.log.filter(x=>x&&typeof x.name==='string').slice(0,100):[],updated:Date.now()};
     });
@@ -354,7 +365,28 @@ function addMetric(parent,label,value) {
   const div=document.createElement('div');div.className='metric';
   const a=document.createElement('span'),b=document.createElement('strong');a.textContent=label;b.textContent=value;div.append(a,b);parent.append(div);
 }
-function diameterText(km){return Math.round(settings.units==='mi'?km/1.609344:km).toLocaleString()+' '+settings.units;}
+const AU_KM=149597870.7;
+function diameterText(km){
+  if(settings.units==='au'){
+    const value=km/AU_KM,digits=value>=.1?3:value>=.01?4:6;
+    return value.toFixed(digits)+' AU';
+  }
+  const value=settings.units==='mi'?km/1.609344:km;
+  return Math.round(value).toLocaleString()+' '+settings.units;
+}
+function localTimeZone(){return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}
+function preferredTimeZone(){
+  const zone=settings.timeZone==='local'?localTimeZone():settings.timeZone;
+  try{new Intl.DateTimeFormat('en',{timeZone:zone}).format();return zone;}catch{return 'UTC';}
+}
+function gameDate(){return new Date(EPOCH+state.save.days*DAY_MS);}
+function formatGameDate(date=gameDate(),dateOnly=false){
+  const zone=preferredTimeZone();
+  const day=date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:zone}).toUpperCase();
+  if(dateOnly)return day;
+  const time=date.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:zone});
+  return day+' '+time;
+}
 function updateUI() {
   if(!state.save)return;
   const scene=state.scene,sys=state.system,sel=state.selected;
@@ -413,9 +445,8 @@ function updateUI() {
   $('fitSystem').hidden=scene!=='system';
   $('mapButton').querySelector('span').textContent=scene==='chart'?'RETURN TO SYSTEM':'STAR CHART';
   $('mapButton').disabled=scene==='surface';
-  const date=new Date(EPOCH+state.save.days*DAY_MS);
-  $('clock').textContent=date.toLocaleDateString('en-GB',{day:'2-digit',month:'short',timeZone:'UTC'}).toUpperCase()+' '+date.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',timeZone:'UTC'});
-  $('clock').title='1 real minute = 1 game hour'+(settings.paused?' · paused':'');
+  $('clock').textContent=formatGameDate();
+  $('clock').title=(settings.timeMode==='realtime'?'Real-time 1:1':'Accelerated · 1 real minute = 1 game hour')+' · '+preferredTimeZone()+(settings.paused&&settings.timeMode!=='realtime'?' · paused':'');
   $('statusText').textContent=scene==='chart'?'JUMP DRIVE // ONLINE':scene==='surface'?'SUIT // NOMINAL':`SYSTEM // ${sys.name.toUpperCase()}`;
   $('zoomLabel').textContent=Math.round(state.zoom*100)+'%';
   const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship;
@@ -458,13 +489,13 @@ function showJournal() {
   const box=document.createElement('div');const p=document.createElement('p');p.textContent=`${state.save.discoveries.length} discoveries recorded in ${state.save.name}.`;
   box.append(p);for(const entry of state.save.log.slice(0,30)){
     const item=document.createElement('div');item.className='log-item';item.textContent=`${entry.action} · ${entry.name}`;
-    const date=document.createElement('small');date.textContent=new Date(EPOCH+entry.days*DAY_MS).toLocaleDateString('en-GB',{timeZone:'UTC'});item.append(date);box.append(item);
+    const date=document.createElement('small');date.textContent=formatGameDate(new Date(EPOCH+entry.days*DAY_MS),true);item.append(date);box.append(item);
   }if(!state.save.log.length){const empty=document.createElement('p');empty.textContent='Your discoveries will appear here.';box.append(empty);}
   setModal('CAPTAIN’S LOG','Voyage logbook',box);
 }
 function openSettings(){
-  const box=document.createElement('div');box.className='settings-content';
-  const intro=document.createElement('p');intro.textContent='1 real minute = 1 game hour. Earth rotates once in 24 real minutes. Time pauses in menus and while the app is in the background.';box.append(intro);
+  const box=document.createElement('div');box.className='settings-content settings-compact';
+  const intro=document.createElement('p');intro.className='settings-intro';intro.textContent='Clock, display, audio and controls. Real-time follows the wall clock; accelerated time runs 60× faster.';box.append(intro);
   const heading=text=>{const h=document.createElement('h3');h.textContent=text;box.append(h);};
   function control(key,label,kind,options){
     const row=document.createElement('label');row.className='setting-row';
@@ -479,22 +510,45 @@ function openSettings(){
     const sync=()=>{if(kind==='range')value.textContent=key==='volume'?Math.round(settings[key]*100)+'%':String(settings[key]);};sync();
     input.addEventListener(kind==='range'?'input':'change',()=>{
       settings[key]=kind==='checkbox'?input.checked:typeof DEFAULT_SETTINGS[key]==='number'?Number(input.value):input.value;
-      if(key==='pixelSize')terrain.clear();sync();saveSettings();applySettings();
+      if(key==='pixelSize')terrain.clear();
+      if(key==='timeMode'&&state.save&&settings.timeMode==='realtime')state.save.days=currentDays();
+      sync();saveSettings();applySettings();
     });
     const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
   }
-  heading('Sound & sky');control('music','Original soundtrack','checkbox');control('volume','Music volume','range',[0,1,.05]);
-  control('starMotion','Moving starfield','checkbox');control('twinkle','Star twinkle','checkbox');control('reducedMotion','Reduce decorative motion','checkbox');
-  heading('View & display');control('orbits','Orbit paths','checkbox');control('zone','Goldilocks zone','checkbox');control('labels','Planet & moon labels','checkbox');
-  control('travelLines','Star chart travel trail','checkbox');control('showCoords','Coordinates','checkbox');control('showFPS','Frame rate','checkbox');
-  control('units','Distance units','select',[['km','Kilometres'],['mi','Miles']]);
-  control('pixelSize','Terrain detail','select',[[2,'Fine pixels'],[3,'Balanced'],[4,'Low power']]);
-  control('resolution','Canvas resolution','select',[['auto','Automatic'],['1','1× · low power'],['2','2× · sharp']]);
-  heading('Controls');control('controls','Input mode','select',[['auto','Automatic'],['touch','Touch joystick'],['desktop','Keyboard / mouse']]);
+  const zoneValues=(()=>{
+    const local=localTimeZone(),all=typeof Intl.supportedValuesOf==='function'?Intl.supportedValuesOf('timeZone'):[];
+    const values=[['local','Local device · '+local],['UTC','UTC']];
+    for(const z of all)if(z!=='UTC'&&z!==local)values.push([z,z]);
+    if(settings.timeZone!=='local'&&!values.some(([v])=>v===settings.timeZone))values.splice(1,0,[settings.timeZone,settings.timeZone]);
+    return values;
+  })();
+
+  heading('Sound & sky');
+  control('music','Soundtrack','checkbox');control('volume','Music volume','range',[0,1,.05]);
+  control('starMotion','Moving stars','checkbox');control('twinkle','Star twinkle','checkbox');
+
+  heading('Time & units');
+  control('timeMode','Clock speed','select',[['accelerated','Accelerated · 1 min = 1 hour'],['realtime','Real time · 1:1']]);
+  control('timeZone','Time zone','select',zoneValues);
+  control('units','Distance units','select',[['mi','Miles'],['km','Kilometres'],['au','Astronomical units']]);
+  control('paused','Pause accelerated clock','checkbox');
+
+  heading('View');
+  control('orbits','Orbit paths','checkbox');control('zone','Goldilocks zone','checkbox');
+  control('labels','Body labels','checkbox');control('travelLines','Travel trail','checkbox');
+  control('pixelSize','Terrain detail','select',[[2,'Fine · best'],[3,'Balanced'],[4,'Low power']]);
+  control('resolution','Canvas quality','select',[['2','2× · best'],['auto','Automatic'],['1','1× · low power']]);
+  control('showFPS','Frame rate','checkbox');control('showCoords','Coordinates','checkbox');
+  control('reducedMotion','Reduce motion','checkbox');
+
+  heading('Controls');
+  control('controls','Input mode','select',[['auto','Automatic'],['touch','Touch joystick'],['desktop','Keyboard / mouse']]);
   control('joyX','Joystick position (%)','range',[8,92,1]);control('joyOffset','Joystick height (px)','range',[-70,120,1]);
-  const hint=document.createElement('p');hint.textContent='WASD / arrows to move · Space to interact · drag to pan · pinch or + / − to zoom · ⌗ to fit the whole system.';box.append(hint);
-  heading('Voyage');control('paused','Pause simulation clock','checkbox');control('cheats','Enable instant travel in Details','checkbox');
-  heading('Change log');
+  control('cheats','Instant travel','checkbox');
+
+  const details=document.createElement('details');details.className='changelog-details';
+  const summary=document.createElement('summary');summary.textContent='Change log';details.append(summary);
   const changelog=document.createElement('div');changelog.className='changelog';
   for(const release of CHANGELOG){
     const entry=document.createElement('section');entry.className='changelog-version';
@@ -503,7 +557,7 @@ function openSettings(){
     for(const note of release.items){const item=document.createElement('li');item.textContent=note;list.append(item);}
     entry.append(list);changelog.append(entry);
   }
-  box.append(changelog);
+  details.append(changelog);box.append(details);
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
     save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
@@ -524,7 +578,7 @@ function targetPoint() {
 }
 function update(dt,clockDt=dt) {
   if(!state.save || $('modal').classList.contains('visible'))return;
-  state.save.days=advanceDays(state.save.days,clockDt,settings.paused);
+  state.save.days=settings.timeMode==='realtime'?currentDays():advanceDays(state.save.days,clockDt,settings.paused);
   const dx=Number(state.keys.has('ArrowRight')||state.keys.has('d'))-Number(state.keys.has('ArrowLeft')||state.keys.has('a'))+state.joy.x;
   const dy=Number(state.keys.has('ArrowDown')||state.keys.has('s'))-Number(state.keys.has('ArrowUp')||state.keys.has('w'))+state.joy.y;
   const magnitude=Math.hypot(dx,dy), manual=magnitude>.08;
@@ -664,11 +718,6 @@ function drawStar(x,y,r,color,now,body=null) {
   }
 
   if(!coreVisible)return;
-  ctx.save();ctx.globalAlpha=.4+.08*Math.sin(now*.002);
-  ctx.strokeStyle=color;ctx.lineWidth=1;
-  const ray=Math.min(r*2.3,maxDim*.55);
-  ctx.beginPath();ctx.moveTo(x-ray,y);ctx.lineTo(x+ray,y);ctx.moveTo(x,y-ray);ctx.lineTo(x,y+ray);ctx.stroke();ctx.restore();
-
   if(r>maxDim*.38){
     ctx.fillStyle=color;circle(x,y,r);ctx.fill();
   }else{
