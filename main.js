@@ -21,7 +21,7 @@ const CHANGELOG=[
   {version:'1.2',items:[
     'Introduced the two-stage retro main menu with Start Game, Multiplayer placeholder and Settings.',
     'Opened the menu layout so more of the starfield remains visible and shifted outer space toward near-black.',
-    'Made menu and in-game starfields faster with stronger depth, smoother motion, brightness-only twinkle and square, circle or diamond star shapes.',
+    'Made menu and in-game starfields faster with stronger depth, quicker brightness-only twinkle and richer retro pixel-art square, circle and diamond star sprites.',
     'Music now defaults on for new players, with audio controls kept inside Settings.'
   ]},
   {version:'1.1',items:[
@@ -515,6 +515,28 @@ function update(dt,clockDt=dt) {
 const circle=(x,y,r)=>{ctx.beginPath();ctx.arc(x,y,r,0,TAU);};
 const screen=(x,y)=>({x:state.width/2+(x-state.camera.x)*state.zoom,y:state.height/2+(y-state.camera.y)*state.zoom});
 const world=(x,y)=>({x:(x-state.width/2)/state.zoom+state.camera.x,y:(y-state.height/2)/state.zoom+state.camera.y});
+function drawRetroPixelStar(x,y,size,shape,rgb){
+  const s=Math.max(1,Math.round(size));
+  if(s<=2){ctx.fillStyle=`rgb(${rgb})`;ctx.fillRect(x,y,s,s);return;}
+  const u=Math.max(1,Math.round(s/5));
+  const cx=x+2*u,cy=y+2*u;
+  ctx.fillStyle=`rgb(${rgb})`;
+  if(shape===0){
+    ctx.fillRect(x+u,y+u,3*u,3*u);
+  }else if(shape===1){
+    ctx.fillRect(x+u,y,3*u,u);
+    ctx.fillRect(x,y+u,5*u,3*u);
+    ctx.fillRect(x+u,y+4*u,3*u,u);
+  }else{
+    ctx.fillRect(cx,y,u,u);
+    ctx.fillRect(x+u,y+u,3*u,u);
+    ctx.fillRect(x,y+2*u,5*u,u);
+    ctx.fillRect(x+u,y+3*u,3*u,u);
+    ctx.fillRect(cx,y+4*u,u,u);
+  }
+  ctx.fillStyle='rgba(255,255,255,.82)';
+  ctx.fillRect(cx,cy,u,u);
+}
 function backdrop(now) {
   const {width:w,height:h}=state;
   if(state.skyBackdrop)ctx.drawImage(state.skyBackdrop,0,0,w,h);
@@ -531,20 +553,12 @@ function backdrop(now) {
       y=((star.y*h-state.camera.y*.025*(1+z)+motion*.22)%h+h)%h;
     }
     if(x<-8||x>w+8||y<-8||y>h+8)continue;
-    const twinkle=settings.twinkle&&!settings.reducedMotion?.62+.38*Math.sin(now*.00155*star.speed+star.phase):.88;
+    const twinkle=settings.twinkle&&!settings.reducedMotion?.6+.4*Math.sin(now*.00245*star.speed+star.phase):.88;
     const alpha=clamp(star.alpha*twinkle+(1-z)*(state.scene==='menu'?.32:.18),.08,1);
     const size=Math.max(1,Math.round(star.size*(state.scene==='menu'?(2.05+(1-z)*2.25):(1.9-z))));
     x=Math.round(x/step)*step;y=Math.round(y/step)*step;
-    ctx.globalAlpha=alpha;ctx.fillStyle=`rgb(${star.rgb})`;
-    if(star.shape===0){
-      ctx.fillRect(x,y,size,size);
-    }else if(star.shape===1){
-      const radius=size/2;
-      ctx.beginPath();ctx.arc(x+radius,y+radius,radius,0,TAU);ctx.fill();
-    }else{
-      const half=size/2,cx=x+half,cy=y+half;
-      ctx.beginPath();ctx.moveTo(cx,y);ctx.lineTo(x+size,cy);ctx.lineTo(cx,y+size);ctx.lineTo(x,cy);ctx.closePath();ctx.fill();
-    }
+    ctx.globalAlpha=alpha;
+    drawRetroPixelStar(x,y,size,star.shape,star.rgb);
   }
   ctx.globalAlpha=1;
 }
