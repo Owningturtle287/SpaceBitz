@@ -21,7 +21,7 @@ const CHANGELOG=[
   {version:'1.2',items:[
     'Introduced the two-stage retro main menu with Start Game, Multiplayer placeholder and Settings.',
     'Opened the menu layout so more of the starfield remains visible and shifted outer space toward near-black.',
-    'Made the menu starfield faster with stronger depth, smoother motion, brightness-only twinkle and varied pixel-star silhouettes.',
+    'Made menu and in-game starfields faster with stronger depth, smoother motion, brightness-only twinkle and square, circle or diamond star shapes.',
     'Music now defaults on for new players, with audio controls kept inside Settings.'
   ]},
   {version:'1.1',items:[
@@ -91,7 +91,7 @@ function fit() {
   state.stars=Array.from({length:Math.max(110,Math.min(400,Math.round(rect.width*rect.height/2600)))},(_,i)=>{
     const r=rng('background:'+i),color=r();
     return {x:r(),y:r(),size:r()<.7?1:2,alpha:.25+r()*.6,phase:r()*TAU,depth:r(),speed:.4+r(),
-      rgb:color<.15?'137,197,230':color>.9?'255,218,153':'210,232,232',shape:Math.floor(r()*4)};
+      rgb:color<.15?'137,197,230':color>.9?'255,218,153':'210,232,232',shape:Math.floor(r()*3)};
   });
   buildSkyBackdrop();
 }
@@ -523,10 +523,10 @@ function backdrop(now) {
   for(const star of state.stars){
     let x,y,z=star.depth;
     if(state.scene==='menu'){
-      if(drift)z=((star.depth-now*.000034*star.speed)%1+1)%1;
+      if(drift)z=((star.depth-now*.000068*star.speed)%1+1)%1;
       x=w/2+(star.x-.5)*w*.72/(z+.12);y=h/2+(star.y-.5)*h*.72/(z+.12);
     }else{
-      const motion=drift?now*.002*star.speed:0;
+      const motion=drift?now*.004*star.speed:0;
       x=((star.x*w-state.camera.x*.025*(1+z)+motion)%w+w)%w;
       y=((star.y*h-state.camera.y*.025*(1+z)+motion*.22)%h+h)%h;
     }
@@ -539,14 +539,11 @@ function backdrop(now) {
     if(star.shape===0){
       ctx.fillRect(x,y,size,size);
     }else if(star.shape===1){
-      ctx.fillRect(x,y,Math.max(1,size-1),size+1);
-    }else if(star.shape===2){
-      ctx.fillRect(x,y,size+1,Math.max(1,size-1));
+      const radius=size/2;
+      ctx.beginPath();ctx.arc(x+radius,y+radius,radius,0,TAU);ctx.fill();
     }else{
-      const mid=Math.max(1,size),wing=Math.max(1,size-1);
-      ctx.fillRect(x+1,y,wing,1);
-      ctx.fillRect(x,y+1,mid+1,Math.max(1,size-1));
-      if(size>2)ctx.fillRect(x+1,y+size,wing,1);
+      const half=size/2,cx=x+half,cy=y+half;
+      ctx.beginPath();ctx.moveTo(cx,y);ctx.lineTo(x+size,cy);ctx.lineTo(cx,y+size);ctx.lineTo(x,cy);ctx.closePath();ctx.fill();
     }
   }
   ctx.globalAlpha=1;
