@@ -18,6 +18,12 @@ const settings = normalizeSettings({
 const terrain=new TerrainRenderer();
 const music=new Soundtrack(()=>{});
 const CHANGELOG=[
+  {version:'1.2.2',items:[
+    'Redesigned the SpaceBitz wordmark with sharper pixel-space detailing, more breathing room above the menu buttons and a clear version badge.',
+    'Simplified the universe creation screen by removing redundant descriptive, status, version and device text.',
+    'Changed menu and in-game background stars to a fresh procedural sky each session while preserving the same sky during that session.',
+    'Expanded star colors into more saturated red, yellow, orange, white and blue families.'
+  ]},
   {version:'1.2.1',items:[
     'Streamlined the main menu by removing the extra explorer tagline, subtitle, descriptive copy and footer status text.',
     'Raised the SpaceBitz title, removed menu button numbers and centered the Start Game, Multiplayer and Settings labels.'
@@ -86,17 +92,42 @@ function nearbyStars() {
       stars.push(...galaxyStars(state.save.seed,cx,cy));
   return stars;
 }
+const STAR_PALETTE=[
+  '255,78,78',
+  '255,207,63',
+  '255,139,52',
+  '248,250,255',
+  '94,174,255',
+  '105,220,255'
+];
+const skyRandom=(()=>{
+  const pool=new Uint32Array(256);let index=pool.length;
+  return ()=>{
+    if(index>=pool.length){
+      if(globalThis.crypto?.getRandomValues)globalThis.crypto.getRandomValues(pool);
+      else for(let i=0;i<pool.length;i++)pool[i]=Math.floor(Math.random()*0x100000000);
+      index=0;
+    }
+    return pool[index++]/0x100000000;
+  };
+})();
+function makeBackgroundStar(){
+  const r=skyRandom;
+  return {
+    x:r(),y:r(),size:r()<.66?1:2,alpha:.38+r()*.58,phase:r()*TAU,depth:r(),speed:.4+r(),
+    rgb:STAR_PALETTE[Math.floor(r()*STAR_PALETTE.length)],shape:Math.floor(r()*3)
+  };
+}
 function fit() {
   const rect = canvas.getBoundingClientRect();
   state.width=rect.width; state.height=rect.height;
   state.dpr=settings.resolution==='auto'?Math.min(window.devicePixelRatio||1,2):Number(settings.resolution);
   canvas.width=Math.round(rect.width*state.dpr); canvas.height=Math.round(rect.height*state.dpr);
   ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
-  state.stars=Array.from({length:Math.max(110,Math.min(400,Math.round(rect.width*rect.height/2600)))},(_,i)=>{
-    const r=rng('background:'+i),color=r();
-    return {x:r(),y:r(),size:r()<.7?1:2,alpha:.25+r()*.6,phase:r()*TAU,depth:r(),speed:.4+r(),
-      rgb:color<.15?'137,197,230':color>.9?'255,218,153':'210,232,232',shape:Math.floor(r()*3)};
-  });
+  const targetStarCount=Math.max(110,Math.min(400,Math.round(rect.width*rect.height/2600)));
+  if(!state.stars.length)state.stars=Array.from({length:targetStarCount},makeBackgroundStar);
+  else if(state.stars.length<targetStarCount)state.stars.push(...Array.from({length:targetStarCount-state.stars.length},makeBackgroundStar));
+  else if(state.stars.length>targetStarCount)state.stars.length=targetStarCount;
   buildSkyBackdrop();
 }
 function buildSkyBackdrop(){

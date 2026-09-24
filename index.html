@@ -44,11 +44,15 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.2.1</span>
+        <span class="version-chip main-menu-version">v1.2.2</span>
         <div id="welcomeTitle" class="hero-logo" aria-label="SpaceBitz">
           <span class="hero-logo-mark" aria-hidden="true">✦</span>
+          <span class="hero-title-pixel pixel-a" aria-hidden="true"></span>
+          <span class="hero-title-pixel pixel-b" aria-hidden="true"></span>
+          <span class="hero-title-pixel pixel-c" aria-hidden="true"></span>
+          <span class="hero-title-pixel pixel-d" aria-hidden="true"></span>
           <span class="hero-logo-word">SPACE<span>BITZ</span></span>
-          <span class="hero-logo-rule" aria-hidden="true"></span>
+          <span class="hero-logo-rule" aria-hidden="true"><i></i></span>
         </div>
         <div class="main-menu-actions">
           <button id="startGame" class="button menu-choice menu-choice-primary"><span>START GAME</span></button>
@@ -59,13 +63,11 @@
 
       <section id="universeMenuStage" class="menu-stage generation-stage" hidden>
         <div class="generation-top"><button id="backToMain" class="text-button generation-back" type="button">← MAIN MENU</button><span class="eyebrow accent">NEW UNIVERSE</span></div>
-        <p class="generation-intro">Name your universe, choose a seed if you want one, then launch into the starfield.</p>
-        <div class="menu-console"><span class="console-light"></span><span>FLIGHT SYSTEMS READY</span><span class="version-chip">v1.2.1</span></div>
         <div class="create-row"><label for="universeName">UNIVERSE NAME</label><input id="universeName" maxlength="40" value="My Universe" autocomplete="off"></div>
         <div class="create-row"><label for="universeSeed">SEED <small>OPTIONAL</small></label><input id="universeSeed" maxlength="64" placeholder="Leave blank for a surprise" autocomplete="off"></div>
         <div class="welcome-actions"><button id="newGame" class="button primary">START EXPLORING <span>↗</span></button><button id="solGame" class="button subtle">VISIT SOL</button></div>
-        <div class="saved-heading">CONTINUE A VOYAGE</div><div id="savedGames" class="saved-games"></div>
-        <div class="welcome-foot"><span>SAVED ON THIS DEVICE</span><button id="importButton" class="text-button">IMPORT SAVE ↑</button><input id="importFile" type="file" accept="application/json,.json" hidden><button id="installButton" class="text-button" hidden>INSTALL APP ↓</button></div>
+        <div class="saved-heading">CONTINUE VOYAGE</div><div id="savedGames" class="saved-games"></div>
+        <div class="welcome-foot generation-foot"><button id="importButton" class="text-button">IMPORT SAVE ↑</button><input id="importFile" type="file" accept="application/json,.json" hidden><button id="installButton" class="text-button" hidden>INSTALL APP ↓</button></div>
       </section>
     </div>
   </div>
