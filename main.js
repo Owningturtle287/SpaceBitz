@@ -18,6 +18,10 @@ const settings = normalizeSettings({
 const terrain=new TerrainRenderer();
 const music=new Soundtrack(()=>{});
 const CHANGELOG=[
+  {version:'1.2.1',items:[
+    'Streamlined the main menu by removing the extra explorer tagline, subtitle, descriptive copy and footer status text.',
+    'Raised the SpaceBitz title, removed menu button numbers and centered the Start Game, Multiplayer and Settings labels.'
+  ]},
   {version:'1.2',items:[
     'Introduced the two-stage retro main menu with Start Game, Multiplayer placeholder and Settings.',
     'Opened the menu layout so more of the starfield remains visible and shifted outer space toward near-black.',

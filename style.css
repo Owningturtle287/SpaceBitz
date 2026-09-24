@@ -128,3 +128,34 @@ html,body{background:#010205}
 .changelog-version ul{margin:0;padding-left:17px;color:#aebfc8;font-size:11px;line-height:1.5}
 .changelog-version li+li{margin-top:4px}
 
+/* SpaceBitz 1.2.1: streamlined landing menu. */
+.main-menu-stage{
+  position:relative;
+  gap:14px;
+  transform:translateY(-34px);
+}
+.main-menu-version{
+  position:absolute;
+  top:-18px;
+  right:0;
+}
+.main-menu-stage .hero-logo{
+  padding:0 8px 6px;
+}
+.main-menu-stage .hero-logo-mark{
+  top:-14px;
+}
+.main-menu-actions{
+  margin:5px auto 0;
+}
+.menu-choice{
+  justify-content:center!important;
+  text-align:center;
+  padding:0 18px!important;
+}
+@media(max-width:600px){
+  .main-menu-stage{transform:translateY(-26px);gap:12px}
+  .main-menu-version{top:-14px;right:2px}
+  .main-menu-stage .hero-logo{padding-top:0}
+}
+
