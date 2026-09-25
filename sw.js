@@ -1,4 +1,4 @@
-const CACHE='spacebitz-field-v1.3.5-clean-hud';
+const CACHE='spacebitz-field-v1.3.6-warp-hud';
 const SHELL=['./','./index.html','./main.js','./model.js','./settings.js','./terrain.js','./motion.js','./sprites.js','./celestial.js','./style.css','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));

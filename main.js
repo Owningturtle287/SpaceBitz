@@ -61,6 +61,12 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.3.6',items:[
+    'Replaced the old Chart control with a dedicated retro Warp Drive button in the bottom-right for entering the interstellar layer.',
+    'Moved the voyage Log directly under Settings and restyled both as a compact upper-right utility stack.',
+    'Moved Center beside the joystick and added Right, Above, Custom drag and Hidden placement options in Settings.',
+    'Custom Center placement can be dragged anywhere in the game view and is saved locally for future sessions.'
+  ]},
   {version:'1.3.5',items:[
     'Moved the soundtrack startup attempt to the earliest main-menu initialization and enabled native autoplay; the two-second lead-in remains baked into the track.',
     'Removed the off-center teal nebula/backlight from the game background for a clean black starfield.',
@@ -172,6 +178,35 @@ const loadSaves = () => {
 };
 function readJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}catch{toast('Settings could not be saved on this device.');}}
+let centerDrag=null,centerSuppressClick=false;
+function applyCenterButtonLayout(){
+  const btn=$('homeButton');if(!btn)return;
+  const mode=settings.centerButton||'right';
+  btn.hidden=mode==='hidden';
+  btn.dataset.centerPosition=mode;
+  btn.classList.toggle('center-custom',mode==='custom');
+  if(mode==='hidden')return;
+  requestAnimationFrame(()=>{
+    const bw=btn.offsetWidth||54,bh=btn.offsetHeight||48;
+    let cx,cy;
+    if(mode==='custom'){
+      cx=window.innerWidth*(settings.centerX/100);
+      cy=window.innerHeight*(settings.centerY/100);
+    }else{
+      const joy=$('joystick'),r=joy?.getBoundingClientRect();
+      if(r&&r.width>0&&r.height>0){
+        if(mode==='above'){cx=r.left+r.width/2;cy=r.top-bh/2-10;}
+        else{cx=r.right+bw/2+10;cy=r.top+r.height/2;}
+      }else{
+        cx=24+bw/2;cy=window.innerHeight-24-bh/2;
+      }
+    }
+    cx=clamp(cx,bw/2+6,window.innerWidth-bw/2-6);
+    cy=clamp(cy,bh/2+6,window.innerHeight-bh/2-6);
+    btn.style.left=cx+'px';btn.style.top=cy+'px';
+    btn.style.right='auto';btn.style.bottom='auto';btn.style.transform='translate(-50%,-50%)';
+  });
+}
 function applySettings(){
   document.body.dataset.controls=settings.controls;
   document.body.dataset.reducedMotion=String(settings.reducedMotion);
@@ -180,7 +215,7 @@ function applySettings(){
   document.documentElement.style.setProperty('--joy-offset',settings.joyOffset+'px');
   musicAudio.volume=settings.volume;
   if(!settings.music)stopMusic();
-  fit();updateUI();
+  fit();updateUI();applyCenterButtonLayout();
 }
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 let lastSingleTouchEnd=0;
@@ -276,9 +311,9 @@ function buildSkyBackdrop(){
   b.fillStyle='#000104';b.fillRect(0,0,w,h);
   state.skyBackdrop=bg;
 }
-window.addEventListener('resize',fit);
-window.addEventListener('orientationchange',()=>setTimeout(()=>{fit();updateUI();},120),{passive:true});
-globalThis.screen?.orientation?.addEventListener?.('change',()=>setTimeout(()=>{fit();updateUI();},80));
+window.addEventListener('resize',()=>{fit();applyCenterButtonLayout();});
+window.addEventListener('orientationchange',()=>setTimeout(()=>{fit();updateUI();applyCenterButtonLayout();},120),{passive:true});
+globalThis.screen?.orientation?.addEventListener?.('change',()=>setTimeout(()=>{fit();updateUI();applyCenterButtonLayout();},80));
 applySettings();
 function start(save) {
   state.save=save; state.scene=save.scene || 'system';
@@ -303,6 +338,7 @@ function start(save) {
   else state.camera={...save.ship};
   $('welcome').classList.remove('visible'); $('app').hidden=false;
   applyOrientationPreference();
+  applyCenterButtonLayout();
   persist(); updateUI();
 }
 function create(sol=false) {
@@ -461,9 +497,33 @@ function primary() {
 }
 $('primaryAction').onclick=primary;
 $('secondaryAction').onclick=()=>showDetails(state.selected);
-$('mapButton').onclick=()=>state.scene==='chart'?enterSystem(currentStar()):state.scene==='surface'?toast('Launch before opening the star chart.'):enterChart();
-$('homeButton').onclick=()=>{state.panUntil=0;state.autopilot=null;
-  state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};};
+$('mapButton').onclick=()=>state.scene==='chart'?enterSystem(currentStar()):state.scene==='surface'?toast('Launch before engaging Warp Drive.'):enterChart();
+$('homeButton').onclick=()=>{
+  if(centerSuppressClick){centerSuppressClick=false;return;}
+  state.panUntil=0;state.autopilot=null;
+  state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};
+};
+$('homeButton').addEventListener('pointerdown',e=>{
+  if(settings.centerButton!=='custom')return;
+  centerDrag={id:e.pointerId,startX:e.clientX,startY:e.clientY,moved:false};
+  $('homeButton').setPointerCapture?.(e.pointerId);
+  document.body.classList.add('center-editing');
+  e.preventDefault();
+});
+$('homeButton').addEventListener('pointermove',e=>{
+  if(!centerDrag||e.pointerId!==centerDrag.id)return;
+  if(Math.hypot(e.clientX-centerDrag.startX,e.clientY-centerDrag.startY)>4)centerDrag.moved=true;
+  settings.centerX=clamp(e.clientX/window.innerWidth*100,2,98);
+  settings.centerY=clamp(e.clientY/window.innerHeight*100,2,98);
+  applyCenterButtonLayout();
+});
+const finishCenterDrag=e=>{
+  if(!centerDrag||e.pointerId!==centerDrag.id)return;
+  if(centerDrag.moved){centerSuppressClick=true;saveSettings();toast('Center control position saved');}
+  centerDrag=null;document.body.classList.remove('center-editing');
+};
+$('homeButton').addEventListener('pointerup',finishCenterDrag);
+$('homeButton').addEventListener('pointercancel',finishCenterDrag);
 $('journalButton').onclick=showJournal;
 $('zoneToggle').onclick=()=>{settings.zone=!settings.zone;saveSettings();updateUI();};
 $('systemChartToggle').onclick=()=>{
@@ -543,8 +603,12 @@ function updateUI() {
   $('primaryAction').textContent=action;
   $('secondaryAction').hidden=!details;
   $('primaryAction').disabled=action==='NO SOLID SURFACE';
-  $('mapButton').querySelector('.control-label').textContent=scene==='chart'?'SYSTEM':'CHART';
-  $('mapButton').disabled=scene==='surface';
+  const warp=$('mapButton'),warpLabel=warp.querySelector('.warp-label'),warpSub=warp.querySelector('.warp-sub');
+  const returning=scene==='chart';
+  warpLabel.textContent=returning?'RETURN':'WARP DRIVE';
+  warpSub.textContent=returning?'LOCAL SYSTEM':'INTERSTELLAR';
+  warp.dataset.warpMode=returning?'return':'warp';
+  warp.disabled=scene==='surface';
   $('clock').textContent=formatGameDate();
   $('clock').title=(settings.timeMode==='realtime'?'Real-time 1:1':'Accelerated · 1 real minute = 1 game hour')+' · '+preferredTimeZone()+(settings.paused&&settings.timeMode!=='realtime'?' · paused':'');
   const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship;
@@ -613,6 +677,7 @@ function openSettings(){
       sync();saveSettings();applySettings();
       if(key==='music'||key==='volume')applyMusicSetting();
       if(key==='orientation')applyOrientationPreference();
+      if(key==='centerButton'&&settings.centerButton==='custom')toast('Close Settings, then drag CENTER anywhere you want.');
     });
     const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
   }
@@ -646,6 +711,7 @@ function openSettings(){
   control('controls','Input mode','select',[['auto','Automatic'],['touch','Touch joystick'],['desktop','Keyboard / mouse']]);
   control('orientation','Screen orientation','select',[['landscape','Landscape · preferred'],['portrait','Portrait · lock'],['auto','Follow device']]);
   control('joyX','Joystick position (%)','range',[8,92,1]);control('joyOffset','Joystick height (px)','range',[-70,120,1]);
+  control('centerButton','Center button','select',[['right','Right of joystick'],['above','Above joystick'],['custom','Custom · drag in game'],['hidden','Hidden']]);
   control('cheats','Instant travel','checkbox');
 
   const details=document.createElement('details');details.className='changelog-details';

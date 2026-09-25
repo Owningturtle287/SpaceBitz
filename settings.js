@@ -1,19 +1,20 @@
 export const DEFAULT_SETTINGS=Object.freeze({
-  version:5,music:true,volume:.75,zone:true,orbits:true,labels:true,
+  version:6,music:true,volume:.75,zone:true,orbits:true,labels:true,
   starMotion:true,twinkle:true,reducedMotion:false,showCoords:false,showFPS:false,
   travelLines:true,units:'mi',controls:'auto',joyX:16,joyOffset:0,pixelSize:2,
-  resolution:'2',paused:false,cheats:false,timeMode:'accelerated',timeZone:'local',orientation:'landscape'
+  resolution:'2',paused:false,cheats:false,timeMode:'accelerated',timeZone:'local',orientation:'landscape',
+  centerButton:'right',centerX:29,centerY:76
 });
 export function normalizeSettings(raw={}) {
   if(!raw||typeof raw!=='object')raw={};
   const out={...DEFAULT_SETTINGS};
   for(const key of Object.keys(out))if(typeof out[key]==='boolean'&&typeof raw[key]==='boolean')out[key]=raw[key];
-  for(const [key,min,max] of [['volume',0,1],['joyX',8,92],['joyOffset',-70,120]])
+  for(const [key,min,max] of [['volume',0,1],['joyX',8,92],['joyOffset',-70,120],['centerX',2,98],['centerY',2,98]])
     if(Number.isFinite(raw[key]))out[key]=Math.min(max,Math.max(min,raw[key]));
   for(const [key,values] of [
     ['units',['km','mi','au']],['controls',['auto','touch','desktop']],
     ['resolution',['auto','1','2']],['pixelSize',[2,3,4]],['timeMode',['accelerated','realtime']],
-    ['orientation',['auto','landscape','portrait']]
+    ['orientation',['auto','landscape','portrait']],['centerButton',['right','above','custom','hidden']]
   ]) if(values.includes(raw[key]))out[key]=raw[key];
   if(typeof raw.timeZone==='string'&&raw.timeZone.length<=80)out.timeZone=raw.timeZone;
   return out;

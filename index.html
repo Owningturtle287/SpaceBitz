@@ -29,7 +29,10 @@
       </aside>
       <div class="top-actions">
         <span id="clock" class="clock">01 JAN 2026</span>
-        <button id="settingsOpen" class="icon-button settings-button" aria-label="Open settings"><span class="settings-glyph" aria-hidden="true"></span></button>
+        <div class="utility-stack">
+          <button id="settingsOpen" class="icon-button settings-button utility-button" aria-label="Open settings"><span class="settings-glyph" aria-hidden="true"></span><span class="utility-label">SET</span></button>
+          <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
+        </div>
       </div>
     </header>
     <section class="target glass target-minimal" id="targetCard" aria-live="polite" hidden>
@@ -38,18 +41,19 @@
     </section>
     <div id="telemetry" hidden></div>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
-    <div class="bottom">
-      <div class="main-controls glass nav-dock">
-        <button id="mapButton" class="button subtle nav-button"><span class="control-icon" aria-hidden="true">✦</span><span class="control-label">CHART</span></button>
-        <button id="homeButton" class="button subtle nav-button"><span class="control-icon" aria-hidden="true">⌖</span><span class="control-label">CENTER</span></button>
-        <button id="journalButton" class="button subtle nav-button"><span class="control-icon" aria-hidden="true">▤</span><span class="control-label">LOG</span></button>
-      </div>
-    </div>
+    <button id="homeButton" class="center-button hud-float" type="button" aria-label="Recenter view">
+      <span class="center-reticle" aria-hidden="true">⌖</span><span class="center-label">CENTER</span>
+    </button>
+    <button id="mapButton" class="warp-drive-button" type="button" aria-label="Open Warp Drive to interstellar chart">
+      <span class="warp-stars" aria-hidden="true">✦</span>
+      <span class="warp-copy"><strong class="warp-label">WARP DRIVE</strong><small class="warp-sub">INTERSTELLAR</small></span>
+      <span class="warp-chevrons" aria-hidden="true">»</span>
+    </button>
   </div>
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.3.5</span>
+        <span class="version-chip main-menu-version">v1.3.6</span>
         <div id="welcomeTitle" class="hero-logo" aria-label="SpaceBitz">
           <span class="hero-logo-mark" aria-hidden="true">✦</span>
           <span class="hero-title-pixel pixel-a" aria-hidden="true"></span>
