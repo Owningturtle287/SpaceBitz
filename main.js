@@ -18,6 +18,11 @@ const settings = normalizeSettings({
 const terrain=new TerrainRenderer();
 const soundtrack=new SoundtrackPlayer('./audio/nostalgic_melody_soft_synth.mp3');
 const CHANGELOG=[
+  {version:'1.3.2',items:[
+    'Removed gesture-driven audio priming and visibility pause/resume behavior that could make the soundtrack repeatedly stop and restart on mobile.',
+    'Music now uses one timer, one audio element and one ended event: wait two seconds, play once, wait two seconds, repeat.',
+    'If browser autoplay is blocked, only one temporary user-gesture listener is installed and removed immediately after playback succeeds.'
+  ]},
   {version:'1.3.1',items:[
     'Simplified music playback to one continuous playlist lifecycle: two-second startup delay, full song playback, two-second gap, then the next song.',
     'The intro song now begins from the main menu and is no longer restarted by entering a universe, changing scenes, selecting worlds or returning to the menu.',
@@ -934,10 +939,9 @@ function frame(now) {
 requestAnimationFrame(frame);
 document.addEventListener('visibilitychange',()=>{
   state.last=performance.now();
-  soundtrack.visibility(document.hidden);
   if(document.hidden){resetInput();persist();}
 });
-window.addEventListener('pagehide',()=>{soundtrack.visibility(true);persist();});
+window.addEventListener('pagehide',()=>{soundtrack.stop();persist();});
 
 // Pointer picking and camera panning. A tap selects; a drag pans; two fingers pinch.
 const pointers=new Map();let gesture=null;
