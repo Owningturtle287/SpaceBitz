@@ -18,7 +18,10 @@ test('target card is intentionally minimal',()=>{
   assert.match(index,/id="primaryAction"/);
   assert.match(index,/id="secondaryAction"/);
   assert.doesNotMatch(index,/id="targetMetrics"|id="targetText"|id="targetTag"|id="targetGlyph"/);
-  assert.doesNotMatch(main,/\$('targetMetrics'\)|\$('targetText'\)|\$('targetTag'\)|\$('targetGlyph'\)/);
+  assert.ok(!main.includes("$('targetMetrics')"));
+  assert.ok(!main.includes("$('targetText')"));
+  assert.ok(!main.includes("$('targetTag')"));
+  assert.ok(!main.includes("$('targetGlyph')"));
 });
 
 test('background contains no offset nebula/backlight',()=>{
