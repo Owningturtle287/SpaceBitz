@@ -20,6 +20,21 @@ jobs:
       - uses: actions/checkout@v6
       - name: Check simulation, terrain and audio
         run: npm test
+      - name: Build full soundtrack
+        run: |
+          python -m pip install --disable-pip-version-check -q numpy scipy
+          python scripts/build_soundtrack.py
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+          ffmpeg -y -hide_banner -loglevel error -i audio/nostalgic_melody_soft_synth.wav -ac 1 -ar 44100 -codec:a libmp3lame -b:a 96k -write_xing 0 audio/nostalgic_melody_soft_synth.mp3
+          rm audio/nostalgic_melody_soft_synth.wav
+          BYTES=$(stat -c%s audio/nostalgic_melody_soft_synth.mp3)
+          DURATION=$(ffprobe -v error -show_entries format=duration -of csv=p=0 audio/nostalgic_melody_soft_synth.mp3)
+          echo "Soundtrack: ${BYTES} bytes, ${DURATION}s"
+          test "${BYTES}" -gt 700000
+          awk "BEGIN { exit !(${DURATION} > 67.5 && ${DURATION} < 68.5) }"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:

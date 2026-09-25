@@ -16,48 +16,39 @@ const settings = normalizeSettings({
   ...readJSON(SETTINGS_KEY,{})});
 const terrain=new TerrainRenderer();
 const musicAudio=$('soundtrackAudio');
-const MUSIC_TRACKS=['./audio/nostalgic_melody_soft_synth.mp3'];
-let musicTimer=null,musicTrackIndex=0,musicStarted=false,musicUnlockHandler=null;
+let musicStarted=false,musicUnlockHandler=null;
 
-function clearMusicTimer(){
-  if(musicTimer!==null){clearTimeout(musicTimer);musicTimer=null;}
-}
 function clearMusicUnlock(){
   if(!musicUnlockHandler)return;
   document.removeEventListener('pointerdown',musicUnlockHandler);
+  document.removeEventListener('keydown',musicUnlockHandler);
   musicUnlockHandler=null;
 }
 function armMusicUnlock(){
-  if(musicUnlockHandler||!settings.music||!musicStarted)return;
+  if(musicUnlockHandler||!settings.music)return;
   musicUnlockHandler=()=>{
     clearMusicUnlock();
-    if(settings.music&&musicStarted&&musicAudio.paused)playMusicTrack();
+    if(settings.music&&musicAudio.paused)playMusic();
   };
   document.addEventListener('pointerdown',musicUnlockHandler,{passive:true,once:true});
+  document.addEventListener('keydown',musicUnlockHandler,{passive:true,once:true});
 }
-function playMusicTrack(){
-  clearMusicTimer();
-  if(!settings.music||!musicStarted)return;
+function playMusic(){
+  if(!settings.music)return;
   musicAudio.volume=settings.volume;
-  try{musicAudio.currentTime=0;}catch{}
-  let attempt;
-  try{attempt=musicAudio.play();}
+  let result;
+  try{result=musicAudio.play();}
   catch{armMusicUnlock();return;}
-  if(attempt?.catch)attempt.catch(()=>armMusicUnlock());
-}
-function scheduleMusic(delay=2000){
-  clearMusicTimer();
-  if(!settings.music||!musicStarted)return;
-  musicTimer=setTimeout(()=>{musicTimer=null;playMusicTrack();},delay);
+  if(result?.then)result.then(clearMusicUnlock).catch(armMusicUnlock);
 }
 function beginMusic(){
   if(musicStarted)return;
   musicStarted=true;
-  musicTrackIndex=0;
-  scheduleMusic(2000);
+  musicAudio.loop=true;
+  try{musicAudio.currentTime=0;}catch{}
+  playMusic();
 }
 function stopMusic(){
-  clearMusicTimer();
   clearMusicUnlock();
   musicAudio.pause();
   try{musicAudio.currentTime=0;}catch{}
@@ -65,17 +56,16 @@ function stopMusic(){
 function applyMusicSetting(){
   musicAudio.volume=settings.volume;
   if(!settings.music){stopMusic();return;}
-  if(musicStarted&&musicAudio.paused&&musicTimer===null)scheduleMusic(2000);
+  if(musicStarted&&musicAudio.paused){try{musicAudio.currentTime=0;}catch{}playMusic();}
 }
-musicAudio.addEventListener('ended',()=>{
-  if(!settings.music||!musicStarted)return;
-  musicTrackIndex=(musicTrackIndex+1)%MUSIC_TRACKS.length;
-  const next=MUSIC_TRACKS[musicTrackIndex];
-  if(!musicAudio.src.endsWith(next.split('/').pop()))musicAudio.src=next;
-  scheduleMusic(2000);
-});
 
 const CHANGELOG=[
+  {version:'1.3.4',items:[
+    'Replaced the corrupted/truncated repository MP3 with a soundtrack generated fresh during every Pages deployment.',
+    'The deployment now verifies soundtrack size and duration before publishing, preventing an incomplete audio file from going live.',
+    'Removed JavaScript song timers and ended-event playlist scheduling; the intro now uses one native looping audio element with its two-second lead-in baked into the file.',
+    'Mobile browsers that block audible autoplay still require the first user interaction; that browser restriction cannot be bypassed reliably.'
+  ]},
   {version:'1.3.3',items:[
     'Rebuilt music playback from scratch around one persistent HTML audio element instead of the previous soundtrack player class.',
     'Removed music from the service-worker cache and bypassed all audio/range requests so mobile browsers can stream the track normally.',
