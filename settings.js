@@ -1,5 +1,5 @@
 export const DEFAULT_SETTINGS=Object.freeze({
-  version:4,music:true,volume:.65,zone:true,orbits:true,labels:true,
+  version:5,music:true,volume:.75,zone:true,orbits:true,labels:true,
   starMotion:true,twinkle:true,reducedMotion:false,showCoords:false,showFPS:false,
   travelLines:true,units:'mi',controls:'auto',joyX:16,joyOffset:0,pixelSize:2,
   resolution:'2',paused:false,cheats:false,timeMode:'accelerated',timeZone:'local',orientation:'landscape'

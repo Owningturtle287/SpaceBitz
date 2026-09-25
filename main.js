@@ -18,6 +18,11 @@ const settings = normalizeSettings({
 const terrain=new TerrainRenderer();
 const music=new Soundtrack(()=>{});
 const CHANGELOG=[
+  {version:'1.2.8',items:[
+    'Rebuilt the soundtrack from the original uploaded melody reference at its native 0.60-second note timing, preserving the tune while removing recorded noise/static.',
+    'Replaced overlapping per-note oscillators with one continuous melody oscillator so a second copy of the song cannot layer underneath the first.',
+    'Added a warmer harmonic tone, cleaner note separation, gentle low-pass filtering and compression for higher perceived volume without clipping.'
+  ]},
   {version:'1.2.7',items:[
     'Redesigned the orbital HUD into a slimmer system navigator and compact target card so more of the system remains visible.',
     'Condensed planet and moon rows, target metrics, labels and actions while preserving the same navigation and detail controls.',
