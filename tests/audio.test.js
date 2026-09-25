@@ -8,7 +8,7 @@ const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
 const workflow=readFileSync(new URL('../.github/workflows/pages.yml',import.meta.url),'utf8');
 
 test('music is one native looping audio element with no JS song timer or ended scheduler',()=>{
-  assert.match(index,/id="soundtrackAudio"[^>]*\bloop\b/);
+  assert.match(index,/id="soundtrackAudio"[^>]*\bautoplay\b[^>]*\bloop\b|id="soundtrackAudio"[^>]*\bloop\b[^>]*\bautoplay\b/);
   assert.match(index,/nostalgic_melody_soft_synth\.mp3/);
   assert.doesNotMatch(main,/SoundtrackPlayer|musicTimer|scheduleMusic|addEventListener\('ended'/);
   assert.match(main,/musicAudio\.play\(\)/);

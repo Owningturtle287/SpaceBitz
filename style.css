@@ -692,3 +692,218 @@ body[data-orientation=portrait]{--preferred-orientation:portrait}
   #joystick{z-index:9}
 }
 
+/* SpaceBitz 1.3.5: cleaner flight HUD and black starfield. */
+html,body{background:#000104}
+.vignette{display:none!important}
+.brand,.status{display:none!important}
+
+.topbar{
+  min-height:64px;
+  padding:calc(9px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 7px max(12px,env(safe-area-inset-left));
+  align-items:flex-start;
+  background:linear-gradient(#02070ed0,#02070e00);
+}
+.top-system-chart.mission-dropdown{
+  position:relative;
+  top:auto;
+  left:auto;
+  width:188px;
+  max-height:none;
+  padding:0;
+  overflow:visible;
+  z-index:8;
+  border-radius:8px;
+}
+.top-system-chart .mission-toggle{
+  min-height:43px;
+  padding:6px 8px;
+}
+.top-system-chart .mission-content{
+  position:absolute;
+  top:calc(100% + 5px);
+  left:0;
+  width:100%;
+  max-height:min(48dvh,310px);
+  padding:6px;
+  border:1px solid rgba(125,190,207,.22);
+  border-radius:8px;
+  background:rgba(3,13,23,.96);
+  box-shadow:0 12px 30px rgba(0,0,0,.42);
+  backdrop-filter:blur(12px);
+}
+.top-system-chart .mission-content>p,
+.top-system-chart .mission-content .legend{display:none!important}
+.top-system-chart .body-list{margin:0;gap:2px}
+.top-actions{margin-left:auto;gap:10px}
+.clock{
+  min-height:36px;
+  display:flex;
+  align-items:center;
+  padding:0 6px;
+  color:#91aebb;
+  font-size:8.5px;
+  letter-spacing:.09em;
+}
+.settings-button{
+  position:relative;
+  min-width:38px;
+  min-height:38px;
+  border-radius:7px;
+  border-color:rgba(111,219,205,.42);
+  background:linear-gradient(145deg,rgba(8,27,37,.96),rgba(7,16,29,.96));
+  box-shadow:inset 0 0 0 1px rgba(113,229,212,.05),0 0 16px rgba(57,192,176,.08);
+}
+.settings-button:before,
+.settings-button:after{
+  content:'';
+  position:absolute;
+  width:4px;height:4px;
+  border-color:#73d8cd;
+  opacity:.72;
+}
+.settings-button:before{left:4px;top:4px;border-left:1px solid;border-top:1px solid}
+.settings-button:after{right:4px;bottom:4px;border-right:1px solid;border-bottom:1px solid}
+.settings-glyph{
+  position:relative;
+  width:15px;height:15px;
+  display:block;
+  transform:rotate(45deg);
+  border:1px solid #82e2d5;
+  box-shadow:0 0 8px rgba(91,224,207,.22);
+}
+.settings-glyph:before{
+  content:'';
+  position:absolute;
+  inset:4px;
+  background:#e9cc72;
+  box-shadow:0 0 6px rgba(242,203,102,.35);
+}
+.settings-glyph:after{
+  content:'';
+  position:absolute;
+  left:6px;top:-4px;
+  width:1px;height:21px;
+  background:rgba(120,220,207,.42);
+}
+
+.target-minimal{
+  top:calc(66px + env(safe-area-inset-top));
+  right:max(12px,env(safe-area-inset-right));
+  width:190px;
+  padding:8px;
+  border-radius:8px;
+}
+.target-minimal[hidden]{display:none!important}
+.target-minimal .target-line{min-height:29px;padding:0 3px}
+.target-minimal h2{
+  margin:0;
+  font-size:16px;
+  letter-spacing:-.02em;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.target-minimal .target-actions{margin-top:5px;gap:4px}
+.target-minimal .target-actions .button{
+  min-height:30px;
+  padding:4px 7px;
+  border-radius:5px;
+  font-size:8.5px;
+}
+.target-minimal .target-actions .button.primary{box-shadow:none}
+
+.bottom{
+  left:50%;
+  right:auto;
+  bottom:calc(10px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);
+  justify-content:center;
+  gap:0;
+}
+.main-controls.nav-dock{
+  height:auto;
+  padding:4px;
+  gap:3px;
+  border-radius:11px;
+  background:rgba(4,15,25,.86);
+  border-color:rgba(116,191,200,.24);
+  box-shadow:0 8px 26px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.035);
+  backdrop-filter:blur(10px);
+}
+.nav-dock .nav-button{
+  width:66px;
+  min-height:45px;
+  padding:4px 5px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:2px;
+  border:1px solid rgba(112,180,191,.14)!important;
+  border-radius:7px;
+  background:linear-gradient(180deg,rgba(15,40,52,.72),rgba(7,22,34,.72))!important;
+}
+.nav-dock .nav-button:hover{background:linear-gradient(180deg,rgba(23,61,72,.9),rgba(10,31,43,.9))!important}
+.control-icon{
+  display:grid;
+  place-items:center;
+  width:20px;height:20px;
+  color:#8ce3d6;
+  font:700 16px/1 ui-monospace,monospace;
+  text-shadow:0 0 9px rgba(96,224,207,.28);
+}
+.control-label{
+  color:#8ca8b5;
+  font:700 6.5px/1 'DM Mono',ui-monospace,monospace;
+  letter-spacing:.13em;
+}
+.nav-button:disabled .control-icon,.nav-button:disabled .control-label{opacity:.42}
+
+@media(max-width:600px) and (orientation:portrait){
+  .topbar{min-height:58px;padding:calc(7px + env(safe-area-inset-top)) 8px 5px}
+  .top-system-chart.mission-dropdown{width:min(46vw,168px)}
+  .top-system-chart .mission-toggle{min-height:39px;padding:5px 7px}
+  .top-system-chart .mission-toggle strong{font-size:12px}
+  .top-system-chart .mission-content{max-height:31dvh}
+  .clock{font-size:7px;padding:0 2px}
+  .settings-button{min-width:34px;min-height:34px}
+  .target-minimal{
+    top:auto;
+    right:8px;
+    bottom:calc(67px + env(safe-area-inset-bottom));
+    width:min(55vw,210px);
+  }
+  .nav-dock .nav-button{width:58px;min-height:41px}
+  .control-icon{font-size:14px}
+  #joystick{z-index:9}
+}
+@media (orientation:landscape) and (max-height:620px){
+  .topbar{min-height:46px;padding:calc(5px + env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) 4px max(8px,env(safe-area-inset-left))}
+  .top-system-chart.mission-dropdown{width:min(22vw,154px)}
+  .top-system-chart .mission-toggle{min-height:34px;padding:4px 6px}
+  .top-system-chart .mission-toggle .eyebrow{font-size:5.5px}
+  .top-system-chart .mission-toggle strong{font-size:11px}
+  .top-system-chart .mission-content{max-height:54dvh;padding:4px}
+  .top-system-chart .body-entry{min-height:20px;padding:2px 3px;font-size:8px}
+  .clock{font-size:7px;min-height:32px}
+  .settings-button{min-width:32px;min-height:32px}
+  .settings-glyph{width:13px;height:13px}
+  .target-minimal{
+    top:calc(47px + env(safe-area-inset-top));
+    right:max(8px,env(safe-area-inset-right));
+    width:min(22vw,174px);
+    padding:6px;
+  }
+  .target-minimal h2{font-size:13px}
+  .target-minimal .target-actions .button{min-height:26px;font-size:7.5px;padding:3px 5px}
+  .bottom{
+    left:50%;
+    right:auto;
+    bottom:calc(6px + env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+  }
+  .main-controls.nav-dock{height:auto;max-width:none;padding:3px;gap:2px;margin:0}
+  .nav-dock .nav-button{width:56px;min-height:37px;padding:3px}
+  .control-icon{width:17px;height:17px;font-size:13px}
+  .control-label{font-size:6px}
+}
+

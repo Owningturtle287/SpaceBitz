@@ -58,8 +58,15 @@ function applyMusicSetting(){
   if(!settings.music){stopMusic();return;}
   if(musicStarted&&musicAudio.paused){try{musicAudio.currentTime=0;}catch{}playMusic();}
 }
+beginMusic();
 
 const CHANGELOG=[
+  {version:'1.3.5',items:[
+    'Moved the soundtrack startup attempt to the earliest main-menu initialization and enabled native autoplay; the two-second lead-in remains baked into the track.',
+    'Removed the off-center teal nebula/backlight from the game background for a clean black starfield.',
+    'Moved the system chart into the top-left header, removed the SpaceBitz in-game brand and bottom system-status strip, and simplified the travel card to name, action and Info.',
+    'Restyled the bottom navigation controls and Settings button with a more cohesive pixel-space interface.'
+  ]},
   {version:'1.3.4',items:[
     'Replaced the corrupted/truncated repository MP3 with a soundtrack generated fresh during every Pages deployment.',
     'The deployment now verifies soundtrack size and duration before publishing, preventing an incomplete audio file from going live.',
@@ -266,11 +273,7 @@ function buildSkyBackdrop(){
   const bg=document.createElement('canvas');bg.width=canvas.width;bg.height=canvas.height;
   const b=bg.getContext('2d',{alpha:false});b.setTransform(state.dpr,0,0,state.dpr,0,0);
   const {width:w,height:h}=state;
-  const grad=b.createRadialGradient(w*.5,h*.42,10,w*.5,h*.42,Math.max(w,h)*.9);
-  grad.addColorStop(0,'#080b12');grad.addColorStop(.55,'#03050a');grad.addColorStop(1,'#000104');
-  b.fillStyle=grad;b.fillRect(0,0,w,h);
-  b.save();b.globalAlpha=.11;const neb=b.createRadialGradient(w*.7,h*.4,15,w*.7,h*.4,w*.48);
-  neb.addColorStop(0,'#338e9c');neb.addColorStop(1,'#338e9c00');b.fillStyle=neb;b.fillRect(0,0,w,h);b.restore();
+  b.fillStyle='#000104';b.fillRect(0,0,w,h);
   state.skyBackdrop=bg;
 }
 window.addEventListener('resize',fit);
@@ -337,7 +340,6 @@ function showMenuStage(stage='main'){
   else setTimeout(()=>$('startGame')?.focus(),0);
 }
 renderSaves();
-beginMusic();
 $('startGame').onclick=()=>showMenuStage('generation');
 $('backToMain').onclick=()=>showMenuStage('main');
 $('multiplayerGame').onclick=()=>toast('Multiplayer is coming in a future update.');
@@ -517,47 +519,34 @@ function updateUI() {
     list.scrollLeft=scroll;state.listKey=listKey;
   }
   $('bodyList').hidden=scene!=='system';
-  const metric=$('targetMetrics');metric.replaceChildren();
-  let title,text,tag,action,glyph,details=false;
+  let title='',action='SELECT',details=false;
   if(scene==='surface'){
     const body=findBody(state.save.landed),sample=nearestSample();
     const near=sample&&Math.hypot(sample.x-state.save.surface.x,sample.y-state.save.surface.y)<36;
     const landerNear=Math.hypot(state.save.surface.x,state.save.surface.y)<62;
-    title=body?.name||'Surface';tag='SURFACE EXPEDITION';glyph='◆';
-    text=near?'A mineral signature is within reach.':landerNear?'Your lander is nearby. Move to a glowing sample or launch.':'Explore the terrain. The beacon marks your lander.';
+    title=body?.name||'Surface';
     action=near?'COLLECT SAMPLE':landerNear?'LAUNCH':'RETURN TO LANDER';
-    addMetric(metric,'COLLECTED',String(state.save.discoveries.filter(id=>id.startsWith(body.id+':sample')).length));
-    addMetric(metric,'TO LANDER',Math.round(Math.hypot(state.save.surface.x,state.save.surface.y))+' m');
   } else if(scene==='chart'){
-    title=sel?starName(sel.seed):'Star chart';tag='JUMP NAV';glyph='✦';
+    title=sel?starName(sel.seed):'';
     const distance=sel?Math.hypot(sel.x-state.save.chart.x,sel.y-state.save.chart.y):0;
-    text=sel?'Selected jump destination.':'Tap a star to chart a jump.';
     action=!sel?'SELECT STAR':distance<38?'ENTER SYSTEM':'JUMP';
-    if(sel){addMetric(metric,'DISTANCE',Math.round(distance)+' units');addMetric(metric,'CLASS',makeSystem(sel.seed).star.type);details=true;}
+    details=Boolean(sel);
   } else if(sel?.kind==='star'){
-    title=sel.name;tag='PRIMARY STAR';glyph='✦';details=true;
-    text='System primary and temperate-zone reference.';
-    action='SELECT WORLD';
-    addMetric(metric,'CLASS',sel.type);addMetric(metric,'DIAMETER',Math.round(sel.diameter).toLocaleString()+' km');
+    title=sel.name;action='SELECT WORLD';details=true;
   } else if(sel){
-    title=sel.name;tag=sel.kind==='moon'?'MOON TARGET':'PLANET TARGET';glyph=sel.type==='gas'?'◌':'◉';details=true;
-    const zone=habitableZone(sys.star.luminosity),inhab=sel.kind==='planet'&&sel.au>=zone.inner&&sel.au<=zone.outer;
-    text=inhab?'Temperate orbit.':sel.kind==='moon'?'Natural satellite.':'Course ready.';
-    const p=bodyPosition(sel,state.save.days,sys);const distance=Math.hypot(p.x-state.save.ship.x,p.y-state.save.ship.y);
+    title=sel.name;details=true;
+    const p=bodyPosition(sel,state.save.days,sys),distance=Math.hypot(p.x-state.save.ship.x,p.y-state.save.ship.y);
     action=distance<visualRadius(sel.diameter,sel.kind)+48?(sel.solid?'LAND':'NO SOLID SURFACE'):'TRAVEL';
-    if(!sel.solid)text='No solid surface · check its moons.';
-    addMetric(metric,'DIAMETER',diameterText(sel.diameter));
-    addMetric(metric,sel.kind==='moon'?'ORBIT':'YEAR',sel.period<100?sel.period.toFixed(1)+' days':Math.round(sel.period)+' days');
-    if(inhab)addMetric(metric,'ZONE','TEMPERATE');
-  } else {title='Chart a course';tag='NAV TARGET';glyph='✧';text='Tap a world or use the system list.';action='SELECT WORLD';}
-  $('targetName').textContent=title;$('targetTag').textContent=tag;$('targetText').textContent=text;$('targetGlyph').textContent=glyph;
-  $('primaryAction').textContent=action;$('secondaryAction').hidden=!details;
+  }
+  $('targetCard').hidden=scene!=='surface'&&!sel;
+  $('targetName').textContent=title||'Target';
+  $('primaryAction').textContent=action;
+  $('secondaryAction').hidden=!details;
   $('primaryAction').disabled=action==='NO SOLID SURFACE';
-  $('mapButton').querySelector('span').textContent=scene==='chart'?'RETURN TO SYSTEM':'STAR CHART';
+  $('mapButton').querySelector('.control-label').textContent=scene==='chart'?'SYSTEM':'CHART';
   $('mapButton').disabled=scene==='surface';
   $('clock').textContent=formatGameDate();
   $('clock').title=(settings.timeMode==='realtime'?'Real-time 1:1':'Accelerated · 1 real minute = 1 game hour')+' · '+preferredTimeZone()+(settings.paused&&settings.timeMode!=='realtime'?' · paused':'');
-  $('statusText').textContent=scene==='chart'?'JUMP DRIVE // ONLINE':scene==='surface'?'SUIT // NOMINAL':`SYSTEM // ${sys.name.toUpperCase()}`;
   const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship;
   $('telemetry').hidden=!settings.showCoords&&!settings.showFPS;
   $('telemetry').textContent=[settings.showCoords?`X ${Math.round(pos.x)} · Y ${Math.round(pos.y)}`:'',settings.showFPS?`${Math.round(state.fps)} FPS`:''].filter(Boolean).join('  /  ');

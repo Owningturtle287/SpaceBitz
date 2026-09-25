@@ -16,38 +16,40 @@
   <div class="vignette" aria-hidden="true"></div>
   <div id="app" hidden>
     <header class="topbar">
-      <div class="brand"><span class="brandmark">✦</span><span>SPACE<span class="brand-accent">BITZ</span></span><span class="edition">FIELD EDITION</span></div>
-      <div class="top-actions"><span id="clock" class="clock">01 JAN 2026</span><button id="settingsOpen" class="icon-button" aria-label="Open settings">⚙</button></div>
-    </header>
-    <aside class="mission glass mission-dropdown" id="systemChart" aria-live="polite">
-      <button id="systemChartToggle" class="mission-toggle" type="button" aria-expanded="false" aria-controls="systemChartContent">
-        <span class="mission-toggle-copy"><span class="eyebrow" id="modeLabel">ORBITAL / SYSTEM</span><strong id="placeLabel">Sol</strong></span>
-        <span class="mission-chevron" aria-hidden="true">⌄</span>
-      </button>
-      <div id="systemChartContent" class="mission-content" hidden>
-        <p id="hint">Select a world to explore.</p>
-        <div id="zoneLegend" class="legend"><i></i> TEMPERATE ZONE <button id="zoneToggle" type="button" class="text-button" aria-pressed="true">ON</button></div>
-        <div id="bodyList" class="body-list" aria-label="Celestial bodies"></div>
+      <aside class="mission glass mission-dropdown top-system-chart" id="systemChart" aria-live="polite">
+        <button id="systemChartToggle" class="mission-toggle" type="button" aria-expanded="false" aria-controls="systemChartContent">
+          <span class="mission-toggle-copy"><span class="eyebrow" id="modeLabel">ORBITAL / SYSTEM</span><strong id="placeLabel">Sol</strong></span>
+          <span class="mission-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div id="systemChartContent" class="mission-content" hidden>
+          <p id="hint">Select a world to explore.</p>
+          <div id="zoneLegend" class="legend"><i></i> TEMPERATE ZONE <button id="zoneToggle" type="button" class="text-button" aria-pressed="true">ON</button></div>
+          <div id="bodyList" class="body-list" aria-label="Celestial bodies"></div>
+        </div>
+      </aside>
+      <div class="top-actions">
+        <span id="clock" class="clock">01 JAN 2026</span>
+        <button id="settingsOpen" class="icon-button settings-button" aria-label="Open settings"><span class="settings-glyph" aria-hidden="true"></span></button>
       </div>
-    </aside>
-    <section class="target glass" id="targetCard" aria-live="polite">
-      <div class="eyebrow" id="targetTag">FLIGHT COMPUTER</div>
-      <div class="target-line"><h2 id="targetName">Chart a course</h2><span id="targetGlyph">✧</span></div>
-      <p id="targetText">Tap a planet or choose one from the system list.</p>
-      <div id="targetMetrics" class="metrics"></div>
-      <div class="target-actions"><button id="primaryAction" class="button primary">Explore Earth</button><button id="secondaryAction" class="button subtle" hidden>INFO</button></div>
+    </header>
+    <section class="target glass target-minimal" id="targetCard" aria-live="polite" hidden>
+      <div class="target-line"><h2 id="targetName">Chart a course</h2></div>
+      <div class="target-actions"><button id="primaryAction" class="button primary">TRAVEL</button><button id="secondaryAction" class="button subtle" hidden>INFO</button></div>
     </section>
     <div id="telemetry" hidden></div>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
     <div class="bottom">
-      <div class="status glass"><span class="status-led"></span><span id="statusText">SYSTEM // SOL</span><span class="key-help">WASD / ARROWS · DRAG TO PAN · SCROLL TO ZOOM</span></div>
-      <div class="main-controls glass"><button id="mapButton" class="button subtle">✦ <span>STAR CHART</span></button><button id="homeButton" class="button subtle">⌖ <span>RECENTER</span></button><button id="journalButton" class="button subtle">▤ <span>LOGBOOK</span></button></div>
+      <div class="main-controls glass nav-dock">
+        <button id="mapButton" class="button subtle nav-button"><span class="control-icon" aria-hidden="true">✦</span><span class="control-label">CHART</span></button>
+        <button id="homeButton" class="button subtle nav-button"><span class="control-icon" aria-hidden="true">⌖</span><span class="control-label">CENTER</span></button>
+        <button id="journalButton" class="button subtle nav-button"><span class="control-icon" aria-hidden="true">▤</span><span class="control-label">LOG</span></button>
+      </div>
     </div>
   </div>
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.3.4</span>
+        <span class="version-chip main-menu-version">v1.3.5</span>
         <div id="welcomeTitle" class="hero-logo" aria-label="SpaceBitz">
           <span class="hero-logo-mark" aria-hidden="true">✦</span>
           <span class="hero-title-pixel pixel-a" aria-hidden="true"></span>
@@ -78,7 +80,7 @@
     <div class="modal-card glass"><div class="modal-head"><div><div class="eyebrow" id="modalEyebrow">FIELD NOTES</div><h2 id="modalTitle">Details</h2></div><button id="modalClose" class="icon-button" aria-label="Close dialog">✕</button></div><div id="modalContent"></div></div>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <audio id="soundtrackAudio" preload="auto" playsinline loop src="./audio/nostalgic_melody_soft_synth.mp3"></audio>
+  <audio id="soundtrackAudio" preload="auto" autoplay playsinline loop src="./audio/nostalgic_melody_soft_synth.mp3"></audio>
   <script type="module" src="./main.js"></script>
 </body>
 </html>
