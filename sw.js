@@ -1,4 +1,4 @@
-const CACHE='spacebitz-field-v1.3.0-synth-dropdown';
+const CACHE='spacebitz-field-v1.3.1-audio-cycle';
 const SHELL=['./','./index.html','./main.js','./model.js','./soundtrack-player.js','./settings.js','./terrain.js','./motion.js','./sprites.js','./celestial.js','./audio/nostalgic_melody_soft_synth.mp3','./style.css','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));

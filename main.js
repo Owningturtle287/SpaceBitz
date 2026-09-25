@@ -18,6 +18,12 @@ const settings = normalizeSettings({
 const terrain=new TerrainRenderer();
 const soundtrack=new SoundtrackPlayer('./audio/nostalgic_melody_soft_synth.mp3');
 const CHANGELOG=[
+  {version:'1.3.1',items:[
+    'Simplified music playback to one continuous playlist lifecycle: two-second startup delay, full song playback, two-second gap, then the next song.',
+    'The intro song now begins from the main menu and is no longer restarted by entering a universe, changing scenes, selecting worlds or returning to the menu.',
+    'Removed native audio looping; repeats are now driven only by the track-ended event so every repeat gets the intended two-second pause.',
+    'Added a browser autoplay unlock fallback while keeping one audio element and one playback state.'
+  ]},
   {version:'1.3.0',items:[
     'Added the separately designed soft-synth soundtrack as the game’s single looping music file, controlled by the existing music and volume settings.',
     'Converted the system navigator into a collapsed dropdown that stays in the upper-left and away from the touch joystick.',
@@ -234,7 +240,6 @@ function start(save) {
   else state.camera={...save.ship};
   $('welcome').classList.remove('visible'); $('app').hidden=false;
   applyOrientationPreference();
-  soundtrack.start(2);
   persist(); updateUI();
 }
 function create(sol=false) {
@@ -272,6 +277,7 @@ function showMenuStage(stage='main'){
   else setTimeout(()=>$('startGame')?.focus(),0);
 }
 renderSaves();
+soundtrack.begin(2);
 $('startGame').onclick=()=>showMenuStage('generation');
 $('backToMain').onclick=()=>showMenuStage('main');
 $('multiplayerGame').onclick=()=>toast('Multiplayer is coming in a future update.');
@@ -556,7 +562,6 @@ function openSettings(){
       if(key==='pixelSize')terrain.clear();
       if(key==='timeMode'&&state.save&&settings.timeMode==='realtime')state.save.days=currentDays();
       sync();saveSettings();applySettings();
-      if(key==='music'&&settings.music&&state.save)soundtrack.startNow();
       if(key==='orientation')applyOrientationPreference();
     });
     const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
@@ -606,7 +611,7 @@ function openSettings(){
   details.append(changelog);box.append(details);
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-    save.onclick=()=>{persist();soundtrack.stop();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
+    save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
     const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
     exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};box.append(exportButton);
@@ -927,8 +932,12 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-document.addEventListener('visibilitychange',()=>{state.last=performance.now();if(document.hidden){resetInput();persist();}});
-window.addEventListener('pagehide',persist);
+document.addEventListener('visibilitychange',()=>{
+  state.last=performance.now();
+  soundtrack.visibility(document.hidden);
+  if(document.hidden){resetInput();persist();}
+});
+window.addEventListener('pagehide',()=>{soundtrack.visibility(true);persist();});
 
 // Pointer picking and camera panning. A tap selects; a drag pans; two fingers pinch.
 const pointers=new Map();let gesture=null;
