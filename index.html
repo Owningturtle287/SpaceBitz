@@ -19,12 +19,16 @@
       <div class="brand"><span class="brandmark">✦</span><span>SPACE<span class="brand-accent">BITZ</span></span><span class="edition">FIELD EDITION</span></div>
       <div class="top-actions"><span id="clock" class="clock">01 JAN 2026</span><button id="settingsOpen" class="icon-button" aria-label="Open settings">⚙</button></div>
     </header>
-    <aside class="mission glass" aria-live="polite">
-      <div class="eyebrow" id="modeLabel">SYSTEM / 01</div>
-      <h1 id="placeLabel">Sol</h1>
-      <p id="hint">Select a world to explore.</p>
-      <div id="zoneLegend" class="legend"><i></i> TEMPERATE ZONE <button id="zoneToggle" type="button" class="text-button" aria-pressed="true">ON</button></div>
-      <div id="bodyList" class="body-list" aria-label="Celestial bodies"></div>
+    <aside class="mission glass mission-dropdown" id="systemChart" aria-live="polite">
+      <button id="systemChartToggle" class="mission-toggle" type="button" aria-expanded="false" aria-controls="systemChartContent">
+        <span class="mission-toggle-copy"><span class="eyebrow" id="modeLabel">ORBITAL / SYSTEM</span><strong id="placeLabel">Sol</strong></span>
+        <span class="mission-chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div id="systemChartContent" class="mission-content" hidden>
+        <p id="hint">Select a world to explore.</p>
+        <div id="zoneLegend" class="legend"><i></i> TEMPERATE ZONE <button id="zoneToggle" type="button" class="text-button" aria-pressed="true">ON</button></div>
+        <div id="bodyList" class="body-list" aria-label="Celestial bodies"></div>
+      </div>
     </aside>
     <section class="target glass" id="targetCard" aria-live="polite">
       <div class="eyebrow" id="targetTag">FLIGHT COMPUTER</div>
@@ -34,7 +38,6 @@
       <div class="target-actions"><button id="primaryAction" class="button primary">Explore Earth</button><button id="secondaryAction" class="button subtle" hidden>INFO</button></div>
     </section>
     <div id="telemetry" hidden></div>
-    <div class="zoom glass" aria-label="Zoom controls"><button id="fitSystem" aria-label="Fit entire system">⌗</button><button id="zoomOut" aria-label="Zoom out">−</button><span id="zoomLabel">100%</span><button id="zoomIn" aria-label="Zoom in">+</button></div>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
     <div class="bottom">
       <div class="status glass"><span class="status-led"></span><span id="statusText">SYSTEM // SOL</span><span class="key-help">WASD / ARROWS · DRAG TO PAN · SCROLL TO ZOOM</span></div>
@@ -44,7 +47,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.2.9</span>
+        <span class="version-chip main-menu-version">v1.3.0</span>
         <div id="welcomeTitle" class="hero-logo" aria-label="SpaceBitz">
           <span class="hero-logo-mark" aria-hidden="true">✦</span>
           <span class="hero-title-pixel pixel-a" aria-hidden="true"></span>

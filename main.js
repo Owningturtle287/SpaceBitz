@@ -1,5 +1,6 @@
 import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
   habitableZone, makeSystem, bodyPosition, galaxyStars, starName, starAppearance} from './model.js';
+import {SoundtrackPlayer} from './soundtrack-player.js';
 import {DEFAULT_SETTINGS,normalizeSettings} from './settings.js';
 import {TerrainRenderer} from './terrain.js';
 import {paintShip,paintAstronaut} from './sprites.js';
@@ -15,7 +16,14 @@ const settings = normalizeSettings({
   reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   ...readJSON(SETTINGS_KEY,{})});
 const terrain=new TerrainRenderer();
+const soundtrack=new SoundtrackPlayer('./audio/nostalgic_melody_soft_synth.mp3');
 const CHANGELOG=[
+  {version:'1.3.0',items:[
+    'Added the separately designed soft-synth soundtrack as the game’s single looping music file, controlled by the existing music and volume settings.',
+    'Converted the system navigator into a collapsed dropdown that stays in the upper-left and away from the touch joystick.',
+    'Removed the on-screen zoom control panel while preserving pinch, wheel and keyboard zoom.',
+    'Planet and moon names now appear in the orbital view only when selected; the system star can remain labeled by default.'
+  ]},
   {version:'1.2.9',items:[
     'Removed the soundtrack playback engine and all music startup, scheduling, resume and visibility hooks.',
     'Removed the music module and music-specific tests so no legacy or replacement melody can play anywhere in the game.',
@@ -98,6 +106,7 @@ function applySettings(){
   document.body.dataset.orientation=settings.orientation;
   document.documentElement.style.setProperty('--joy-x',settings.joyX+'%');
   document.documentElement.style.setProperty('--joy-offset',settings.joyOffset+'px');
+  soundtrack.configure(settings.music,settings.volume);
   fit();updateUI();
 }
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
@@ -225,6 +234,7 @@ function start(save) {
   else state.camera={...save.ship};
   $('welcome').classList.remove('visible'); $('app').hidden=false;
   applyOrientationPreference();
+  soundtrack.start(2);
   persist(); updateUI();
 }
 function create(sol=false) {
@@ -388,15 +398,12 @@ $('homeButton').onclick=()=>{state.panUntil=0;state.autopilot=null;
   state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};};
 $('journalButton').onclick=showJournal;
 $('zoneToggle').onclick=()=>{settings.zone=!settings.zone;saveSettings();updateUI();};
-$('zoomIn').onclick=()=>zoom(1.22);$('zoomOut').onclick=()=>zoom(1/1.22);
-$('fitSystem').onclick=()=>{
-  if(state.scene!=='system')return;
-  const outer=Math.max(...state.system.planets.map(p=>orbitRadius(p.au,state.system.star)+(p.moons.at(-1)?.orbitPx||visualRadius(p.diameter))))+60;
-  state.camera={x:0,y:0};state.panUntil=Infinity;
-  state.zoom=clamp(Math.min(state.width*.44,state.height*.37)/outer,.025,1);
-  updateUI();
+$('systemChartToggle').onclick=()=>{
+  const panel=$('systemChart'),content=$('systemChartContent'),open=!panel.classList.contains('open');
+  panel.classList.toggle('open',open);content.hidden=!open;
+  $('systemChartToggle').setAttribute('aria-expanded',String(open));
 };
-function zoom(factor){state.zoom=clamp(state.zoom*factor,state.scene==='system'?.025:state.scene==='surface'?.65:.34,2.4);$('zoomLabel').textContent=Math.round(state.zoom*100)+'%';}
+function zoom(factor){state.zoom=clamp(state.zoom*factor,state.scene==='system'?.025:state.scene==='surface'?.65:.34,2.4);}
 
 function addMetric(parent,label,value) {
   const div=document.createElement('div');div.className='metric';
@@ -439,7 +446,7 @@ function updateUI() {
       const b=document.createElement('button');b.className='body-entry'+(body.kind==='moon'?' moon':'')+(sel?.id===body.id?' active':'');
       b.style.setProperty('--dot',body.color);b.innerHTML='<span class="body-dot"></span>';
       const name=document.createElement('span');name.textContent=body.name;const au=document.createElement('small');au.textContent=body.kind==='moon'?'MOON':body.au.toFixed(2)+' AU';
-      b.append(name,au);b.onclick=()=>select(body);list.append(b);
+      b.append(name,au);b.onclick=()=>{select(body);$('systemChart').classList.remove('open');$('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');};list.append(b);
     }
     list.scrollLeft=scroll;state.listKey=listKey;
   }
@@ -480,13 +487,11 @@ function updateUI() {
   $('targetName').textContent=title;$('targetTag').textContent=tag;$('targetText').textContent=text;$('targetGlyph').textContent=glyph;
   $('primaryAction').textContent=action;$('secondaryAction').hidden=!details;
   $('primaryAction').disabled=action==='NO SOLID SURFACE';
-  $('fitSystem').hidden=scene!=='system';
   $('mapButton').querySelector('span').textContent=scene==='chart'?'RETURN TO SYSTEM':'STAR CHART';
   $('mapButton').disabled=scene==='surface';
   $('clock').textContent=formatGameDate();
   $('clock').title=(settings.timeMode==='realtime'?'Real-time 1:1':'Accelerated · 1 real minute = 1 game hour')+' · '+preferredTimeZone()+(settings.paused&&settings.timeMode!=='realtime'?' · paused':'');
   $('statusText').textContent=scene==='chart'?'JUMP DRIVE // ONLINE':scene==='surface'?'SUIT // NOMINAL':`SYSTEM // ${sys.name.toUpperCase()}`;
-  $('zoomLabel').textContent=Math.round(state.zoom*100)+'%';
   const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship;
   $('telemetry').hidden=!settings.showCoords&&!settings.showFPS;
   $('telemetry').textContent=[settings.showCoords?`X ${Math.round(pos.x)} · Y ${Math.round(pos.y)}`:'',settings.showFPS?`${Math.round(state.fps)} FPS`:''].filter(Boolean).join('  /  ');
@@ -551,6 +556,7 @@ function openSettings(){
       if(key==='pixelSize')terrain.clear();
       if(key==='timeMode'&&state.save&&settings.timeMode==='realtime')state.save.days=currentDays();
       sync();saveSettings();applySettings();
+      if(key==='music'&&settings.music&&state.save)soundtrack.startNow();
       if(key==='orientation')applyOrientationPreference();
     });
     const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
@@ -600,7 +606,7 @@ function openSettings(){
   details.append(changelog);box.append(details);
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-    save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
+    save.onclick=()=>{persist();soundtrack.stop();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
     const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
     exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};box.append(exportButton);
@@ -791,7 +797,6 @@ function drawPlanet(body,p,now,worldPos) {
   ctx.drawImage(celestialSprite(body,state.save.days,worldPos),p.x-r,p.y-r,2*r,2*r);ctx.restore();
   ctx.strokeStyle='#d9f8fb42';ctx.lineWidth=1;circle(p.x,p.y,r);ctx.stroke();
   if(selected){drawSelection(p.x,p.y,r,now);label(body.name,p.x,p.y-r-25,true);}
-  else if(settings.labels&&(state.zoom>.35 || body.kind==='planet'))label(body.name,p.x,p.y-r-17);
 }
 function drawSystem(now) {
   const sys=state.system,days=state.save.days,zone=habitableZone(sys.star.luminosity);
