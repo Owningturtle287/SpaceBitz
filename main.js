@@ -1,6 +1,5 @@
 import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
   habitableZone, makeSystem, bodyPosition, galaxyStars, starName, starAppearance} from './model.js';
-import {Soundtrack} from './music.js';
 import {DEFAULT_SETTINGS,normalizeSettings} from './settings.js';
 import {TerrainRenderer} from './terrain.js';
 import {paintShip,paintAstronaut} from './sprites.js';
@@ -16,8 +15,12 @@ const settings = normalizeSettings({
   reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   ...readJSON(SETTINGS_KEY,{})});
 const terrain=new TerrainRenderer();
-const music=new Soundtrack(()=>{});
 const CHANGELOG=[
+  {version:'1.2.9',items:[
+    'Removed the soundtrack playback engine and all music startup, scheduling, resume and visibility hooks.',
+    'Removed the music module and music-specific tests so no legacy or replacement melody can play anywhere in the game.',
+    'Kept the existing music and volume Settings controls as inactive placeholders for a future separately designed soundtrack.'
+  ]},
   {version:'1.2.8',items:[
     'Rebuilt the soundtrack from the original uploaded melody reference at its native 0.60-second note timing, preserving the tune while removing recorded noise/static.',
     'Replaced overlapping per-note oscillators with one continuous melody oscillator so a second copy of the song cannot layer underneath the first.',
@@ -95,7 +98,7 @@ function applySettings(){
   document.body.dataset.orientation=settings.orientation;
   document.documentElement.style.setProperty('--joy-x',settings.joyX+'%');
   document.documentElement.style.setProperty('--joy-offset',settings.joyOffset+'px');
-  music.configure(settings.music,settings.volume);fit();updateUI();
+  fit();updateUI();
 }
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 let lastSingleTouchEnd=0;
@@ -222,7 +225,6 @@ function start(save) {
   else state.camera={...save.ship};
   $('welcome').classList.remove('visible'); $('app').hidden=false;
   applyOrientationPreference();
-  music.startFromBeginning(2);
   persist(); updateUI();
 }
 function create(sol=false) {
@@ -549,7 +551,6 @@ function openSettings(){
       if(key==='pixelSize')terrain.clear();
       if(key==='timeMode'&&state.save&&settings.timeMode==='realtime')state.save.days=currentDays();
       sync();saveSettings();applySettings();
-      if(key==='music'&&settings.music&&state.save)music.startFromBeginning(2);
       if(key==='orientation')applyOrientationPreference();
     });
     const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
@@ -599,7 +600,7 @@ function openSettings(){
   details.append(changelog);box.append(details);
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-    save.onclick=()=>{persist();music.stop();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
+    save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
     const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
     exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};box.append(exportButton);
@@ -921,7 +922,7 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
-document.addEventListener('visibilitychange',()=>{state.last=performance.now();music.visibility(document.hidden);if(document.hidden){resetInput();persist();}});
+document.addEventListener('visibilitychange',()=>{state.last=performance.now();if(document.hidden){resetInput();persist();}});
 window.addEventListener('pagehide',persist);
 
 // Pointer picking and camera panning. A tap selects; a drag pans; two fingers pinch.
