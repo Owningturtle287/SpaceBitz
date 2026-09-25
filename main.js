@@ -1,6 +1,5 @@
 import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
   habitableZone, makeSystem, bodyPosition, galaxyStars, starName, starAppearance} from './model.js';
-import {SoundtrackPlayer} from './soundtrack-player.js';
 import {DEFAULT_SETTINGS,normalizeSettings} from './settings.js';
 import {TerrainRenderer} from './terrain.js';
 import {paintShip,paintAstronaut} from './sprites.js';
@@ -16,8 +15,73 @@ const settings = normalizeSettings({
   reducedMotion:window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   ...readJSON(SETTINGS_KEY,{})});
 const terrain=new TerrainRenderer();
-const soundtrack=new SoundtrackPlayer('./audio/nostalgic_melody_soft_synth.mp3');
+const musicAudio=$('soundtrackAudio');
+const MUSIC_TRACKS=['./audio/nostalgic_melody_soft_synth.mp3'];
+let musicTimer=null,musicTrackIndex=0,musicStarted=false,musicUnlockHandler=null;
+
+function clearMusicTimer(){
+  if(musicTimer!==null){clearTimeout(musicTimer);musicTimer=null;}
+}
+function clearMusicUnlock(){
+  if(!musicUnlockHandler)return;
+  document.removeEventListener('pointerdown',musicUnlockHandler);
+  musicUnlockHandler=null;
+}
+function armMusicUnlock(){
+  if(musicUnlockHandler||!settings.music||!musicStarted)return;
+  musicUnlockHandler=()=>{
+    clearMusicUnlock();
+    if(settings.music&&musicStarted&&musicAudio.paused)playMusicTrack();
+  };
+  document.addEventListener('pointerdown',musicUnlockHandler,{passive:true,once:true});
+}
+function playMusicTrack(){
+  clearMusicTimer();
+  if(!settings.music||!musicStarted)return;
+  musicAudio.volume=settings.volume;
+  try{musicAudio.currentTime=0;}catch{}
+  let attempt;
+  try{attempt=musicAudio.play();}
+  catch{armMusicUnlock();return;}
+  if(attempt?.catch)attempt.catch(()=>armMusicUnlock());
+}
+function scheduleMusic(delay=2000){
+  clearMusicTimer();
+  if(!settings.music||!musicStarted)return;
+  musicTimer=setTimeout(()=>{musicTimer=null;playMusicTrack();},delay);
+}
+function beginMusic(){
+  if(musicStarted)return;
+  musicStarted=true;
+  musicTrackIndex=0;
+  scheduleMusic(2000);
+}
+function stopMusic(){
+  clearMusicTimer();
+  clearMusicUnlock();
+  musicAudio.pause();
+  try{musicAudio.currentTime=0;}catch{}
+}
+function applyMusicSetting(){
+  musicAudio.volume=settings.volume;
+  if(!settings.music){stopMusic();return;}
+  if(musicStarted&&musicAudio.paused&&musicTimer===null)scheduleMusic(2000);
+}
+musicAudio.addEventListener('ended',()=>{
+  if(!settings.music||!musicStarted)return;
+  musicTrackIndex=(musicTrackIndex+1)%MUSIC_TRACKS.length;
+  const next=MUSIC_TRACKS[musicTrackIndex];
+  if(!musicAudio.src.endsWith(next.split('/').pop()))musicAudio.src=next;
+  scheduleMusic(2000);
+});
+
 const CHANGELOG=[
+  {version:'1.3.3',items:[
+    'Rebuilt music playback from scratch around one persistent HTML audio element instead of the previous soundtrack player class.',
+    'Removed music from the service-worker cache and bypassed all audio/range requests so mobile browsers can stream the track normally.',
+    'Music now has only one lifecycle: wait two seconds at the menu, play the full track, wait two seconds after it ends, then advance to the next playlist entry.',
+    'No game scene, panel, planet selection, visibility change or normal control can pause, restart or reschedule the song.'
+  ]},
   {version:'1.3.2',items:[
     'Removed gesture-driven audio priming and visibility pause/resume behavior that could make the soundtrack repeatedly stop and restart on mobile.',
     'Music now uses one timer, one audio element and one ended event: wait two seconds, play once, wait two seconds, repeat.',
@@ -117,7 +181,8 @@ function applySettings(){
   document.body.dataset.orientation=settings.orientation;
   document.documentElement.style.setProperty('--joy-x',settings.joyX+'%');
   document.documentElement.style.setProperty('--joy-offset',settings.joyOffset+'px');
-  soundtrack.configure(settings.music,settings.volume);
+  musicAudio.volume=settings.volume;
+  if(!settings.music)stopMusic();
   fit();updateUI();
 }
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
@@ -282,7 +347,7 @@ function showMenuStage(stage='main'){
   else setTimeout(()=>$('startGame')?.focus(),0);
 }
 renderSaves();
-soundtrack.begin(2);
+beginMusic();
 $('startGame').onclick=()=>showMenuStage('generation');
 $('backToMain').onclick=()=>showMenuStage('main');
 $('multiplayerGame').onclick=()=>toast('Multiplayer is coming in a future update.');
@@ -567,6 +632,7 @@ function openSettings(){
       if(key==='pixelSize')terrain.clear();
       if(key==='timeMode'&&state.save&&settings.timeMode==='realtime')state.save.days=currentDays();
       sync();saveSettings();applySettings();
+      if(key==='music'||key==='volume')applyMusicSetting();
       if(key==='orientation')applyOrientationPreference();
     });
     const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
@@ -941,7 +1007,7 @@ document.addEventListener('visibilitychange',()=>{
   state.last=performance.now();
   if(document.hidden){resetInput();persist();}
 });
-window.addEventListener('pagehide',()=>{soundtrack.stop();persist();});
+window.addEventListener('pagehide',()=>{stopMusic();persist();});
 
 // Pointer picking and camera panning. A tap selects; a drag pans; two fingers pinch.
 const pointers=new Map();let gesture=null;
