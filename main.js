@@ -18,6 +18,11 @@ const settings = normalizeSettings({
 const terrain=new TerrainRenderer();
 const music=new Soundtrack(()=>{});
 const CHANGELOG=[
+  {version:'1.2.7',items:[
+    'Redesigned the orbital HUD into a slimmer system navigator and compact target card so more of the system remains visible.',
+    'Condensed planet and moon rows, target metrics, labels and actions while preserving the same navigation and detail controls.',
+    'Improved portrait and landscape phone layouts so the target card, joystick and system rail occupy less of the play field.'
+  ]},
   {version:'1.2.6',items:[
     'Hardened soundtrack playback so every voyage restart cancels all existing schedulers and active voices before one delayed copy starts.',
     'Set travelable star rarity to 50% red, 20% orange, 20% yellow, 9% white and 1% blue while keeping chart/system colors identical.',
@@ -415,10 +420,11 @@ function formatGameDate(date=gameDate(),dateOnly=false){
 function updateUI() {
   if(!state.save)return;
   const scene=state.scene,sys=state.system,sel=state.selected;
-  $('modeLabel').textContent=scene==='chart'?'SECTOR / STAR CHART':scene==='surface'?'EXPEDITION / SURFACE':'SYSTEM / ORBITAL VIEW';
+  document.body.dataset.scene=scene;
+  $('modeLabel').textContent=scene==='chart'?'SECTOR / STAR CHART':scene==='surface'?'EXPEDITION / SURFACE':'ORBITAL / SYSTEM';
   $('placeLabel').textContent=scene==='chart'?'The Reach':scene==='surface'?findBody(state.save.landed)?.name||'Surface':sys.name;
   $('hint').textContent=scene==='chart'?'Select a star, then set a jump course.':scene==='surface'?'Collect samples and return to your lander.':`${sys.star.type} STAR · ${sys.planets.length} PLANETS`;
-  $('zoneLegend').hidden=scene!=='system';$('zoneToggle').textContent=settings.zone?'VISIBLE':'HIDDEN';$('zoneToggle').setAttribute('aria-pressed',String(settings.zone));
+  $('zoneLegend').hidden=scene!=='system';$('zoneToggle').textContent=settings.zone?'ON':'OFF';$('zoneToggle').setAttribute('aria-pressed',String(settings.zone));
   const list=$('bodyList'),listKey=`${scene}:${sys.seed}:${sel?.id||''}`;
   if(state.listKey!==listKey){
     const scroll=list.scrollLeft;list.replaceChildren();
@@ -443,27 +449,27 @@ function updateUI() {
     addMetric(metric,'COLLECTED',String(state.save.discoveries.filter(id=>id.startsWith(body.id+':sample')).length));
     addMetric(metric,'TO LANDER',Math.round(Math.hypot(state.save.surface.x,state.save.surface.y))+' m');
   } else if(scene==='chart'){
-    title=sel?starName(sel.seed):'Star chart';tag='JUMP NAVIGATION';glyph='✦';
+    title=sel?starName(sel.seed):'Star chart';tag='JUMP NAV';glyph='✦';
     const distance=sel?Math.hypot(sel.x-state.save.chart.x,sel.y-state.save.chart.y):0;
-    text=sel?'Travel to this star to enter its planetary system.':'Tap a star to chart a jump.';
-    action=!sel?'SELECT A STAR':distance<38?'ENTER SYSTEM':'JUMP TO STAR';
+    text=sel?'Selected jump destination.':'Tap a star to chart a jump.';
+    action=!sel?'SELECT STAR':distance<38?'ENTER SYSTEM':'JUMP';
     if(sel){addMetric(metric,'DISTANCE',Math.round(distance)+' units');addMetric(metric,'CLASS',makeSystem(sel.seed).star.type);details=true;}
   } else if(sel?.kind==='star'){
-    title=sel.name;tag='STELLAR PRIMARY';glyph='✦';details=true;
-    text='This star powers the orbital clock and sets the temperate band.';
-    action='SELECT A WORLD';
+    title=sel.name;tag='PRIMARY STAR';glyph='✦';details=true;
+    text='System primary and temperate-zone reference.';
+    action='SELECT WORLD';
     addMetric(metric,'CLASS',sel.type);addMetric(metric,'DIAMETER',Math.round(sel.diameter).toLocaleString()+' km');
   } else if(sel){
-    title=sel.name;tag=sel.kind==='moon'?'NATURAL SATELLITE':'PLANETARY TARGET';glyph=sel.type==='gas'?'◌':'◉';details=true;
+    title=sel.name;tag=sel.kind==='moon'?'MOON TARGET':'PLANET TARGET';glyph=sel.type==='gas'?'◌':'◉';details=true;
     const zone=habitableZone(sys.star.luminosity),inhab=sel.kind==='planet'&&sel.au>=zone.inner&&sel.au<=zone.outer;
-    text=inhab?'Inside the temperate orbit band. Surface conditions still vary.':sel.kind==='moon'?'A small world orbiting its parent planet.':'Select a course, then descend when you reach orbit.';
+    text=inhab?'Temperate orbit.':sel.kind==='moon'?'Natural satellite.':'Course ready.';
     const p=bodyPosition(sel,state.save.days,sys);const distance=Math.hypot(p.x-state.save.ship.x,p.y-state.save.ship.y);
-    action=distance<visualRadius(sel.diameter,sel.kind)+48?(sel.solid?'LAND':'NO SOLID SURFACE'):'TRAVEL TO '+sel.name.toUpperCase();
-    if(!sel.solid)text='A giant atmosphere with no solid ground. Explore its moons for a landing site.';
+    action=distance<visualRadius(sel.diameter,sel.kind)+48?(sel.solid?'LAND':'NO SOLID SURFACE'):'TRAVEL';
+    if(!sel.solid)text='No solid surface · check its moons.';
     addMetric(metric,'DIAMETER',diameterText(sel.diameter));
     addMetric(metric,sel.kind==='moon'?'ORBIT':'YEAR',sel.period<100?sel.period.toFixed(1)+' days':Math.round(sel.period)+' days');
     if(inhab)addMetric(metric,'ZONE','TEMPERATE');
-  } else {title='Chart a course';tag='FLIGHT COMPUTER';glyph='✧';text='Tap a world or pick one from the system list.';action='SELECT A WORLD';}
+  } else {title='Chart a course';tag='NAV TARGET';glyph='✧';text='Tap a world or use the system list.';action='SELECT WORLD';}
   $('targetName').textContent=title;$('targetTag').textContent=tag;$('targetText').textContent=text;$('targetGlyph').textContent=glyph;
   $('primaryAction').textContent=action;$('secondaryAction').hidden=!details;
   $('primaryAction').disabled=action==='NO SOLID SURFACE';
