@@ -1,7 +1,7 @@
 // Real browser regression gate. Test hooks exist only in the intercepted response.
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
-import {readFile,mkdir} from 'node:fs/promises';
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
 import {chromium,webkit} from 'playwright';
 const root=resolve(new URL('..',import.meta.url).pathname),engine=process.env.BROWSER||'chromium';
@@ -31,8 +31,16 @@ try{
   const started=Date.now();await page.locator('#solGame').click();
   await page.waitForFunction(()=>window.__game?.state.scene==='system'&&window.__game.state.lastUI>0);
   const startupMs=Date.now()-started;assert.ok(startupMs<10000,`Startup stalled: ${startupMs}ms`);
+  await page.evaluate(async()=>{await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
   await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
-  await mkdir('.qa',{recursive:true});await page.screenshot({path:`.qa/${engine}-sol.png`});
+  const initial=await page.evaluate(()=>{
+    const c=document.getElementById('sky'),g=c.getContext('2d'),s=window.__game.state,r=c.getBoundingClientRect(),m=g.getTransform();
+    return {width:s.width,height:s.height,dpr:s.dpr,canvasWidth:c.width,canvasHeight:c.height,rect:{width:r.width,height:r.height},transform:[m.a,m.b,m.c,m.d,m.e,m.f],image:c.toDataURL()};
+  });
+  await mkdir('.qa',{recursive:true});await writeFile(`.qa/${engine}-canvas.png`,Buffer.from(initial.image.split(',')[1],'base64'));
+  delete initial.image;assert.deepEqual(initial.transform,[2,0,0,2,0,0]);
+  assert.equal(initial.canvasWidth,initial.width*initial.dpr);assert.equal(initial.width,initial.rect.width);
+  await page.screenshot({path:`.qa/${engine}-sol.png`});
   const results=await page.evaluate(async()=>{
     const g=window.__game,{state,settings}=g,canvas=document.getElementById('sky'),ctx=canvas.getContext('2d');
     const {bodyPosition,makeSystem,visualRadius,orbitRadius,habitableZone}=await import('/model.js');
@@ -87,5 +95,5 @@ try{
   await page.waitForFunction(()=>window.__game?.state.scene==='system'&&window.__game.state.lastUI>0);
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
   await page.screenshot({path:`.qa/${engine}-portrait.png`});
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,reports:results},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results},null,2));
 }finally{await browser.close();server.close();}
