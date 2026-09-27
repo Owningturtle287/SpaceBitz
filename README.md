@@ -27,7 +27,9 @@ Orbital distances are compressed logarithmically for navigation. All body radii 
 
 ## Art and terrain
 
-The moving pixel starfield and twinkle effects remain visible behind the startup console. Spacecraft turn toward their actual travel direction, with thrust-linked twin engines. The astronaut has four facing directions and movement-driven walk cycles.
+The moving pixel starfield and twinkle effects remain visible behind the startup console. Spacecraft turn toward their actual travel direction, with thrust-linked twin engines. The ivory-suited explorer has an amber visor, coral helmet stripe, antenna and teal life-support pack. All four facing directions have eight distance-driven walking poses plus a separate resting stance. Boots lift, arms counter-swing and the body rises and falls through each stride. The astronaut, shadow, ships, lander and samples scale with camera zoom; HUD controls retain their screen size.
+
+Version **1.4.0** gives every menu and HUD surface a shared 16-bit console style. The original pixel title and compact display font are bundled locally and cached for offline play. See [CHANGELOG.md](CHANGELOG.md), or Settings → Change log, for release notes.
 
 Terrain samples continuous, seeded noise in world coordinates: warped continents, coasts, moisture bands, mountain ridges, crater depressions, and biome palettes. Small cached raster chunks keep rendering efficient without repeating tile boundaries. Pixel density is adjustable. Landing sites have a small dry clearing; water slows movement.
 
@@ -49,6 +51,7 @@ Run `npm test` (Node's built-in test runner; no package installation required).
 - `music.js` / `settings.js`: soundtrack lifecycle and validated preferences.
 - `main.js`: input, game state, UI, canvas scenes, autosave.
 - `sw.js`: app-shell cache scoped to this app, including every runtime module.
+- `assets/`: original pixel lettering and title, rebuilt with `python tools/build-retro-assets.py` (optional development dependency: `fonttools`; no runtime dependency).
 
 Tests cover clock ratios, planetary and lunar periods, scale and orbital clearance, deterministic terrain and chunk continuity, ship steering and star avoidance, settings migration, audio scheduling, and offline asset completeness. Browser checks supplement these; automated checks do not simulate every phone or browser's audio policy.
 

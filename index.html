@@ -8,6 +8,7 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="./icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="preload" href="./assets/spacebitz-pixel.woff" as="font" type="font/woff" crossorigin>
   <link rel="stylesheet" href="./style.css">
   <title>SpaceBitz — The small universe</title>
 </head>
@@ -53,15 +54,9 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.3.6</span>
-        <div id="welcomeTitle" class="hero-logo" aria-label="SpaceBitz">
-          <span class="hero-logo-mark" aria-hidden="true">✦</span>
-          <span class="hero-title-pixel pixel-a" aria-hidden="true"></span>
-          <span class="hero-title-pixel pixel-b" aria-hidden="true"></span>
-          <span class="hero-title-pixel pixel-c" aria-hidden="true"></span>
-          <span class="hero-title-pixel pixel-d" aria-hidden="true"></span>
-          <span class="hero-logo-word">SPACE<span>BITZ</span></span>
-          <span class="hero-logo-rule" aria-hidden="true"><i></i></span>
+        <span class="version-chip main-menu-version">v1.4.0</span>
+        <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
+          <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>
         <div class="main-menu-actions">
           <button id="startGame" class="button menu-choice menu-choice-primary"><span>START GAME</span></button>

@@ -61,6 +61,13 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.4.0',items:[
+    'Unified the main menu, universe generator, flight HUD, settings, saves, logbook and detail dialogs with crisp 16-bit panels, pixel lettering and cyan/amber controls.',
+    'Introduced an original stepped-color SpaceBitz pixel wordmark and bundled the new title/font for offline play.',
+    'Redesigned the astronaut with an ivory helmet, amber visor, coral stripe, antenna and teal life-support pack.',
+    'Added eight distinct walking poses in every facing direction, with opposing arm swings, boot lifts, body bounce and a dedicated idle stance; cadence follows distance traveled.',
+    'Fixed camera zoom scaling for the astronaut, its shadow, flying ships, parked lander and surface samples.'
+  ]},
   {version:'1.3.6',items:[
     'Replaced the old Chart control with a dedicated retro Warp Drive button in the bottom-right for entering the interstellar layer.',
     'Moved the voyage Log directly under Settings and restyled both as a compact upper-right utility stack.',
@@ -854,10 +861,10 @@ function drawOrbit(x,y,r,color='#a3bed3') {
   ctx.restore();
 }
 function label(text,x,y,selected=false) {
-  ctx.font=`${selected?'600':'500'} 11px 'Space Grotesk',sans-serif`;
+  ctx.font="10px 'SpaceBitz Pixel',monospace";
   ctx.textAlign='center';ctx.textBaseline='middle';const width=ctx.measureText(text).width+18;
   ctx.fillStyle=selected?'#264b59e8':'#0b1b30d9';ctx.strokeStyle=selected?'#6fe1cf80':'#64829750';
-  ctx.beginPath();ctx.roundRect(x-width/2,y-12,width,23,6);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.rect(Math.round(x-width/2),Math.round(y)-12,Math.round(width),23);ctx.fill();ctx.stroke();
   ctx.fillStyle=selected?'#e8fff9':'#c3d5e2';ctx.fillText(text,x,y);
 }
 function drawSelection(x,y,r,now) {
@@ -948,7 +955,7 @@ function drawSystem(now) {
     for(const moon of planet.moons){const mp=bodyPosition(moon,days,sys);drawPlanet(moon,screen(mp.x,mp.y),now,mp);}}
   if(state.autopilot?.type==='body'){const body=findBody(state.autopilot.id);if(body){const end=bodyPosition(body,days,sys),a=screen(state.save.ship.x,state.save.ship.y),b=screen(end.x,end.y);
     ctx.strokeStyle='#77e2d586';ctx.lineWidth=1;ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);}}
-  const ship=screen(state.save.ship.x,state.save.ship.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now);
+  const ship=screen(state.save.ship.x,state.save.ship.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,42,false,state.zoom);
 }
 function drawChartStar(x,y,r,color,now,seed){
   const phase=(hash(seed)%6283)/1000;
@@ -984,8 +991,8 @@ function drawChart(now) {
   }
   if(state.autopilot?.type==='star'){const s=starAt(state.autopilot.id);const a=screen(state.save.chart.x,state.save.chart.y),b=screen(s.x,s.y);
     ctx.strokeStyle='#76dac680';ctx.lineWidth=1;ctx.setLineDash([5,7]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);}
-  const ship=screen(state.save.chart.x,state.save.chart.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,36);
-  ctx.font='10px DM Mono,monospace';ctx.fillStyle='#91b1be';ctx.fillText('LOCAL SECTOR  /  DISTANCES ARE GAME UNITS',state.width/2,Math.max(70,state.height*.14));
+  const ship=screen(state.save.chart.x,state.save.chart.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,36,false,state.zoom);
+  ctx.font="9px 'SpaceBitz Pixel',monospace";ctx.fillStyle='#91b1be';ctx.fillText('LOCAL SECTOR  /  DISTANCES ARE GAME UNITS',state.width/2,Math.max(70,state.height*.14));
 }
 function drawGround(now) {
   const body=findBody(state.save.landed);if(!body)return;
@@ -1014,16 +1021,16 @@ function drawGround(now) {
       }
       ctx.restore();
     }
-  const lander=screen(0,0);paintShip(ctx,lander.x,lander.y,{},now,62,true);
+  const lander=screen(0,0);paintShip(ctx,lander.x,lander.y,{},now,62,true,state.zoom);
   const astronaut=screen(state.save.surface.x,state.save.surface.y);
-  paintAstronaut(ctx,astronaut.x,astronaut.y,state.actorMotion);
+  paintAstronaut(ctx,astronaut.x,astronaut.y,state.actorMotion,state.zoom);
   const sunlight=Math.cos(rotationAngle(body,state.save.days)-(body.phase||0));
   ctx.fillStyle=`rgba(6,16,44,${.08+(1-sunlight)*.18})`;ctx.fillRect(0,0,state.width,state.height);
   for(const sample of surfaceSamples()){
     if(state.save.discoveries.includes(sample.id))continue;const p=screen(sample.x,sample.y);
     if(p.x<0||p.x>state.width||p.y<0||p.y>state.height)continue;
     const pulse=settings.reducedMotion?1:.8+.2*Math.sin(now*.004+hash(sample.id));
-    ctx.save();ctx.translate(Math.round(p.x),Math.round(p.y));ctx.globalAlpha=pulse;
+    ctx.save();ctx.translate(Math.round(p.x),Math.round(p.y));ctx.scale(state.zoom,state.zoom);ctx.globalAlpha=pulse;
     ctx.shadowColor='#60e9cd';ctx.shadowBlur=12;
     ctx.fillStyle='#377e9a';ctx.fillRect(-5,-3,10,8);ctx.fillStyle='#6cddc8';ctx.fillRect(-3,-8,6,13);
     ctx.fillStyle='#d6ffe1';ctx.fillRect(-2,-6,2,7);ctx.restore();
@@ -1031,7 +1038,7 @@ function drawGround(now) {
   if(Math.hypot(lander.x-state.width/2,lander.y-state.height/2)>125){
     const a=Math.atan2(lander.y-state.height/2,lander.x-state.width/2),r=Math.min(state.width,state.height)*.3;
     const x=state.width/2+Math.cos(a)*r,y=state.height/2+Math.sin(a)*r;
-    ctx.fillStyle='#8ee9d5';ctx.font='11px ui-monospace,monospace';ctx.textAlign='center';ctx.fillText('⌖ LANDER',x,y);
+    ctx.fillStyle='#8ee9d5';ctx.font="10px 'SpaceBitz Pixel',monospace";ctx.textAlign='center';ctx.fillText('⌖ LANDER',x,y);
   }
 }
 function frame(now) {
