@@ -40,7 +40,7 @@ test('zoomed textures crop their source and destination before rasterization',()
   drawImageInView(ctx,image,1000,0,200000,200000,900,600);assert.equal(calls.length,1);
 });
 test('frame clearing resets compositing and opacity before painting opaque space',()=>{
-  const calls=[],ctx={setTransform:(...args)=>calls.push(args),setLineDash:()=>{},fillRect:(...args)=>calls.push(args),globalAlpha:.1,globalCompositeOperation:'lighter',shadowBlur:50};
+  const calls=[],ctx={resetTransform:()=>{},setTransform:(...args)=>calls.push(args),setLineDash:()=>{},fillRect:(...args)=>calls.push(args),globalAlpha:.1,globalCompositeOperation:'lighter',shadowBlur:50};
   clearFrame(ctx,900,600,2);
   assert.equal(ctx.globalAlpha,1);assert.equal(ctx.globalCompositeOperation,'source-over');assert.equal(ctx.shadowBlur,0);
   assert.equal(ctx.fillStyle,'#000104');assert.deepEqual(calls,[[2,0,0,2,0,0],[0,0,900,600]]);

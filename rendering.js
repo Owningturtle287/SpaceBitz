@@ -83,6 +83,8 @@ export function drawImageInView(ctx,image,x,y,width,height,viewWidth,viewHeight)
     (right-left)/width*image.width,(bottom-top)/height*image.height,left,top,right-left,bottom-top);
 }
 export function clearFrame(ctx,width,height,dpr=1){
+  // Explicitly discard the previous frame's native transform before applying DPR.
+  ctx.resetTransform();
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.globalAlpha=1;ctx.globalCompositeOperation='source-over';
   ctx.shadowBlur=0;ctx.shadowColor='transparent';ctx.filter='none';ctx.setLineDash([]);
   ctx.fillStyle='#000104';ctx.fillRect(0,0,width,height);
