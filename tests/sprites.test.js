@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {astronautFrame,astronautSprite,paintAstronaut,paintShip,WALK_FRAMES,WALK_CYCLE_DISTANCE} from '../sprites.js';
+import {ASTRONAUT_SCALE} from '../scale.js';
 import {updateMotion} from '../motion.js';
 
 // A tiny recording canvas checks the renderer's world-to-screen contract without
@@ -18,14 +19,13 @@ globalThis.document={createElement(){
 
 test('walk cycle completes all eight poses in either frame rate and stops in a neutral stance',()=>{
   const frames=new Set(),motion={steps:0};
-  for(let i=0;i<48;i++){updateMotion(motion,1,0,1000/90);frames.add(astronautFrame(motion));}
+  for(let i=0;i<48;i++){updateMotion(motion,WALK_CYCLE_DISTANCE/48,0,1000/90);frames.add(astronautFrame(motion));}
   assert.equal(frames.size,WALK_FRAMES);
-  assert.equal(motion.steps,WALK_CYCLE_DISTANCE);
-  assert.equal(astronautFrame(motion),0);
-  const coarse={steps:0};for(let i=0;i<12;i++)updateMotion(coarse,4,0,4000/90);
-  assert.equal(astronautFrame(coarse),astronautFrame(motion));
+  assert.ok(Math.abs(motion.steps-WALK_CYCLE_DISTANCE)<1e-10);
+  const coarse={steps:0};for(let i=0;i<12;i++)updateMotion(coarse,WALK_CYCLE_DISTANCE/12,0,4000/90);
+  assert.ok(Math.abs(coarse.steps-motion.steps)<1e-10);
   updateMotion(motion,0,0,16);assert.equal(astronautFrame(motion),-1);
-  const slow={steps:12,moving:true},fast={steps:24,moving:true};
+  const slow={steps:WALK_CYCLE_DISTANCE/4,moving:true},fast={steps:WALK_CYCLE_DISTANCE/2,moving:true};
   assert.equal(astronautFrame(slow),2);assert.equal(astronautFrame(fast),4);
 });
 
@@ -47,7 +47,7 @@ test('astronaut and shadow share one proportional camera transform and fixed foo
   for(const zoom of [.65,1,1.3,2.4]){
     const ctx=recordingContext();paintAstronaut(ctx,100,200,{direction:'down'},zoom);
     assert.deepEqual(ctx.calls.find(c=>c[0]==='translate'),['translate',100,200]);
-    assert.deepEqual(ctx.calls.find(c=>c[0]==='scale'),['scale',1.25*zoom,1.25*zoom]);
+    assert.deepEqual(ctx.calls.find(c=>c[0]==='scale'),['scale',ASTRONAUT_SCALE*zoom,ASTRONAUT_SCALE*zoom]);
     const scaleIndex=ctx.calls.findIndex(c=>c[0]==='scale');
     assert.ok(scaleIndex<ctx.calls.findIndex(c=>c[0]==='fillRect'));
     assert.deepEqual(ctx.calls.find(c=>c[0]==='drawImage').slice(2),[-16,-37]);

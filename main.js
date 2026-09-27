@@ -1,10 +1,13 @@
 import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
-  habitableZone, makeSystem, bodyPosition, galaxyStars, starName, starAppearance} from './model.js';
+  habitableZone, makeSystem, bodyPosition, galaxyStars, starName, starAppearance, orbitPoint, orbitalElements} from './model.js';
 import {DEFAULT_SETTINGS,normalizeSettings} from './settings.js';
 import {TerrainRenderer} from './terrain.js';
 import {paintShip,paintAstronaut} from './sprites.js';
 import {updateMotion,navigationTarget} from './motion.js';
 import {celestialSprite} from './celestial.js';
+import {paintStellarSurface} from './stellar.js';
+import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm} from './scale.js';
+import {migrateLayout,systemFitZoom,travelSpeed} from './navigation.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('sky');
@@ -61,6 +64,17 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.5.0',items:[
+    'Made menus, panels and controls smaller and translucent, with stepped pixel corners. Coordinates now sit directly below the clock with matching styling.',
+    'Rebuilt Warp Drive as an animated lever with engagement and transit states, including a reduced-motion alternative.',
+    'Made the standing astronaut one-third of the parked ship’s visible height. Each surface square matches that height and permanently represents one metre.',
+    'Added selectable coordinate squares and Go Here navigation, including highlighted destinations, distance readouts and exact waypoint arrival.',
+    'Standardized surface measurements to metres/kilometres, system measurements to light-seconds/AU (500 ls per AU), and chart measurements to light-years. Removed the units preference.',
+    'Tripled Sol’s visual radius, corrected its mean diameter to 1,391,400 km, and applied one linear physical scale to every star, planet, moon and orbital distance.',
+    'Added JPL orbital inclinations/nodes and matching projected elliptical paths, physical moon orbital distances, a Fit System command, Focus View, wider zoom and faster long-distance travel.',
+    'Added smoothly blended stellar convection, small growing/fading sunspots and occasional flare animation. Stellar activity timing is artistic; Sol planet positions are approximate and moon phases remain illustrative.',
+    'Migrated older compressed-space ship positions safely while retaining discoveries, logbooks, surface locations and chart progress.'
+  ]},
   {version:'1.4.0',items:[
     'Unified the main menu, universe generator, flight HUD, settings, saves, logbook and detail dialogs with crisp 16-bit panels, pixel lettering and cyan/amber controls.',
     'Introduced an original stepped-color SpaceBitz pixel wordmark and bundled the new title/font for offline play.',
@@ -178,7 +192,7 @@ const CHANGELOG=[
 const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,y:0}, zoom:1,
   panUntil:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, fps:60, particles:[], textureCache:new Map(),
-  shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
+  waypoint:null,hoverCell:null,warpUntil:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
 const loadSaves = () => {
   const value=readJSON(SAVE_KEY, []);
   return Array.isArray(value)?value.filter(s=>s && s.id && s.seed):[];
@@ -330,14 +344,9 @@ function start(save) {
   save.surface ||= {x:0,y:0}; save.discoveries ||= []; save.log ||= [];
   save.days=Number.isFinite(save.days)?save.days:currentDays();
   if(settings.timeMode==='realtime')save.days=currentDays();
-  if(save.layoutVersion!==2 && state.scene==='system'){
-    const nearest=state.system.planets.map(p=>{const a=p.phase+TAU*save.days/p.period,r=160+275*Math.log1p(p.au*2);
-      return {p,d:Math.hypot(Math.cos(a)*r-save.ship.x,Math.sin(a)*r-save.ship.y)};}).sort((a,b)=>a.d-b.d)[0].p;
-    const pos=bodyPosition(nearest,save.days,state.system);save.ship={x:pos.x+visualRadius(nearest.diameter)+60,y:pos.y};
-  }
-  save.layoutVersion=2;save.route||=[];
+  migrateLayout(save,state.system);save.route||=[];
   if(state.scene==='surface' && !findBody(save.landed)?.solid){state.scene='system';save.scene='system';save.landed=null;}
-  state.selected=null; state.autopilot=null;state.followBody=null;state.panUntil=0;
+  state.selected=null;state.waypoint=null;state.hoverCell=null;state.warpUntil=0;state.focusBody=null; state.autopilot=null;state.followBody=null;state.panUntil=0;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.actorMotion={direction:'down',steps:0};
   state.zoom=state.scene==='chart'?1:state.scene==='surface'?1.3:.85;
   if(state.scene==='chart') state.camera={...save.chart};
@@ -346,7 +355,7 @@ function start(save) {
   $('welcome').classList.remove('visible'); $('app').hidden=false;
   applyOrientationPreference();
   applyCenterButtonLayout();
-  persist(); updateUI();
+  keepStationNearShip();persist(); updateUI();
 }
 function create(sol=false) {
   const name=$('universeName').value.trim().slice(0,40) || 'My Universe';
@@ -357,7 +366,7 @@ function create(sol=false) {
   const startDays=currentDays(),h=bodyPosition(home,startDays,system);
   const save={id:crypto.randomUUID?.()||String(Date.now()),name,seed,homeSeed,currentSystem:homeSeed,
     scene:'system',ship:{x:h.x+visualRadius(home.diameter)+70,y:h.y},chart:{x:0,y:0},
-    surface:{x:0,y:0},landed:null,days:startDays,discoveries:[],log:[],layoutVersion:2,updated:Date.now()};
+    surface:{x:0,y:0},landed:null,days:startDays,discoveries:[],log:[],layoutVersion:3,updated:Date.now()};
   start(save); select(home); toast(`Welcome to ${system.name}. Select a world to chart a course.`);
 }
 function renderSaves() {
@@ -401,7 +410,7 @@ $('importFile').onchange=async e=>{
       const system=makeSystem(homeSeed),body=system.planets[0],p=bodyPosition(body,0,system);
       return {id:crypto.randomUUID?.()||String(Date.now()+Math.random()),name:String(raw.name||'Imported universe').slice(0,40),
         seed,homeSeed,currentSystem:homeSeed,scene:'system',ship:{x:p.x+80,y:p.y+20},chart:{x:0,y:0},
-        surface:{x:0,y:0},landed:null,layoutVersion:2,days:Number.isFinite(raw.days)?raw.days:currentDays(),
+        surface:{x:0,y:0},landed:null,layoutVersion:3,days:Number.isFinite(raw.days)?raw.days:currentDays(),
         discoveries:Array.isArray(raw.discoveries)?raw.discoveries.filter(x=>typeof x==='string').slice(0,1000):[],
         log:Array.isArray(raw.log)?raw.log.filter(x=>x&&typeof x.name==='string').slice(0,100):[],updated:Date.now()};
     });
@@ -422,7 +431,14 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 }
 
-function select(object) { state.selected=object; state.autopilot=null;state.followBody=null; updateUI(); }
+function select(object) { state.waypoint=null;state.hoverCell=null;state.selected=object; state.autopilot=null;updateUI(); }
+function keepStationNearShip(){
+  if(state.scene!=='system')return;
+  const ship=state.save.ship;
+  const near=allBodies().map(body=>{const p=bodyPosition(body,state.save.days,state.system);return {body,p,d:Math.hypot(ship.x-p.x,ship.y-p.y)};})
+    .filter(v=>v.d<visualRadius(v.body.diameter)+100).sort((a,b)=>a.d-b.d)[0];
+  if(near)state.followBody={id:near.body.id,x:ship.x-near.p.x,y:ship.y-near.p.y};
+}
 function markDiscovery(body) {
   if(state.save.discoveries.includes(body.id)) return;
   state.save.discoveries.push(body.id);
@@ -430,38 +446,42 @@ function markDiscovery(body) {
   toast(`First landing on ${body.name} · added to logbook`);persist();
 }
 function enterChart() {
+  state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   const star=currentStar();state.scene='chart';state.selected=star;
   state.save.scene='chart';state.save.chart={x:star.x+38,y:star.y+30};
   state.camera={...state.save.chart};state.zoom=1;state.autopilot=null;persist();updateUI();
 }
 function enterSystem(star) {
+  state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   state.system=makeSystem(star.seed);state.save.currentSystem=star.seed;
   state.scene='system';state.save.scene='system';state.selected=null;
   const first=state.system.planets[0],pos=bodyPosition(first,state.save.days,state.system);
-  state.save.ship={x:pos.x+60,y:pos.y+40};state.camera={...state.save.ship};
+  state.save.ship={x:pos.x+visualRadius(first.diameter)+60,y:pos.y+40};state.camera={...state.save.ship};
   state.zoom=.85;state.autopilot=null;state.save.chart={x:star.x,y:star.y};
   state.save.log.unshift({name:state.system.name,action:'Entered system',days:state.save.days});
   if(state.save.route.at(-1)!==star.seed)state.save.route.push(star.seed);
   state.save.route=state.save.route.slice(-40);
-  toast(`Entering the ${state.system.name} system`);persist();updateUI();
+  keepStationNearShip();toast(`Entering the ${state.system.name} system`);persist();updateUI();
 }
 function enterSurface(body) {
+  state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.panUntil=0;
   if(!body.solid){toast('No solid surface here. Explore one of its moons.');return;}
   state.followBody=null;state.actorMotion={direction:'down',steps:0};
-  state.scene='surface';state.save.scene='surface';state.save.landed=body.id;
+  state.selected=null;state.scene='surface';state.save.scene='surface';state.save.landed=body.id;
   state.save.surface={x:50,y:35};state.camera={...state.save.surface};state.zoom=1.3;
   state.autopilot=null;markDiscovery(body);persist();updateUI();
 }
 function launch() {
+  state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.panUntil=0;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.followBody=null;
   const body=findBody(state.save.landed);
   if(body){const p=bodyPosition(body,state.save.days,state.system);
     state.save.ship={x:p.x+visualRadius(body.diameter,body.kind)+44,y:p.y+12};}
   state.scene='system';state.save.scene='system';state.save.landed=null;
   state.camera={...state.save.ship};state.selected=body||null;state.zoom=.95;
-  toast('Launch complete. The stars are yours.');persist();updateUI();
+  keepStationNearShip();toast('Launch complete. The stars are yours.');persist();updateUI();
 }
 function surfaceSamples() {
   const body=findBody(state.save.landed);const r=rng('samples:'+body?.id);
@@ -481,9 +501,14 @@ function nearestSample() {
 }
 function primary() {
   if(!state.save)return;
+  if(state.waypoint){
+    state.panUntil=0;state.followBody=null;
+    state.autopilot={type:'waypoint',x:state.waypoint.x,y:state.waypoint.y};
+    toast('Course set · '+formatCoordinates(state.waypoint,state.scene));updateUI();return;
+  }
   if(state.scene==='surface'){
     const sample=nearestSample();const d=sample?Math.hypot(sample.x-state.save.surface.x,sample.y-state.save.surface.y):Infinity;
-    if(d<36){state.save.discoveries.push(sample.id);state.save.log.unshift({name:findBody(state.save.landed)?.name||'World',action:'Sample collected',days:state.save.days});
+    if(d<SURFACE_UNIT){state.save.discoveries.push(sample.id);state.save.log.unshift({name:findBody(state.save.landed)?.name||'World',action:'Sample collected',days:state.save.days});
       toast('Sample secured · added to logbook');persist();updateUI();return;}
     if(Math.hypot(state.save.surface.x,state.save.surface.y)<62){launch();return;}
     state.autopilot={type:'surface',x:0,y:0};toast('Returning to lander');return;
@@ -494,7 +519,7 @@ function primary() {
     const dist=Math.hypot(pos.x-state.save.ship.x,pos.y-state.save.ship.y);
     if(dist<visualRadius(body.diameter,body.kind)+48){enterSurface(body);return;}
     state.panUntil=0;state.followBody=null;
-    state.autopilot={type:'body',id:body.id};toast(`Course set for ${body.name}`);return;
+    state.autopilot={type:'body',id:body.id,arrivalZoom:Math.min(1,100/(visualRadius(body.diameter)+20))};toast(`Course set for ${body.name}`);return;
   }
   const star=state.selected;
   if(!star){select(currentStar());return;}
@@ -503,8 +528,22 @@ function primary() {
   state.autopilot={type:'star',id:star.seed};toast(`Jump course set for ${starName(star.seed)}`);
 }
 $('primaryAction').onclick=primary;
-$('secondaryAction').onclick=()=>showDetails(state.selected);
-$('mapButton').onclick=()=>state.scene==='chart'?enterSystem(currentStar()):state.scene==='surface'?toast('Launch before engaging Warp Drive.'):enterChart();
+$('secondaryAction').onclick=()=>{
+  if(state.waypoint){state.waypoint=null;state.autopilot=null;updateUI();}
+  else showDetails(state.selected);
+};
+$('mapButton').onclick=()=>{
+  if(state.scene==='surface'||state.warpUntil)return;
+  resetInput();state.autopilot=null;
+  state.warpUntil=performance.now()+(settings.reducedMotion?120:650);
+  updateUI();
+};
+$('systemFit').onclick=()=>{
+  state.focusBody=null;
+  state.camera={x:0,y:0};state.zoom=systemFitZoom(state.system,state.width,state.height,state.save.days);
+  state.panUntil=Infinity;$('systemChart').classList.remove('open');
+  $('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');
+};
 $('homeButton').onclick=()=>{
   if(centerSuppressClick){centerSuppressClick=false;return;}
   state.panUntil=0;state.autopilot=null;
@@ -538,21 +577,13 @@ $('systemChartToggle').onclick=()=>{
   panel.classList.toggle('open',open);content.hidden=!open;
   $('systemChartToggle').setAttribute('aria-expanded',String(open));
 };
-function zoom(factor){state.zoom=clamp(state.zoom*factor,state.scene==='system'?.025:state.scene==='surface'?.65:.34,2.4);}
+function zoom(factor){state.zoom=clamp(state.zoom*factor,state.scene==='system'?.000001:state.scene==='surface'?.65:.34,state.scene==='system'?128:2.4);}
 
 function addMetric(parent,label,value) {
   const div=document.createElement('div');div.className='metric';
   const a=document.createElement('span'),b=document.createElement('strong');a.textContent=label;b.textContent=value;div.append(a,b);parent.append(div);
 }
-const AU_KM=149597870.7;
-function diameterText(km){
-  if(settings.units==='au'){
-    const value=km/AU_KM,digits=value>=.1?3:value>=.01?4:6;
-    return value.toFixed(digits)+' AU';
-  }
-  const value=settings.units==='mi'?km/1.609344:km;
-  return Math.round(value).toLocaleString()+' '+settings.units;
-}
+function diameterText(km){return formatSystemKm(km);}
 function localTimeZone(){return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}
 function preferredTimeZone(){
   const zone=settings.timeZone==='local'?localTimeZone():settings.timeZone;
@@ -572,24 +603,24 @@ function updateUI() {
   document.body.dataset.scene=scene;
   $('modeLabel').textContent=scene==='chart'?'SECTOR / STAR CHART':scene==='surface'?'EXPEDITION / SURFACE':'ORBITAL / SYSTEM';
   $('placeLabel').textContent=scene==='chart'?'The Reach':scene==='surface'?findBody(state.save.landed)?.name||'Surface':sys.name;
-  $('hint').textContent=scene==='chart'?'Select a star, then set a jump course.':scene==='surface'?'Collect samples and return to your lander.':`${sys.star.type} STAR · ${sys.planets.length} PLANETS`;
+  $('hint').textContent=scene==='chart'?'Select a star, then set a jump course.':scene==='surface'?'Tap a 1 m square, then GO HERE. Collect samples and return to your lander.':`${sys.star.type} STAR · ${sys.planets.length} PLANETS`;
   $('zoneLegend').hidden=scene!=='system';$('zoneToggle').textContent=settings.zone?'ON':'OFF';$('zoneToggle').setAttribute('aria-pressed',String(settings.zone));
   const list=$('bodyList'),listKey=`${scene}:${sys.seed}:${sel?.id||''}`;
   if(state.listKey!==listKey){
     const scroll=list.scrollLeft;list.replaceChildren();
-    if(scene==='system')for(const body of allBodies()){
+    if(scene==='system')for(const body of [sys.star,...allBodies()]){
       const b=document.createElement('button');b.className='body-entry'+(body.kind==='moon'?' moon':'')+(sel?.id===body.id?' active':'');
       b.style.setProperty('--dot',body.color);b.innerHTML='<span class="body-dot"></span>';
-      const name=document.createElement('span');name.textContent=body.name;const au=document.createElement('small');au.textContent=body.kind==='moon'?'MOON':body.au.toFixed(2)+' AU';
+      const name=document.createElement('span');name.textContent=body.name;const au=document.createElement('small');au.textContent=body.kind==='star'?'STAR':formatDistance(orbitalElements(body,state.save.days).a,'system');
       b.append(name,au);b.onclick=()=>{select(body);$('systemChart').classList.remove('open');$('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');};list.append(b);
     }
     list.scrollLeft=scroll;state.listKey=listKey;
   }
-  $('bodyList').hidden=scene!=='system';
+  $('bodyList').hidden=scene!=='system';$('systemFit').hidden=scene!=='system';
   let title='',action='SELECT',details=false;
   if(scene==='surface'){
     const body=findBody(state.save.landed),sample=nearestSample();
-    const near=sample&&Math.hypot(sample.x-state.save.surface.x,sample.y-state.save.surface.y)<36;
+    const near=sample&&Math.hypot(sample.x-state.save.surface.x,sample.y-state.save.surface.y)<SURFACE_UNIT;
     const landerNear=Math.hypot(state.save.surface.x,state.save.surface.y)<62;
     title=body?.name||'Surface';
     action=near?'COLLECT SAMPLE':landerNear?'LAUNCH':'RETURN TO LANDER';
@@ -605,22 +636,27 @@ function updateUI() {
     const p=bodyPosition(sel,state.save.days,sys),distance=Math.hypot(p.x-state.save.ship.x,p.y-state.save.ship.y);
     action=distance<visualRadius(sel.diameter,sel.kind)+48?(sel.solid?'LAND':'NO SOLID SURFACE'):'TRAVEL';
   }
-  $('targetCard').hidden=scene!=='surface'&&!sel;
+  const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship;
+  let destination=scene==='surface'?{x:0,y:0}:scene==='chart'?sel:sel?.kind==='star'?{x:0,y:0}:sel?bodyPosition(sel,state.save.days,sys):null;
+  if(state.waypoint){title=scene==='surface'?'SURFACE SITE':'COORDINATE';action=state.autopilot?.type==='waypoint'?'MOVING…':'GO HERE';details=true;destination=state.waypoint;}
+  $('targetCard').hidden=scene!=='surface'&&!sel&&!state.waypoint;
   $('targetName').textContent=title||'Target';
+  $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&!state.waypoint?' TO LANDER':' AWAY'):'';
   $('primaryAction').textContent=action;
-  $('secondaryAction').hidden=!details;
-  $('primaryAction').disabled=action==='NO SOLID SURFACE';
+  $('secondaryAction').hidden=!details;$('secondaryAction').textContent=state.waypoint?'CLEAR':'INFO';
+  $('primaryAction').disabled=action==='NO SOLID SURFACE'||(state.autopilot?.type==='waypoint');
   const warp=$('mapButton'),warpLabel=warp.querySelector('.warp-label'),warpSub=warp.querySelector('.warp-sub');
-  const returning=scene==='chart';
-  warpLabel.textContent=returning?'RETURN':'WARP DRIVE';
-  warpSub.textContent=returning?'LOCAL SYSTEM':'INTERSTELLAR';
-  warp.dataset.warpMode=returning?'return':'warp';
-  warp.disabled=scene==='surface';
+  const returning=scene==='chart',engaged=state.warpUntil>0||state.autopilot?.type==='star';
+  warpLabel.textContent='WARP DRIVE';
+  warpSub.textContent=state.warpUntil?'ENGAGING':state.autopilot?.type==='star'?'IN TRANSIT':returning?'LOCAL SYSTEM':'INTERSTELLAR';
+  warp.dataset.warpMode=returning?'return':'warp';warp.classList.toggle('engaged',Boolean(engaged));
+  warp.setAttribute('aria-busy',String(Boolean(engaged)));
+  warp.setAttribute('aria-label',returning?'Engage Warp Drive to local system':'Engage Warp Drive to interstellar chart');
+  warp.disabled=scene==='surface'||state.warpUntil>0;
   $('clock').textContent=formatGameDate();
   $('clock').title=(settings.timeMode==='realtime'?'Real-time 1:1':'Accelerated · 1 real minute = 1 game hour')+' · '+preferredTimeZone()+(settings.paused&&settings.timeMode!=='realtime'?' · paused':'');
-  const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship;
   $('telemetry').hidden=!settings.showCoords&&!settings.showFPS;
-  $('telemetry').textContent=[settings.showCoords?`X ${Math.round(pos.x)} · Y ${Math.round(pos.y)}`:'',settings.showFPS?`${Math.round(state.fps)} FPS`:''].filter(Boolean).join('  /  ');
+  $('telemetry').textContent=[settings.showCoords?formatCoordinates(pos,scene):'',settings.showFPS?`${Math.round(state.fps)} FPS`:''].filter(Boolean).join('  /  ');
 }
 function setModal(eyebrow,title,content) {
   state.previousFocus=document.activeElement;resetInput();
@@ -636,18 +672,29 @@ function showDetails(body) {
   if(state.scene==='chart'){
     const sys=makeSystem(body.seed);detailTile(grid,'SPECTRAL CLASS',sys.star.type);detailTile(grid,'SOLAR MASS',sys.star.mass.toFixed(2)+' M☉');
     detailTile(grid,'LUMINOSITY',sys.star.luminosity.toFixed(2)+' L☉');detailTile(grid,'PLANETS',String(sys.planets.length));
+    detailTile(grid,'DISTANCE',formatDistance(Math.hypot(body.x-state.save.chart.x,body.y-state.save.chart.y),'chart'));
   }else if(body.kind==='star'){
     detailTile(grid,'SPECTRAL CLASS',body.type);detailTile(grid,'DIAMETER',diameterText(body.diameter));
     detailTile(grid,'SOLAR MASS',body.mass.toFixed(2)+' M☉');detailTile(grid,'LUMINOSITY',body.luminosity.toFixed(2)+' L☉');
   }else{
     detailTile(grid,'DIAMETER',diameterText(body.diameter));detailTile(grid,'ORBIT PERIOD',body.period.toFixed(2)+' days');
-    detailTile(grid,'TYPE',body.type.toUpperCase());detailTile(grid,body.kind==='moon'?'HOST':'DISTANCE',body.kind==='moon'?findBody(body.parent)?.name||'Planet':body.au.toFixed(3)+' AU');
+    detailTile(grid,'TYPE',body.type.toUpperCase());detailTile(grid,body.kind==='moon'?'HOST':'ORBIT SEMIMAJOR AXIS',body.kind==='moon'?findBody(body.parent)?.name||'Planet':formatDistance(orbitalElements(body,state.save.days).a,'system'));
+    if(body.kind==='moon')detailTile(grid,'ORBIT SEMIMAJOR AXIS',formatSystemKm(body.orbitKm));
+  }
+  if(state.scene==='system'){
+    const position=body.kind==='star'?{x:0,y:0}:bodyPosition(body,state.save.days,state.system);
+    detailTile(grid,'DISTANCE FROM SHIP',formatDistance(Math.hypot(position.x-state.save.ship.x,position.y-state.save.ship.y),'system'));
+    detailTile(grid,'COORDINATES',formatCoordinates(position,'system'));
   }
   if(body.rotationDays)detailTile(grid,'ROTATION',(Math.abs(body.rotationDays)*24).toFixed(1)+' h'+(body.rotationDays<0?' · retrograde':''));
   box.append(grid);
-  const note=document.createElement('p');note.textContent=state.scene==='chart'?'Stellar systems use mass based luminosity and Kepler orbital periods. This chart uses game distances for travel.':
-    'Physical values are shown here. On screen, body sizes and orbital distances are compressed for navigation; the temperate band marks possible liquid water from stellar light alone, not guaranteed habitability.';
+  const note=document.createElement('p');note.textContent=state.scene==='chart'?'Chart coordinates and distances are always light-years. Origin: your home system. Stars and routes here are a procedural map.':
+    'System origin: the star. One coordinate unit is one light-second; 500 ls = 1 AU. Bodies and orbits share a linear physical scale. Hollow beacons locate bodies too small to see. Sol planets use approximate JPL elements; moon phases and generated systems are illustrative.';
   box.append(note);
+  if(state.scene==='system'){
+    const focus=document.createElement('button');focus.className='button subtle';focus.textContent='FOCUS VIEW';
+    focus.onclick=()=>{closeModal();state.focusBody=body.id;state.camera=body.kind==='star'?{x:0,y:0}:bodyPosition(body,state.save.days,state.system);state.zoom=clamp(Math.min(state.width,state.height)*.25/visualRadius(body.diameter),.000001,128);state.panUntil=Infinity;};box.append(focus);
+  }
   if(settings.cheats && (state.scene==='chart'||body.kind!=='star')){const jump=document.createElement('button');jump.className='button subtle';jump.textContent='INSTANT TRAVEL';
     jump.onclick=()=>{closeModal();if(state.scene==='chart')enterSystem(body);else if(body.kind!=='star'){
       const pos=bodyPosition(body,state.save.days,state.system);state.save.ship={x:pos.x+visualRadius(body.diameter,body.kind)+35,y:pos.y};state.camera={...state.save.ship};state.panUntil=0;state.zoom=1;updateUI();}
@@ -664,7 +711,7 @@ function showJournal() {
 }
 function openSettings(){
   const box=document.createElement('div');box.className='settings-content settings-compact';
-  const intro=document.createElement('p');intro.className='settings-intro';intro.textContent='Clock, display, audio and controls. Real-time follows the wall clock; accelerated time runs 60× faster.';box.append(intro);
+  const intro=document.createElement('p');intro.className='settings-intro';intro.textContent='Surface: 1 m per square. System: light-seconds (500 ls = 1 AU). Chart: light-years. Coordinates start at the lander, system star, or home system; +X is right and +Y is down.';box.append(intro);
   const heading=text=>{const h=document.createElement('h3');h.textContent=text;box.append(h);};
   function control(key,label,kind,options){
     const row=document.createElement('label');row.className='setting-row';
@@ -700,10 +747,10 @@ function openSettings(){
   control('music','Soundtrack','checkbox');control('volume','Music volume','range',[0,1,.05]);
   control('starMotion','Moving stars','checkbox');control('twinkle','Star twinkle','checkbox');
 
-  heading('Time & units');
+  heading('Clock');
   control('timeMode','Clock speed','select',[['accelerated','Accelerated · 1 min = 1 hour'],['realtime','Real time · 1:1']]);
   control('timeZone','Time zone','select',zoneValues);
-  control('units','Distance units','select',[['mi','Miles'],['km','Kilometres'],['au','Astronomical units']]);
+
   control('paused','Pause accelerated clock','checkbox');
 
   heading('View');
@@ -746,19 +793,24 @@ $('settingsOpen').onclick=openSettings;$('menuSettings').onclick=openSettings;
 function targetPoint() {
   if(!state.autopilot)return null;
   if(state.autopilot.type==='surface')return {x:0,y:0};
+  if(state.autopilot.type==='waypoint')return {x:state.autopilot.x,y:state.autopilot.y};
   if(state.autopilot.type==='body'){const b=findBody(state.autopilot.id);return b?bodyPosition(b,state.save.days,state.system):null;}
   if(state.autopilot.type==='star'){const s=starAt(state.autopilot.id);return {x:s.x,y:s.y};}
   return null;
 }
 function update(dt,clockDt=dt) {
   if(!state.save || $('modal').classList.contains('visible'))return;
+  if(state.warpUntil){
+    if(performance.now()>=state.warpUntil){state.warpUntil=0;state.scene==='chart'?enterSystem(currentStar()):enterChart();}
+    return;
+  }
   state.save.days=settings.timeMode==='realtime'?currentDays():advanceDays(state.save.days,clockDt,settings.paused);
   const dx=Number(state.keys.has('ArrowRight')||state.keys.has('d'))-Number(state.keys.has('ArrowLeft')||state.keys.has('a'))+state.joy.x;
   const dy=Number(state.keys.has('ArrowDown')||state.keys.has('s'))-Number(state.keys.has('ArrowUp')||state.keys.has('w'))+state.joy.y;
   const magnitude=Math.hypot(dx,dy), manual=magnitude>.08;
   const p=state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship;
   const before={...p};
-  if(manual){let speed=state.scene==='surface'?90:state.scene==='chart'?180:260;
+  if(manual){let speed=state.scene==='surface'?SURFACE_UNIT*2.2:state.scene==='chart'?CHART_UNIT*4.5:Math.max(260,260/state.zoom);
     if(state.scene==='surface'&&terrain.sampler(findBody(state.save.landed))(p.x,p.y).water)speed*=.45;
     p.x+=dx/Math.max(1,magnitude)*speed*dt/1000;p.y+=dy/Math.max(1,magnitude)*speed*dt/1000;
     state.autopilot=null;state.followBody=null;state.panUntil=0;
@@ -766,11 +818,17 @@ function update(dt,clockDt=dt) {
     if(destination){
       const goal=state.scene==='system'?navigationTarget(p,destination,visualRadius(state.system.star.diameter,'star')):destination;
       const vx=goal.x-p.x,vy=goal.y-p.y,d=Math.hypot(vx,vy),remaining=Math.hypot(destination.x-p.x,destination.y-p.y);
-      const arrival=state.scene==='system'?visualRadius(findBody(state.autopilot.id)?.diameter||10000,findBody(state.autopilot.id)?.kind)+38:state.scene==='chart'?22:32;
+      if(state.scene==='system'&&state.autopilot.type==='body'){
+        const desired=Math.min(state.autopilot.arrivalZoom||1,Math.min(state.width,state.height)*.6/Math.max(1,remaining));
+        state.zoom+=(desired-state.zoom)*(1-Math.exp(-dt/220));
+      }
+      const isWaypoint=state.autopilot.type==='waypoint';
+      const arrival=isWaypoint?0:state.scene==='system'?visualRadius(findBody(state.autopilot.id)?.diameter||10000,findBody(state.autopilot.id)?.kind)+38:state.scene==='chart'?22:32;
       if(remaining<=arrival+.2){
-        if(state.scene==='system')state.followBody={id:state.autopilot.id,x:p.x-destination.x,y:p.y-destination.y};
-        state.autopilot=null;updateUI();toast(state.scene==='chart'?'Star reached · enter the system':state.scene==='surface'?'Lander reached':'Orbit achieved · station keeping active');
-      }else if(d>0){const step=Math.min(goal===destination?remaining-arrival:d,(state.scene==='surface'?110:state.scene==='chart'?360:500)*dt/1000);
+        if(isWaypoint){p.x=destination.x;p.y=destination.y;state.waypoint=null;}
+        if(state.scene==='system'&&!isWaypoint)state.followBody={id:state.autopilot.id,x:p.x-destination.x,y:p.y-destination.y};
+        state.autopilot=null;updateUI();toast(isWaypoint?'Coordinate reached':state.scene==='chart'?'Star reached · enter the system':state.scene==='surface'?'Lander reached':'Orbit achieved · station keeping active');
+      }else if(d>0){const step=Math.min(goal===destination?remaining-arrival:d,(travelSpeed(state.scene,remaining)*(state.scene==='surface'&&terrain.sampler(findBody(state.save.landed))(p.x,p.y).water?.45:1))*dt/1000);
         p.x+=vx/d*step;p.y+=vy/d*step;state.panUntil=0;}
     }else state.autopilot=null;
   }else if(state.scene==='system'&&state.followBody){
@@ -783,15 +841,53 @@ function update(dt,clockDt=dt) {
   const motion=state.scene==='surface'?state.actorMotion:state.shipMotion;
   updateMotion(motion,p.x-before.x,p.y-before.y,dt);
   if(state.followBody && !manual && !state.autopilot){motion.thrust=0;motion.moving=false;}
-  if(performance.now()>state.panUntil){const ease=1-Math.exp(-dt/145);state.camera.x+=(p.x-state.camera.x)*ease;state.camera.y+=(p.y-state.camera.y)*ease;}
+  if(state.scene==='system'&&state.focusBody&&state.panUntil===Infinity){
+    const body=findBody(state.focusBody);
+    if(body)state.camera=bodyPosition(body,state.save.days,state.system);
+    else if(state.focusBody===state.system.star.id)state.camera={x:0,y:0};
+  }else if(performance.now()>state.panUntil){const ease=1-Math.exp(-dt/145);state.camera.x+=(p.x-state.camera.x)*ease;state.camera.y+=(p.y-state.camera.y)*ease;}
   state.elapsed+=dt;
   if(state.elapsed>4500){state.elapsed=0;persist();}
 }
 
-// Canvas painting: physical orbital periods in the model, compressed sizes in the view.
+// Canvas painting: a single linear physical scale for system bodies and orbits.
 const circle=(x,y,r)=>{ctx.beginPath();ctx.arc(x,y,r,0,TAU);};
 const screen=(x,y)=>({x:state.width/2+(x-state.camera.x)*state.zoom,y:state.height/2+(y-state.camera.y)*state.zoom});
 const world=(x,y)=>({x:(x-state.width/2)/state.zoom+state.camera.x,y:(y-state.height/2)/state.zoom+state.camera.y});
+function drawCoordinateGrid(){
+  const scene=state.scene,unit=sceneUnit(scene),stride=gridStride(scene,state.zoom),step=unit*stride;
+  const halfW=state.width/state.zoom/2,halfH=state.height/state.zoom/2;
+  const left=state.camera.x-halfW,top=state.camera.y-halfH;
+  ctx.save();ctx.lineWidth=1;ctx.strokeStyle=scene==='surface'?'#c2f9e51a':'#85b8cb10';
+  ctx.beginPath();
+  for(let x=Math.ceil((left-unit/2)/step)*step+unit/2;x<left+halfW*2;x+=step){const p=screen(x,0);ctx.moveTo(Math.round(p.x)+.5,0);ctx.lineTo(Math.round(p.x)+.5,state.height);}
+  for(let y=Math.ceil((top-unit/2)/step)*step+unit/2;y<top+halfH*2;y+=step){const p=screen(0,y);ctx.moveTo(0,Math.round(p.y)+.5);ctx.lineTo(state.width,Math.round(p.y)+.5);}
+  ctx.stroke();
+  const cell=state.waypoint||state.hoverCell;
+  if(cell){
+    const p=screen(cell.x-unit/2,cell.y-unit/2),size=unit*state.zoom;
+    ctx.fillStyle=state.waypoint?'#ffcf6926':'#91e9d41a';ctx.strokeStyle=state.waypoint?'#ffcf69':'#8ee9d4';
+    ctx.fillRect(p.x,p.y,size,size);ctx.strokeRect(p.x,p.y,size,size);
+    if(size<10){const c=screen(cell.x,cell.y);ctx.strokeRect(c.x-5,c.y-5,10,10);}
+    if(state.waypoint){
+      const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship,a=screen(pos.x,pos.y),b=screen(cell.x,cell.y);
+      ctx.setLineDash([3,6]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+function drawBodyOrbit(body,days,host={x:0,y:0}){
+  const o=orbitalElements(body,days),center=screen(host.x,host.y);
+  const extent=o.a*(1+o.e)*state.zoom;
+  if(extent<2)return;
+  const d=Math.hypot(center.x-state.width/2,center.y-state.height/2),view=Math.hypot(state.width,state.height)/2;
+  if(d-view>extent||d+view<o.a*(1-o.e)*Math.cos(o.inclination)*state.zoom)return;
+  const p0=orbitPoint(body,days,0),p1=orbitPoint(body,days,Math.PI),p2=orbitPoint(body,days,Math.PI/2);
+  const cx=(p0.x+p1.x)/2,cy=(p0.y+p1.y)/2,c=screen(host.x+cx,host.y+cy),z=state.zoom;
+  ctx.save();ctx.strokeStyle=body.kind==='moon'?'#9ebcc43b':'#a3bed33b';ctx.lineWidth=1;
+  ctx.beginPath();ctx.save();ctx.transform((p0.x-cx)*z,(p0.y-cy)*z,(p2.x-cx)*z,(p2.y-cy)*z,c.x,c.y);
+  ctx.arc(0,0,1,0,TAU);ctx.restore();ctx.stroke();ctx.restore();
+}
 function drawRetroPixelStar(x,y,size,shape,rgb){
   const s=Math.max(1,Math.round(size));
   if(s<=2){ctx.fillStyle=`rgb(${rgb})`;ctx.fillRect(x,y,s,s);return;}
@@ -873,6 +969,7 @@ function drawSelection(x,y,r,now) {
 }
 function drawStar(x,y,r,color,now,body=null) {
   const w=state.width,h=state.height,maxDim=Math.max(w,h);
+  if(r<1.5){ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(Math.round(x)-3,Math.round(y)-3,6,6);return;}
   const coreVisible=x+r>0&&x-r<w&&y+r>0&&y-r<h;
   const nearViewport=x>-maxDim*.7&&x<w+maxDim*.7&&y>-maxDim*.7&&y<h+maxDim*.7;
   if(!coreVisible&&!nearViewport)return;
@@ -901,13 +998,18 @@ function drawStar(x,y,r,color,now,body=null) {
   }
   if(body){
     ctx.save();ctx.imageSmoothingEnabled=false;
-    ctx.drawImage(celestialSprite(body,state.save.days),x-r,y-r,r*2,r*2);ctx.restore();
+    paintStellarSurface(ctx,body,x,y,r,state.stellarSeconds,state.save.days,settings.reducedMotion);ctx.restore();
   }
 }
 function drawPlanet(body,p,now,worldPos) {
   const sr=visualRadius(body.diameter,body.kind)*state.zoom;
   if(p.x<-sr-100||p.x>state.width+sr+100||p.y<-sr-100||p.y>state.height+sr+100)return;
-  const r=Math.max(3,sr);const selected=state.selected?.id===body.id;
+  const r=sr;const selected=state.selected?.id===body.id;
+  if(r<1.5){
+    // Hollow navigation beacon, not a larger physical disk.
+    ctx.strokeStyle=body.color;ctx.lineWidth=1;ctx.strokeRect(Math.round(p.x)-2,Math.round(p.y)-2,4,4);
+    if(selected){drawSelection(p.x,p.y,4,now);label(body.name,p.x,p.y-23,true);}return;
+  }
   if(body.name==='Saturn' || (body.type==='gas'&&hash(body.id)%3===0)){
     ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-.31);ctx.strokeStyle='#d6cbad88';ctx.lineWidth=Math.max(2,r*.16);
     ctx.beginPath();ctx.ellipse(0,0,r*1.85,r*.48,0,0,TAU);ctx.stroke();ctx.restore();
@@ -928,6 +1030,7 @@ function drawPlanet(body,p,now,worldPos) {
 }
 function drawSystem(now) {
   const sys=state.system,days=state.save.days,zone=habitableZone(sys.star.luminosity);
+  drawCoordinateGrid();
   const center=screen(0,0);
   if(settings.zone){
     const zoneInner=orbitRadius(zone.inner,sys.star),zoneOuter=orbitRadius(zone.outer,sys.star);
@@ -942,11 +1045,11 @@ function drawSystem(now) {
     }
   }
   if(settings.orbits)for(const planet of sys.planets){
-    drawOrbit(0,0,orbitRadius(planet.au,sys.star));
+    drawBodyOrbit(planet,days);
     const host=bodyPosition(planet,days,sys),hostScreen=screen(host.x,host.y);
     const moonOrbitMargin=Math.max(state.width,state.height)*.75;
     if(hostScreen.x>-moonOrbitMargin&&hostScreen.x<state.width+moonOrbitMargin&&hostScreen.y>-moonOrbitMargin&&hostScreen.y<state.height+moonOrbitMargin)
-      for(const moon of planet.moons)drawOrbit(host.x,host.y,moon.orbitPx,'#9ebcc4');
+      for(const moon of planet.moons)drawBodyOrbit(moon,days,host);
   }
   drawStar(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,sys.star.color,now,sys.star);
   if(state.selected?.id===sys.star.id)drawSelection(center.x,center.y,visualRadius(sys.star.diameter,'star')*state.zoom,now);
@@ -980,6 +1083,7 @@ function drawChartStar(x,y,r,color,now,seed){
   ctx.restore();
 }
 function drawChart(now) {
+  drawCoordinateGrid();
   const stars=nearbyStars();
   if(settings.travelLines && state.save.route.length>1){ctx.save();ctx.strokeStyle='#8ebcab50';ctx.setLineDash([3,7]);ctx.beginPath();
     state.save.route.forEach((seed,i)=>{const star=starAt(seed),p=screen(star.x,star.y);if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);});ctx.stroke();ctx.restore();}
@@ -992,11 +1096,12 @@ function drawChart(now) {
   if(state.autopilot?.type==='star'){const s=starAt(state.autopilot.id);const a=screen(state.save.chart.x,state.save.chart.y),b=screen(s.x,s.y);
     ctx.strokeStyle='#76dac680';ctx.lineWidth=1;ctx.setLineDash([5,7]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);}
   const ship=screen(state.save.chart.x,state.save.chart.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,36,false,state.zoom);
-  ctx.font="9px 'SpaceBitz Pixel',monospace";ctx.fillStyle='#91b1be';ctx.fillText('LOCAL SECTOR  /  DISTANCES ARE GAME UNITS',state.width/2,Math.max(70,state.height*.14));
+  ctx.font="9px 'SpaceBitz Pixel',monospace";ctx.fillStyle='#91b1be';ctx.fillText('LOCAL SECTOR  /  LIGHT-YEARS',state.width/2,Math.max(70,state.height*.14));
 }
 function drawGround(now) {
   const body=findBody(state.save.landed);if(!body)return;
   terrain.draw(ctx,body,state.camera,state.zoom,state.width,state.height,settings.pixelSize);
+  drawCoordinateGrid();
   const sampleTerrain=terrain.sampler(body),cell=110;
   const hw=state.width/state.zoom/2,hh=state.height/state.zoom/2;
   // Sparse, independently placed vegetation and rocks. Placement is keyed to
@@ -1021,7 +1126,7 @@ function drawGround(now) {
       }
       ctx.restore();
     }
-  const lander=screen(0,0);paintShip(ctx,lander.x,lander.y,{},now,62,true,state.zoom);
+  const lander=screen(0,0);paintShip(ctx,lander.x,lander.y,{},now,LANDER_SIZE,true,state.zoom);
   const astronaut=screen(state.save.surface.x,state.save.surface.y);
   paintAstronaut(ctx,astronaut.x,astronaut.y,state.actorMotion,state.zoom);
   const sunlight=Math.cos(rotationAngle(body,state.save.days)-(body.phase||0));
@@ -1045,7 +1150,7 @@ function frame(now) {
   const realDt=Math.max(0,now-state.last),dt=Math.min(100,realDt);state.last=now;
   if(realDt>0)state.fps+=(1000/realDt-state.fps)*.06;
   if(!document.hidden){
-    if(state.save)update(dt,realDt);
+    if(state.save){update(dt,realDt);if(!$('modal').classList.contains('visible')&&!settings.reducedMotion)state.stellarSeconds+=dt/1000;}
     ctx.setTransform(state.dpr,0,0,state.dpr,0,0);backdrop(now);
     if(state.scene==='system')drawSystem(now);
     else if(state.scene==='chart')drawChart(now);
@@ -1069,11 +1174,15 @@ canvas.addEventListener('pointerdown',e=>{if(!state.save||$('modal').classList.c
   if(pointers.size===2){gesture=null;const [a,b]=[...pointers.values()];state.pinch=Math.hypot(a.x-b.x,a.y-b.y);}
 });
 canvas.addEventListener('pointermove',e=>{
-  if(!pointers.has(e.pointerId))return;const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(!pointers.has(e.pointerId)){
+    if(state.save&&!$('modal').classList.contains('visible')&&e.pointerType==='mouse'){
+      const rect=canvas.getBoundingClientRect();state.hoverCell=gridCell(world(e.clientX-rect.left,e.clientY-rect.top),state.scene);
+    }return;
+  }const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pointers.size===2){const [a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);
-    if(state.pinch)zoom(dist/state.pinch);state.pinch=dist;return;}
+    if(state.pinch)zoom(dist/state.pinch);state.hoverCell=null;state.pinch=dist;return;}
   if(gesture){if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>7)gesture.moved=true;
-    if(gesture.moved){state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
+    if(gesture.moved){state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
       state.panUntil=performance.now()+2500;}}
 });
 function pick(e){const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
@@ -1081,19 +1190,23 @@ function pick(e){const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left
     const matches=allBodies().map(body=>{const pos=bodyPosition(body,state.save.days,state.system),p=screen(pos.x,pos.y);
       return {body,d:Math.hypot(x-p.x,y-p.y),radius:visualRadius(body.diameter,body.kind)*state.zoom};})
       .filter(v=>v.d<Math.max(20,v.radius+10)).sort((a,b)=>a.d-b.d);
-    if(matches.length)select(matches[0].body);
-    else{const star=screen(0,0);if(Math.hypot(x-star.x,y-star.y)<Math.max(24,visualRadius(state.system.star.diameter,'star')*state.zoom+8))select(state.system.star);}
+    if(matches.length){select(matches[0].body);return;}
+    else{const star=screen(0,0);if(Math.hypot(x-star.x,y-star.y)<Math.max(24,visualRadius(state.system.star.diameter,'star')*state.zoom+8)){select(state.system.star);return;}}
   }else if(state.scene==='chart'){
     const match=nearbyStars().map(star=>{const p=screen(star.x,star.y);return {star,d:Math.hypot(x-p.x,y-p.y)};})
-      .filter(v=>v.d<26).sort((a,b)=>a.d-b.d)[0];if(match)select(match.star);
+      .filter(v=>v.d<26).sort((a,b)=>a.d-b.d)[0];if(match){select(match.star);return;}
   }
+  const cell=gridCell(world(x,y),state.scene);
+  if(state.scene==='system'&&Math.hypot(cell.x,cell.y)<visualRadius(state.system.star.diameter)+24){toast('Choose a coordinate outside the star.');return;}
+  state.waypoint=cell;state.selected=null;state.autopilot=null;state.hoverCell=null;updateUI();
 }
+canvas.addEventListener('pointerleave',()=>{state.hoverCell=null;});
 canvas.addEventListener('pointerup',e=>{if(!pointers.has(e.pointerId))return;pointers.delete(e.pointerId);
   if(gesture&&!gesture.moved&&pointers.size===0)pick(e);gesture=null;state.pinch=null;});
 canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);gesture=null;state.pinch=null;});
 canvas.addEventListener('wheel',e=>{if(!state.save)return;e.preventDefault();zoom(e.deltaY<0?1.12:1/1.12);},{passive:false});
 window.addEventListener('keydown',e=>{
-  if(e.key==='Escape'){if($('modal').classList.contains('visible'))closeModal();else if(!$('universeMenuStage').hidden&&!state.save)showMenuStage('main');return;}
+  if(e.key==='Escape'){if($('modal').classList.contains('visible'))closeModal();else if(state.waypoint){state.waypoint=null;state.autopilot=null;updateUI();}else if(!$('universeMenuStage').hidden&&!state.save)showMenuStage('main');return;}
   if($('modal').classList.contains('visible')){
     if(e.key==='Tab'){
       const focusable=[...$('modal').querySelectorAll('button,input,select,a[href]')].filter(el=>!el.disabled&&!el.hidden);

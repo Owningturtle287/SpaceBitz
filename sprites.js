@@ -1,3 +1,4 @@
+import {ASTRONAUT_SCALE} from './scale.js';
 const cache=new Map();
 function makeSprite(key,width,height,paint) {
   if(cache.has(key))return cache.get(key);
@@ -24,7 +25,7 @@ export function shipSprite() {
 // Eight poses per stride: contact, recoil, passing and lift, on each foot.
 // The neutral stance is separate so stopping never leaves a boot in mid-air.
 export const WALK_FRAMES=8;
-export const WALK_CYCLE_DISTANCE=48;
+export const WALK_CYCLE_DISTANCE=48*ASTRONAUT_SCALE/1.25;
 const SUIT={outline:'#081426',shadow:'#3d5973',mid:'#93b5c2',light:'#eaf0dd',
   white:'#fff8e5',teal:'#54cbbc',red:'#ee795a',gold:'#ffce70',visor:'#54384b'};
 const POSES=[
@@ -134,7 +135,7 @@ export function paintShip(ctx,x,y,motion,now,size=42,parked=false,zoom=1) {
 export function paintAstronaut(ctx,x,y,motion,zoom=1) {
   ctx.save();ctx.imageSmoothingEnabled=false;
   // Feet are the world-space anchor. Scale the entire sprite and shadow once.
-  ctx.translate(Math.round(x),Math.round(y));ctx.scale(1.25*zoom,1.25*zoom);
+  ctx.translate(Math.round(x),Math.round(y));ctx.scale(ASTRONAUT_SCALE*zoom,ASTRONAUT_SCALE*zoom);
   ctx.fillStyle='#071a2866';ctx.fillRect(-10,-1,20,3);ctx.fillRect(-7,-2,14,5);
   ctx.drawImage(astronautSprite(motion.direction||'down',astronautFrame(motion)),-16,-37);
   ctx.restore();

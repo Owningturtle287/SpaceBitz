@@ -31,13 +31,13 @@ test('autopilot can cross a system while avoiding the enlarged star',()=>{
 });
 test('old time-speed settings cannot restore accelerated orbits',()=>{
   const value=normalizeSettings({speed:30,volume:4,joyX:-10,controls:'mobile',units:'mi'});
-  assert.equal('speed' in value,false);assert.equal(value.volume,1);assert.equal(value.joyX,8);assert.equal(value.controls,'auto');assert.equal(value.units,'mi');
+  assert.equal('speed' in value,false);assert.equal(value.volume,1);assert.equal(value.joyX,8);assert.equal(value.controls,'auto');assert.equal('units' in value,false);
 });
 test('every offline shell entry and module dependency exists',()=>{
   const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
   const shell=sw.match(/const SHELL=\[([^\]]+)\]/)[1].match(/'([^']+)'/g).map(s=>s.slice(1,-1));
   for(const path of shell)assert.ok(existsSync(new URL('../'+path,import.meta.url)),path);
-  for(const file of ['main.js','celestial.js','terrain.js']){
+  for(const file of ['main.js','model.js','sprites.js','celestial.js','terrain.js','stellar.js','navigation.js']){
     const text=readFileSync(new URL('../'+file,import.meta.url),'utf8');
     for(const match of text.matchAll(/from '(.+?)'/g))assert.ok(shell.includes(match[1]),match[1]+' not cached');
   }

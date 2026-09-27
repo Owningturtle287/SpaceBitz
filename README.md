@@ -10,32 +10,48 @@ For local development, serve this directory with `python3 -m http.server 8000` a
 
 - Tap a world or choose it from the system list. **Travel** flies toward it; **Land** becomes available nearby. Gas and ice giants have no solid landing surface; explore their moons.
 - **Star chart** opens nearby generated systems. Select a star, travel to it, then enter its system.
-- Use WASD / arrow keys or the touch joystick. Drag to pan; pinch, scroll, or use + / − to zoom. **⌗** fits the system; **Recenter** follows the ship.
+- Use WASD / arrow keys or the touch joystick. Drag to pan; pinch, scroll, or use + / − to zoom. **Fit System** in the system dropdown fits the orbital map; **Center** follows the ship.
 - Collect glowing surface samples and return to the lander to launch. Your logbook records first landings and samples.
-- Settings are available in the startup menu and in game: music and volume, star drift and twinkle, orbit and Goldilocks overlays, labels, travel trails, coordinates, FPS, distance units, terrain detail, rendering resolution, input mode, joystick placement, pause, and optional instant travel.
+- Settings are available in the startup menu and in game: music and volume, star drift and twinkle, orbit and Goldilocks overlays, labels, travel trails, coordinates, FPS, terrain detail, rendering resolution, input mode, joystick placement, pause, and optional instant travel.
 - The original 48 BPM melody plays continuously through the menu and gameplay. Where autoplay is blocked, the first tap or keypress starts audio; the menu also has an **Enable music** button. Music pauses while the app is hidden.
 
 ## Clock and astronomical model
 
-**One real minute equals one game hour.** Earth rotates once in **24 real minutes**. Its 365.256-day orbit takes about **6.09 real days of active play**, and the Moon's 27.322-day orbit takes about **10.93 real hours**. Time pauses in menus, while the app is hidden, and when the simulation-clock pause option is enabled. Ship travel remains fast enough to explore comfortably.
+In accelerated mode, **one real minute equals one game hour**. Earth rotates once in approximately **24 real minutes**. Its 365.256-day orbit takes about **6.09 real days of active play**, and the Moon's 27.322-day orbit takes about **10.93 real hours**. Accelerated time pauses in menus, while the app is hidden, and when the simulation-clock pause option is enabled. Real-time mode follows the current date and time. Ship travel remains fast enough to explore comfortably.
 
-Sol uses approximate real diameters in kilometres, semimajor axes in AU, orbital periods, and rotation periods. Earth's rotation is deliberately rounded to 24 hours to match the game clock; other bodies use approximate sidereal rotations, including retrograde Venus and Uranus. Moons rotate synchronously; Triton's orbit and rotation are retrograde. Surface lighting and globe textures follow the same clock.
+Sol uses approximate real diameters in kilometres, semimajor axes in AU, orbital periods, and sidereal rotation periods, including retrograde Venus and Uranus. Moons rotate synchronously; Triton's orbit and rotation are retrograde. Surface lighting and globe textures follow the same clock.
 
-Procedural systems use stellar mass, a mass-to-the-3.5-power luminosity estimate, Kepler orbital periods, and a temperate band proportional to the square root of luminosity. Generated moon periods use estimated host mass and physical orbital distance, with conservative Hill-radius limits. This is a circular-orbit exploration model, not an N-body simulation. The green band is an **irradiance guide**, not a guarantee of breathable air or liquid water.
+Procedural systems use stellar mass, a mass-to-the-3.5-power luminosity estimate, Kepler orbital periods, and a temperate band proportional to the square root of luminosity. Generated moon periods use estimated host mass and physical orbital distance, with conservative Hill-radius limits. Sol uses elliptical orbits; generated systems use circular Kepler orbits. Gravitational interactions are not simulated. The green band is an **irradiance guide**, not a guarantee of breathable air or liquid water.
 
-Orbital distances are compressed logarithmically for navigation. All body radii share a mildly compressed diameter scale: the Sun appears about seven times Jupiter's radius and more than fifty times Earth's. Small moons retain a visibility floor and generous hit targets. Physical values appear in **Details**. Navigation routes around the enlarged star.
+Body diameters and system orbit distances now use **one linear physical scale**, calibrated so Sol's drawn radius is three times its v1.4 radius. Sol's mean diameter is 1,391,400 km; planets and moons retain their physical proportions to it. Tiny bodies get hollow navigation beacons rather than inflated physical disks. Sol planet positions include the JPL Table 1 eccentricity, inclination and ascending node, projected into the map; the Earth entry approximates the Earth–Moon barycentre. These approximate elements are intended for 1800–2050. Moon semimajor axes and eccentricities are physical, but their orbital planes/phases are illustrative, not a live ephemeris. Generated systems retain deterministic Kepler periods and Hill-sphere limits.
+
+Use **Fit System** in the system dropdown for the full orbital map, **Info → Focus View** to inspect a body, and **Center** to return to your ship. The wider zoom range accommodates both true orbital spacing and small moons. Travel automatically cruises and brakes across long system distances; ship speed is a gameplay convenience, not a real spacecraft velocity.
+
+## Coordinates and fixed units
+
+| Scene | One square | Origin | Distance display |
+| --- | --- | --- | --- |
+| Surface | 1 metre, matching the standing astronaut's visible height | Landing ship | m, then km at 1,000 m |
+| System | 1 light-second | Central star | ls, then AU at 500 ls |
+| Interstellar chart | 1 light-year | Home system | ly |
+
+The **500 light-seconds = 1 AU** convention is intentionally rounded for the game. Physical diameters and orbits are stored in kilometres/AU; the system's light-second conversion uses AU/500 consistently. The standard cannot be changed in Settings. Coordinates use +X right and +Y down. On zoomed-out views, intermediate grid lines are skipped for legibility without changing the underlying unit. The chart is procedural, not a map of real nearby stars.
+
+Tap/click empty terrain or space to highlight a square, then choose **Go Here**. The target panel shows the location and remaining distance. **Clear**, Escape, or manual movement cancels the route; arrival stops at the exact square centre. Tapping celestial objects still selects those objects. Coordinates appear directly beneath the clock with matching styling.
 
 ## Art and terrain
 
-The moving pixel starfield and twinkle effects remain visible behind the startup console. Spacecraft turn toward their actual travel direction, with thrust-linked twin engines. The ivory-suited explorer has an amber visor, coral helmet stripe, antenna and teal life-support pack. All four facing directions have eight distance-driven walking poses plus a separate resting stance. Boots lift, arms counter-swing and the body rises and falls through each stride. The astronaut, shadow, ships, lander and samples scale with camera zoom; HUD controls retain their screen size.
+The compact translucent panels use stepped pixel corners. Warp Drive is a lever: it pulls during engagement, lights during transit and returns when complete. Reduced-motion mode keeps its state changes without pulsing animation.
 
-Version **1.4.0** gives every menu and HUD surface a shared 16-bit console style. The original pixel title and compact display font are bundled locally and cached for offline play. See [CHANGELOG.md](CHANGELOG.md), or Settings → Change log, for release notes.
+The explorer's standing height is exactly one-third of the parked ship's visible height. Four facing directions each have eight distance-driven poses and a separate idle stance. The astronaut, shadow, ships, lander and samples scale with camera zoom.
 
-Terrain samples continuous, seeded noise in world coordinates: warped continents, coasts, moisture bands, mountain ridges, crater depressions, and biome palettes. Small cached raster chunks keep rendering efficient without repeating tile boundaries. Pixel density is adjustable. Landing sites have a small dry clearing; water slows movement.
+Stellar surfaces show slowly drifting convection with smoothly blended frames, small active-region sunspots that grow/fade, bright flare kernels and occasional loops. Spot diameters stay below 28,000 km. Activity timing is artistically accelerated to remain visible during play; it does not predict real solar weather. Reduced-motion mode freezes that visual activity.
+
+Terrain samples continuous, seeded noise in world coordinates, using small cached raster chunks. Pixel density is adjustable. Landing sites have a dry clearing; water slows both manual walking and waypoint travel.
 
 ## Saves and installation
 
-Progress autosaves locally. **Save & Main Menu** and **Export Save** are in Settings; import is on the startup screen. Existing Field Edition saves retain discoveries and get a safe ship-position migration for the enlarged system. Older `spacebitz:saves` exports can be imported as new universes; old terrain and exact positions do not carry over. Storage is device specific; clearing site data deletes local saves, so export important voyages.
+Progress autosaves locally. **Save & Main Menu** and **Export Save** are in Settings; import is on the startup screen. Existing saves retain discoveries, logbooks, local surface locations and chart progress. Ships saved in the old compressed system are safely repositioned beside their nearest legacy planet on first load; this migration runs once. Older `spacebitz:saves` exports can be imported as new universes; old terrain and exact positions do not carry over. Storage is device specific; clearing site data deletes local saves, so export important voyages.
 
 On Android Chrome, use **Install app** from the browser menu or the in-game installation prompt. On iPhone Safari, choose **Share → Add to Home Screen**. The installed progressive web app works offline after its first complete online load; this repository does not ship a native APK or IPA.
 
@@ -47,8 +63,10 @@ Run `npm test` (Node's built-in test runner; no package installation required).
 
 - `model.js`: deterministic generation, physical periods, clock, display scaling.
 - `terrain.js` / `celestial.js`: continuous pixel terrain and rotating spherical body textures.
-- `motion.js` / `sprites.js`: navigation, movement state, ship and astronaut art.
-- `music.js` / `settings.js`: soundtrack lifecycle and validated preferences.
+- `motion.js` / `navigation.js` / `sprites.js`: movement, travel, save migration and character/ship art.
+- `scale.js`: fixed units, grid snapping and distance formatting.
+- `stellar.js`: smoothly blended convection, sunspots and flares.
+- `settings.js`: validated preferences; native soundtrack lifecycle is in `main.js`.
 - `main.js`: input, game state, UI, canvas scenes, autosave.
 - `sw.js`: app-shell cache scoped to this app, including every runtime module.
 - `assets/`: original pixel lettering and title, rebuilt with `python tools/build-retro-assets.py` (optional development dependency: `fonttools`; no runtime dependency).
@@ -56,3 +74,5 @@ Run `npm test` (Node's built-in test runner; no package installation required).
 Tests cover clock ratios, planetary and lunar periods, scale and orbital clearance, deterministic terrain and chunk continuity, ship steering and star avoidance, settings migration, audio scheduling, and offline asset completeness. Browser checks supplement these; automated checks do not simulate every phone or browser's audio policy.
 
 Reference values: [NASA planetary fact sheets](https://nssdc.gsfc.nasa.gov/planetary/factsheet/). Browser audio behavior: [MDN autoplay guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay).
+
+Scale references: [NASA Sun facts](https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html), [JPL approximate planetary positions](https://ssd.jpl.nasa.gov/planets/approx_pos.html), [JPL satellite mean elements](https://ssd.jpl.nasa.gov/sats/elem/sep.html). Full release history: [CHANGELOG.md](CHANGELOG.md) and **Settings → Change log**.

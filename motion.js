@@ -21,6 +21,6 @@ export function navigationTarget(position,goal,starRadius) {
   if(Math.hypot(position.x+t*dx,position.y+t*dy)>starRadius+38)return goal;
   const start=Math.atan2(position.y,position.x),end=Math.atan2(goal.y,goal.x);
   const difference=Math.atan2(Math.sin(end-start),Math.cos(end-start));
-  const angle=start+(difference>=0?1:-1)*.4,radius=starRadius+150;
+  const angle=start+(difference>=0?1:-1)*.4,radius=starRadius*1.08+150;
   return {x:Math.cos(angle)*radius,y:Math.sin(angle)*radius};
 }
