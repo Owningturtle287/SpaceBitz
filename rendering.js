@@ -2,6 +2,12 @@
 // wide; clipping the canvas alone does not bound tessellation or dash generation.
 const TAU=Math.PI*2;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+export function canvasContextOptions(userAgent=''){
+  // WebKit's accelerated high-DPI canvas can apply DPR twice before a readback.
+  // Its software path renders the correct first frame; keep acceleration elsewhere.
+  const webkit=/AppleWebKit\//.test(userAgent)&&!/Chrome\/|Chromium\/|Edg\//.test(userAgent);
+  return {alpha:false,willReadFrequently:webkit};
+}
 export function clipSegment(a,b,width,height,pad=2){
   const dx=b.x-a.x,dy=b.y-a.y;let lo=0,hi=1;
   const p=[-dx,dx,-dy,dy],q=[a.x+pad,width+pad-a.x,a.y+pad,height+pad-a.y];

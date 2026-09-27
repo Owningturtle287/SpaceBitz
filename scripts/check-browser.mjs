@@ -19,13 +19,9 @@ try{
   const page=await browser.newPage({viewport:{width:844,height:390},deviceScaleFactor:2,hasTouch:true,serviceWorkers:'block'});
   page.setDefaultTimeout(15000);
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  let canvasMode='default';
   await page.addInitScript(()=>localStorage.setItem('spacebitz:field:settings',JSON.stringify({music:false,paused:true,controls:'touch',resolution:'2',showCoords:true})));
   await page.route('**/main.js',async route=>{
     const response=await route.fetch();let source=await response.text();
-    if(canvasMode==='alpha')source=source.replace("canvas.getContext('2d', {alpha:false})","canvas.getContext('2d', {alpha:true})");
-    if(canvasMode==='readback')source=source.replace("canvas.getContext('2d', {alpha:false})","canvas.getContext('2d', {alpha:false,willReadFrequently:true})");
-    if(canvasMode==='preflight')source=source.replace('  ctx.setTransform(state.dpr,0,0,state.dpr,0,0);','  ctx.getImageData(0,0,1,1);ctx.setTransform(state.dpr,0,0,state.dpr,0,0);');
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
     source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,update,updateUI,create,start,select,showDetails};';
@@ -40,11 +36,14 @@ try{
   await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
   const initial=await page.evaluate(()=>{
     const c=document.getElementById('sky'),g=c.getContext('2d'),s=window.__game.state,r=c.getBoundingClientRect(),m=g.getTransform();
-    return {width:s.width,height:s.height,dpr:s.dpr,canvasWidth:c.width,canvasHeight:c.height,rect:{width:r.width,height:r.height},transform:[m.a,m.b,m.c,m.d,m.e,m.f],lastFrame:window.__lastFrame,image:c.toDataURL()};
+    const image=c.toDataURL(),pixels=g.getImageData(c.width/2-20,c.height/2-30,40,60).data;let shipPixels=0;
+    for(let i=0;i<pixels.length;i+=4)if(pixels[i+1]>90&&pixels[i+2]>90)shipPixels++;
+    return {width:s.width,height:s.height,dpr:s.dpr,canvasWidth:c.width,canvasHeight:c.height,rect:{width:r.width,height:r.height},transform:[m.a,m.b,m.c,m.d,m.e,m.f],lastFrame:window.__lastFrame,shipPixels,image};
   });
   await mkdir('.qa',{recursive:true});await writeFile(`.qa/${engine}-canvas.png`,Buffer.from(initial.image.split(',')[1],'base64'));
   delete initial.image;assert.deepEqual(initial.transform,[2,0,0,2,0,0]);
   assert.equal(initial.canvasWidth,initial.width*initial.dpr);assert.equal(initial.width,initial.rect.width);
+  assert.ok(initial.shipPixels>200,`Ship missing from the viewport centre on startup: ${JSON.stringify(initial)}`);
   await page.screenshot({path:`.qa/${engine}-sol.png`});
   const results=await page.evaluate(async()=>{
     const g=window.__game,{state,settings}=g,canvas=document.getElementById('sky'),ctx=canvas.getContext('2d');
@@ -100,13 +99,5 @@ try{
   await page.waitForFunction(()=>window.__game?.state.scene==='system'&&window.__game.state.lastUI>0);
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
   await page.screenshot({path:`.qa/${engine}-portrait.png`});
-  if(engine==='webkit')for(const mode of ['alpha','readback','preflight']){
-    canvasMode=mode;await page.setViewportSize({width:844,height:390});await page.reload();
-    await page.locator('#startGame').click();await page.locator('#solGame').click();
-    await page.evaluate(async()=>{await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
-    await page.screenshot({path:`.qa/${engine}-${mode}.png`});
-    const sample=await page.evaluate(()=>{const c=document.getElementById('sky'),g=c.getContext('2d'),s=window.__game.state,p=g.getImageData(c.width/2-20,c.height/2-30,40,60).data;let bright=0;for(let i=0;i<p.length;i+=4)if(p[i+1]>90&&p[i+2]>90)bright++;return {bright,attrs:g.getContextAttributes?.(),state:[s.width,s.height,s.dpr]};});
-    console.log(JSON.stringify({canvasMode:mode,sample}));
-  }
   assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results},null,2));
 }finally{await browser.close();server.close();}

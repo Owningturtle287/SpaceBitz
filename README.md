@@ -49,7 +49,7 @@ Stellar surfaces show slowly drifting convection with smoothly blended frames, s
 
 Terrain samples continuous, seeded noise in world coordinates, using small cached raster chunks. Pixel density is adjustable. Landing sites have a dry clearing; water slows both manual walking and waypoint travel.
 
-Background stars drift independently of the ship and camera. System orbit paths and zone shading are clipped to the viewport before drawing; close-up body textures are source-cropped so true physical distances never become enormous GPU paths or raster targets. Each frame clears opaque space before the scene is drawn.
+Background stars drift independently of the ship and camera. System orbit paths and zone shading are clipped to the viewport before drawing; close-up body textures are source-cropped so true physical distances never become enormous GPU paths or raster targets. Each frame clears opaque space before the scene is drawn. WebKit uses its software canvas path to avoid an observed high-DPI first-frame scaling failure; other engines retain their accelerated path.
 
 ## Saves and installation
 

@@ -1,6 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {ellipseInView,circleGeometry,clipSegment,fillAnnulus,drawImageInView,clearFrame,backgroundPosition} from '../rendering.js';
+import {canvasContextOptions,ellipseInView,circleGeometry,clipSegment,fillAnnulus,drawImageInView,clearFrame,backgroundPosition} from '../rendering.js';
+
+test('WebKit, including iOS browsers, uses the verified first-frame canvas path',()=>{
+  for(const ua of ['AppleWebKit/605.1.15 Version/18 Safari/605.1.15','AppleWebKit/605.1.15 CriOS/145 Mobile','AppleWebKit/605.1.15 FxiOS/144 Mobile']){
+    assert.deepEqual(canvasContextOptions(ua),{alpha:false,willReadFrequently:true});
+  }
+  for(const ua of ['AppleWebKit/537.36 Chrome/145 Safari/537.36','AppleWebKit/537.36 Chromium/145','Gecko/20100101 Firefox/145']){
+    assert.deepEqual(canvasContextOptions(ua),{alpha:false,willReadFrequently:false});
+  }
+});
 
 test('million-pixel orbits produce only bounded visible paths at every zoom',()=>{
   for(const radius of [20,400,400000,50000000]){

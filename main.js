@@ -6,13 +6,13 @@ import {paintShip,paintAstronaut} from './sprites.js';
 import {updateMotion,navigationTarget} from './motion.js';
 import {celestialSprite} from './celestial.js';
 import {paintStellarSurface} from './stellar.js';
-import {clearFrame,backgroundPosition,strokeEllipse,circleGeometry,fillAnnulus,fillDisk,drawImageInView,lineInView} from './rendering.js';
+import {canvasContextOptions,clearFrame,backgroundPosition,strokeEllipse,circleGeometry,fillAnnulus,fillDisk,drawImageInView,lineInView} from './rendering.js';
 import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm} from './scale.js';
 import {migrateLayout,systemFitZoom,travelSpeed} from './navigation.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('sky');
-const ctx = canvas.getContext('2d', {alpha:false});
+const ctx = canvas.getContext('2d', canvasContextOptions(navigator.userAgent));
 const SAVE_KEY = 'spacebitz:field:v1';
 const SETTINGS_KEY = 'spacebitz:field:settings';
 const settings = normalizeSettings({
@@ -68,6 +68,7 @@ const CHANGELOG=[
   {version:'1.5.1',items:[
     'Fixed oversized orbit and zone drawing after the physical-scale update: only visible screen-space arcs, shading, selection rings and dashed routes are submitted to the renderer.',
     'Cropped enlarged planet and star textures before drawing, explicitly reset each frame to opaque space, and removed the redundant full-screen background texture.',
+    'Fixed WebKit high-DPI startup scaling with its verified software canvas path; other browsers retain accelerated rendering.',
     'Reduced stellar texture work and reused consecutive animation frames while retaining smooth convection, evolving spots and flares.',
     'Decoupled background-star drift from ship movement, station keeping, camera panning and zoom. Background stars follow their own paths.',
     'Redesigned Warp Drive with a red pixel knob, shaded metal base and a pivoting handle that pulls during engagement.',
