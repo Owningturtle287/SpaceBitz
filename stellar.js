@@ -1,7 +1,8 @@
 import {hash,TAU,rotationAngle} from './model.js';
 import {noise} from './terrain.js';
+import {drawImageInView} from './rendering.js';
 const unit=seed=>(hash(seed)%1000000)/1000000;
-const cache=new Map(),SIZE=192,FPS=8;
+const cache=new Map(),FPS=6;
 const smooth=x=>x*x*(3-2*x);
 export function stellarActivity(body,seconds){
   return Array.from({length:7},(_,i)=>{
@@ -17,7 +18,7 @@ export function stellarActivity(body,seconds){
       life:envelope,flare:flareAge<duration?Math.sin(Math.PI*flareAge/duration)**2:0};
   });
 }
-function makeFrame(body,seconds,rotation){
+function makeFrame(body,seconds,rotation,SIZE){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=SIZE;
   const g=canvas.getContext('2d'),image=g.createImageData(SIZE,SIZE),seed=hash(body.id);
   const base=body.color.match(/\w\w/g).map(h=>parseInt(h,16));
@@ -46,18 +47,21 @@ function makeFrame(body,seconds,rotation){
   }
   g.restore();return canvas;
 }
-export function paintStellarSurface(ctx,body,x,y,r,seconds,days,reducedMotion=false){
-  if(r<1)return;
-  const t=reducedMotion?0:seconds,rotation=rotationAngle(body,days);
-  const tick=Math.floor(t*FPS),key=`${body.id}:${tick}:${Math.floor(rotation*2000)}`;
+export function paintStellarSurface(ctx,body,x,y,r,seconds,days,reducedMotion=false,width=ctx.canvas.width,height=ctx.canvas.height){
+  if(r<1||x+r<0||x-r>width||y+r<0||y-r>height)return;
+  const t=reducedMotion?0:seconds,rotation=reducedMotion?0:rotationAngle(body,days);
+  const size=r<80?64:128,tick=Math.floor(t*FPS),key=`${body.id}:${size}`;
   let pair=cache.get(key);
-  if(!pair){
-    pair=[makeFrame(body,tick/FPS,rotation),makeFrame(body,(tick+1)/FPS,rotation)];
+  if(!pair||pair.tick!==tick){
+    const current=pair?.tick===tick-1?pair.next:makeFrame(body,tick/FPS,rotation,size);
+    pair={tick,current,next:reducedMotion?current:makeFrame(body,(tick+1)/FPS,rotation,size)};
     cache.set(key,pair);if(cache.size>4)cache.delete(cache.keys().next().value);
   }
   ctx.save();ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(pair[0],x-r,y-r,r*2,r*2);
-  ctx.globalAlpha=smooth(t*FPS-tick);ctx.drawImage(pair[1],x-r,y-r,r*2,r*2);ctx.restore();
+  drawImageInView(ctx,pair.current,x-r,y-r,r*2,r*2,width,height);
+  ctx.globalAlpha=smooth(t*FPS-tick);
+  if(ctx.globalAlpha>0)drawImageInView(ctx,pair.next,x-r,y-r,r*2,r*2,width,height);
+  ctx.restore();
   if(reducedMotion)return;
   // Bright, smoothly growing flare kernels plus occasional low limb loops.
   for(const region of stellarActivity(body,t)){
@@ -65,7 +69,8 @@ export function paintStellarSurface(ctx,body,x,y,r,seconds,days,reducedMotion=fa
     const lon=region.longitude-rotation-t*.004,z=Math.cos(lon)*Math.cos(region.latitude);
     if(z<=0)continue;
     const px=x+Math.sin(lon)*Math.cos(region.latitude)*r,py=y+Math.sin(region.latitude)*r;
-    const extent=r*(.006+.025*region.flare);
+    const extent=Math.min(Math.max(width,height),r*(.006+.025*region.flare));
+    if(px+extent*4<0||px-extent*4>width||py+extent*4<0||py-extent*4>height)continue;
     ctx.save();ctx.globalAlpha=region.flare*.8;ctx.strokeStyle='#ffbe6b';ctx.lineWidth=Math.max(.5,r*.0015);
     const angle=Math.atan2(py-y,px-x);
     ctx.translate(px,py);ctx.rotate(angle);

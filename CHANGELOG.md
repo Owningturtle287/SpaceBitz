@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.5.1 — 2026-09-27
+
+- Fixed oversized orbit and zone drawing after the physical-scale update: only visible screen-space arcs, shading, selection rings and dashed routes are submitted to the renderer.
+- Cropped enlarged planet and star textures before drawing, explicitly reset each frame to opaque space, and removed the redundant full-screen background texture.
+- Reduced stellar texture work and reused consecutive animation frames while retaining smooth convection, evolving spots and flares.
+- Decoupled background-star drift from ship movement, station keeping, camera panning and zoom. Background stars follow their own paths.
+- Redesigned Warp Drive with a red pixel knob, shaded metal base and a pivoting handle that pulls during engagement.
+- Added bounded-rendering regression tests and Chromium/WebKit startup, zoom, screen-clearing and warp checks as deployment gates. Existing saves and fixed distance scales are retained.
+
 ## 1.5.0 — 2026-09-27
 
 - Reduced menu, panel, joystick and button dimensions; added translucent backgrounds and stepped pixel corners. Moved coordinates beneath the clock using the same visual treatment.

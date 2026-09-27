@@ -37,7 +37,7 @@ test('every offline shell entry and module dependency exists',()=>{
   const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
   const shell=sw.match(/const SHELL=\[([^\]]+)\]/)[1].match(/'([^']+)'/g).map(s=>s.slice(1,-1));
   for(const path of shell)assert.ok(existsSync(new URL('../'+path,import.meta.url)),path);
-  for(const file of ['main.js','model.js','sprites.js','celestial.js','terrain.js','stellar.js','navigation.js']){
+  for(const file of ['main.js','model.js','sprites.js','celestial.js','terrain.js','stellar.js','rendering.js','navigation.js']){
     const text=readFileSync(new URL('../'+file,import.meta.url),'utf8');
     for(const match of text.matchAll(/from '(.+?)'/g))assert.ok(shell.includes(match[1]),match[1]+' not cached');
   }

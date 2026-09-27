@@ -1,17 +1,45 @@
 name: Deploy SpaceBitz
 on:
   push:
-    branches: [main]
+    branches: [main, 'codex/**']
   workflow_dispatch:
 permissions:
   contents: read
   pages: write
   id-token: write
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  browser-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check simulation and rendering regressions
+        run: npm test
+      - name: Install browser test tools
+        run: |
+          npm install --no-save --package-lock=false playwright@1.58.2
+          npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Check startup, zoom, clearing and warp in a real browser
+        timeout-minutes: 3
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: node scripts/check-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-${{ matrix.browser }}
+          path: .qa/*.png
+          include-hidden-files: true
   deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: browser-checks
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

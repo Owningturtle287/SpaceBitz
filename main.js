@@ -6,6 +6,7 @@ import {paintShip,paintAstronaut} from './sprites.js';
 import {updateMotion,navigationTarget} from './motion.js';
 import {celestialSprite} from './celestial.js';
 import {paintStellarSurface} from './stellar.js';
+import {clearFrame,backgroundPosition,strokeEllipse,circleGeometry,fillAnnulus,fillDisk,drawImageInView,lineInView} from './rendering.js';
 import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm} from './scale.js';
 import {migrateLayout,systemFitZoom,travelSpeed} from './navigation.js';
 
@@ -64,6 +65,14 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.5.1',items:[
+    'Fixed oversized orbit and zone drawing after the physical-scale update: only visible screen-space arcs, shading, selection rings and dashed routes are submitted to the renderer.',
+    'Cropped enlarged planet and star textures before drawing, explicitly reset each frame to opaque space, and removed the redundant full-screen background texture.',
+    'Reduced stellar texture work and reused consecutive animation frames while retaining smooth convection, evolving spots and flares.',
+    'Decoupled background-star drift from ship movement, station keeping, camera panning and zoom. Background stars follow their own paths.',
+    'Redesigned Warp Drive with a red pixel knob, shaded metal base and a pivoting handle that pulls during engagement.',
+    'Added bounded-rendering regression tests and Chromium/WebKit startup, zoom, screen-clearing and warp checks as deployment gates. Existing saves and fixed distance scales are retained.',
+  ]},
   {version:'1.5.0',items:[
     'Made menus, panels and controls smaller and translucent, with stepped pixel corners. Coordinates now sit directly below the clock with matching styling.',
     'Rebuilt Warp Drive as an animated lever with engagement and transit states, including a reduced-motion alternative.',
@@ -323,14 +332,6 @@ function fit() {
   if(!state.stars.length)state.stars=Array.from({length:targetStarCount},makeBackgroundStar);
   else if(state.stars.length<targetStarCount)state.stars.push(...Array.from({length:targetStarCount-state.stars.length},makeBackgroundStar));
   else if(state.stars.length>targetStarCount)state.stars.length=targetStarCount;
-  buildSkyBackdrop();
-}
-function buildSkyBackdrop(){
-  const bg=document.createElement('canvas');bg.width=canvas.width;bg.height=canvas.height;
-  const b=bg.getContext('2d',{alpha:false});b.setTransform(state.dpr,0,0,state.dpr,0,0);
-  const {width:w,height:h}=state;
-  b.fillStyle='#000104';b.fillRect(0,0,w,h);
-  state.skyBackdrop=bg;
 }
 window.addEventListener('resize',()=>{fit();applyCenterButtonLayout();});
 window.addEventListener('orientationchange',()=>setTimeout(()=>{fit();updateUI();applyCenterButtonLayout();},120),{passive:true});
@@ -867,27 +868,26 @@ function drawCoordinateGrid(){
   if(cell){
     const p=screen(cell.x-unit/2,cell.y-unit/2),size=unit*state.zoom;
     ctx.fillStyle=state.waypoint?'#ffcf6926':'#91e9d41a';ctx.strokeStyle=state.waypoint?'#ffcf69':'#8ee9d4';
-    ctx.fillRect(p.x,p.y,size,size);ctx.strokeRect(p.x,p.y,size,size);
+    const right=Math.min(state.width,p.x+size),bottom=Math.min(state.height,p.y+size),left=Math.max(0,p.x),top=Math.max(0,p.y);
+    if(right>left&&bottom>top)ctx.fillRect(left,top,right-left,bottom-top);
+    const corners=[p,{x:p.x+size,y:p.y},{x:p.x+size,y:p.y+size},{x:p.x,y:p.y+size}];
+    ctx.beginPath();for(let i=0;i<4;i++)lineInView(ctx,corners[i],corners[(i+1)%4],state.width,state.height);ctx.stroke();
     if(size<10){const c=screen(cell.x,cell.y);ctx.strokeRect(c.x-5,c.y-5,10,10);}
     if(state.waypoint){
       const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship,a=screen(pos.x,pos.y),b=screen(cell.x,cell.y);
-      ctx.setLineDash([3,6]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
+      ctx.setLineDash([3,6]);ctx.beginPath();lineInView(ctx,a,b,state.width,state.height);ctx.stroke();
     }
   }
   ctx.restore();
 }
 function drawBodyOrbit(body,days,host={x:0,y:0}){
-  const o=orbitalElements(body,days),center=screen(host.x,host.y);
-  const extent=o.a*(1+o.e)*state.zoom;
-  if(extent<2)return;
-  const d=Math.hypot(center.x-state.width/2,center.y-state.height/2),view=Math.hypot(state.width,state.height)/2;
-  if(d-view>extent||d+view<o.a*(1-o.e)*Math.cos(o.inclination)*state.zoom)return;
   const p0=orbitPoint(body,days,0),p1=orbitPoint(body,days,Math.PI),p2=orbitPoint(body,days,Math.PI/2);
   const cx=(p0.x+p1.x)/2,cy=(p0.y+p1.y)/2,c=screen(host.x+cx,host.y+cy),z=state.zoom;
   ctx.save();ctx.strokeStyle=body.kind==='moon'?'#9ebcc43b':'#a3bed33b';ctx.lineWidth=1;
-  ctx.beginPath();ctx.save();ctx.transform((p0.x-cx)*z,(p0.y-cy)*z,(p2.x-cx)*z,(p2.y-cy)*z,c.x,c.y);
-  ctx.arc(0,0,1,0,TAU);ctx.restore();ctx.stroke();ctx.restore();
+  strokeEllipse(ctx,{x:c.x,y:c.y,ux:(p0.x-cx)*z,uy:(p0.y-cy)*z,vx:(p2.x-cx)*z,vy:(p2.y-cy)*z},state.width,state.height);
+  ctx.restore();
 }
+
 function drawRetroPixelStar(x,y,size,shape,rgb){
   const s=Math.max(1,Math.round(size));
   if(s<=2){ctx.fillStyle=`rgb(${rgb})`;ctx.fillRect(x,y,s,s);return;}
@@ -912,8 +912,7 @@ function drawRetroPixelStar(x,y,size,shape,rgb){
 }
 function backdrop(now) {
   const {width:w,height:h}=state;
-  if(state.skyBackdrop)ctx.drawImage(state.skyBackdrop,0,0,w,h);
-  else{ctx.fillStyle='#000104';ctx.fillRect(0,0,w,h);}
+  clearFrame(ctx,w,h,state.dpr);
   const drift=settings.starMotion&&!settings.reducedMotion,step=1/state.dpr;
   for(const star of state.stars){
     let x,y,z=star.depth;
@@ -921,9 +920,7 @@ function backdrop(now) {
       if(drift)z=((star.depth-now*.000085*star.speed)%1+1)%1;
       x=w/2+(star.x-.5)*w*.72/(z+.12);y=h/2+(star.y-.5)*h*.72/(z+.12);
     }else{
-      const motion=drift?now*.004*star.speed:0;
-      x=((star.x*w-state.camera.x*.025*(1+z)+motion)%w+w)%w;
-      y=((star.y*h-state.camera.y*.025*(1+z)+motion*.22)%h+h)%h;
+      ({x,y}=backgroundPosition(star,now,w,h,drift));
     }
     if(x<-8||x>w+8||y<-8||y>h+8)continue;
     const twinkle=settings.twinkle&&!settings.reducedMotion?.6+.4*Math.sin(now*.00245*star.speed+star.phase):.88;
@@ -936,26 +933,11 @@ function backdrop(now) {
   ctx.globalAlpha=1;
 }
 function drawOrbit(x,y,r,color='#a3bed3') {
-  const p=screen(x,y),sr=r*state.zoom,w=state.width,h=state.height;
-  if(sr<1)return;
-  const nearX=clamp(p.x,0,w),nearY=clamp(p.y,0,h);
-  const minD=Math.hypot(nearX-p.x,nearY-p.y);
-  const maxD=Math.max(
-    Math.hypot(p.x,p.y),Math.hypot(p.x-w,p.y),
-    Math.hypot(p.x,p.y-h),Math.hypot(p.x-w,p.y-h)
-  );
-  if(sr<minD-2||sr>maxD+2)return;
+  const p=screen(x,y),sr=r*state.zoom;if(sr<1)return;
   ctx.save();ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.22;
-  if(sr>Math.max(w,h)*1.65){
-    const vx=w*.5-p.x,vy=h*.5-p.y,d=Math.hypot(vx,vy)||1;
-    const qx=p.x+vx/d*sr,qy=p.y+vy/d*sr,tx=-vy/d,ty=vx/d;
-    const span=Math.hypot(w,h)*.8;
-    ctx.beginPath();ctx.moveTo(qx-tx*span,qy-ty*span);ctx.lineTo(qx+tx*span,qy+ty*span);ctx.stroke();
-  }else{
-    circle(p.x,p.y,sr);ctx.stroke();
-  }
-  ctx.restore();
+  strokeEllipse(ctx,circleGeometry(p.x,p.y,sr),state.width,state.height);ctx.restore();
 }
+
 function label(text,x,y,selected=false) {
   ctx.font="10px 'SpaceBitz Pixel',monospace";
   ctx.textAlign='center';ctx.textBaseline='middle';const width=ctx.measureText(text).width+18;
@@ -964,9 +946,11 @@ function label(text,x,y,selected=false) {
   ctx.fillStyle=selected?'#e8fff9':'#c3d5e2';ctx.fillText(text,x,y);
 }
 function drawSelection(x,y,r,now) {
-  ctx.save();ctx.translate(x,y);ctx.rotate(settings.reducedMotion?0:now*.00035);ctx.strokeStyle='#8ff5d9';ctx.lineWidth=1.5;
-  ctx.setLineDash([12,9]);circle(0,0,r+11);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+  ctx.save();ctx.strokeStyle='#8ff5d9';ctx.lineWidth=1.5;
+  ctx.setLineDash([12,9]);ctx.lineDashOffset=settings.reducedMotion?0:-now*.02;
+  strokeEllipse(ctx,circleGeometry(x,y,r+11),state.width,state.height);ctx.restore();
 }
+
 function drawStar(x,y,r,color,now,body=null) {
   const w=state.width,h=state.height,maxDim=Math.max(w,h);
   if(r<1.5){ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(Math.round(x)-3,Math.round(y)-3,6,6);return;}
@@ -990,7 +974,7 @@ function drawStar(x,y,r,color,now,body=null) {
 
   if(!coreVisible)return;
   if(r>maxDim*.38){
-    ctx.fillStyle=color;circle(x,y,r);ctx.fill();
+    ctx.fillStyle=color;fillDisk(ctx,x,y,r,w,h);
   }else{
     const core=ctx.createRadialGradient(x-r*.3,y-r*.3,0,x,y,r);
     core.addColorStop(0,'#fffefa');core.addColorStop(.55,color);core.addColorStop(1,'#bd6552');
@@ -998,7 +982,7 @@ function drawStar(x,y,r,color,now,body=null) {
   }
   if(body){
     ctx.save();ctx.imageSmoothingEnabled=false;
-    paintStellarSurface(ctx,body,x,y,r,state.stellarSeconds,state.save.days,settings.reducedMotion);ctx.restore();
+    paintStellarSurface(ctx,body,x,y,r,state.stellarSeconds,state.save.days,settings.reducedMotion,w,h);ctx.restore();
   }
 }
 function drawPlanet(body,p,now,worldPos) {
@@ -1011,21 +995,22 @@ function drawPlanet(body,p,now,worldPos) {
     if(selected){drawSelection(p.x,p.y,4,now);label(body.name,p.x,p.y-23,true);}return;
   }
   if(body.name==='Saturn' || (body.type==='gas'&&hash(body.id)%3===0)){
-    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(-.31);ctx.strokeStyle='#d6cbad88';ctx.lineWidth=Math.max(2,r*.16);
-    ctx.beginPath();ctx.ellipse(0,0,r*1.85,r*.48,0,0,TAU);ctx.stroke();ctx.restore();
+    ctx.save();ctx.strokeStyle='#d6cbad88';ctx.lineWidth=Math.min(64,Math.max(2,r*.16));
+    const c=Math.cos(-.31),s=Math.sin(-.31);
+    strokeEllipse(ctx,{x:p.x,y:p.y,ux:r*1.85*c,uy:r*1.85*s,vx:-r*.48*s,vy:r*.48*c},state.width,state.height);ctx.restore();
   }
   ctx.save();
   if(r<86){
     ctx.shadowColor=body.color;ctx.shadowBlur=Math.min(26,r*.62);
     circle(p.x,p.y,r);ctx.fillStyle=body.color;ctx.fill();
   }else{
-    ctx.globalAlpha=.16;ctx.fillStyle=body.color;circle(p.x,p.y,r+Math.min(14,r*.08));ctx.fill();
-    ctx.globalAlpha=1;circle(p.x,p.y,r);ctx.fillStyle=body.color;ctx.fill();
+    ctx.globalAlpha=.16;ctx.fillStyle=body.color;fillDisk(ctx,p.x,p.y,r+Math.min(14,r*.08),state.width,state.height);
+    ctx.globalAlpha=1;fillDisk(ctx,p.x,p.y,r,state.width,state.height);
   }
   ctx.restore();
   ctx.save();ctx.imageSmoothingEnabled=false;
-  ctx.drawImage(celestialSprite(body,state.save.days,worldPos),p.x-r,p.y-r,2*r,2*r);ctx.restore();
-  ctx.strokeStyle='#d9f8fb42';ctx.lineWidth=1;circle(p.x,p.y,r);ctx.stroke();
+  drawImageInView(ctx,celestialSprite(body,state.save.days,worldPos),p.x-r,p.y-r,2*r,2*r,state.width,state.height);ctx.restore();
+  ctx.strokeStyle='#d9f8fb42';ctx.lineWidth=1;strokeEllipse(ctx,circleGeometry(p.x,p.y,r),state.width,state.height);
   if(selected){drawSelection(p.x,p.y,r,now);label(body.name,p.x,p.y-r-25,true);}
 }
 function drawSystem(now) {
@@ -1034,16 +1019,13 @@ function drawSystem(now) {
   const center=screen(0,0);
   if(settings.zone){
     const zoneInner=orbitRadius(zone.inner,sys.star),zoneOuter=orbitRadius(zone.outer,sys.star);
-    if(state.zoom<1.25){
-      ctx.save();ctx.fillStyle='#67e5ad0b';ctx.strokeStyle='#6de6ad36';ctx.lineWidth=1;
-      ctx.beginPath();ctx.arc(center.x,center.y,zoneOuter*state.zoom,0,TAU);
-      ctx.arc(center.x,center.y,zoneInner*state.zoom,0,TAU,true);
-      ctx.fill('evenodd');ctx.setLineDash([3,7]);circle(center.x,center.y,zoneInner*state.zoom);ctx.stroke();
-      circle(center.x,center.y,zoneOuter*state.zoom);ctx.stroke();ctx.restore();
-    }else{
-      drawOrbit(0,0,zoneInner,'#6de6ad36');drawOrbit(0,0,zoneOuter,'#6de6ad36');
-    }
+    ctx.save();ctx.fillStyle='#67e5ad0b';ctx.strokeStyle='#6de6ad36';ctx.lineWidth=1;
+    fillAnnulus(ctx,center.x,center.y,zoneInner*state.zoom,zoneOuter*state.zoom,state.width,state.height);
+    ctx.setLineDash([3,7]);
+    strokeEllipse(ctx,circleGeometry(center.x,center.y,zoneInner*state.zoom),state.width,state.height);
+    strokeEllipse(ctx,circleGeometry(center.x,center.y,zoneOuter*state.zoom),state.width,state.height);ctx.restore();
   }
+
   if(settings.orbits)for(const planet of sys.planets){
     drawBodyOrbit(planet,days);
     const host=bodyPosition(planet,days,sys),hostScreen=screen(host.x,host.y);
@@ -1057,7 +1039,7 @@ function drawSystem(now) {
   for(const planet of sys.planets){const pos=bodyPosition(planet,days,sys);drawPlanet(planet,screen(pos.x,pos.y),now,pos);
     for(const moon of planet.moons){const mp=bodyPosition(moon,days,sys);drawPlanet(moon,screen(mp.x,mp.y),now,mp);}}
   if(state.autopilot?.type==='body'){const body=findBody(state.autopilot.id);if(body){const end=bodyPosition(body,days,sys),a=screen(state.save.ship.x,state.save.ship.y),b=screen(end.x,end.y);
-    ctx.strokeStyle='#77e2d586';ctx.lineWidth=1;ctx.setLineDash([5,8]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);}}
+    ctx.strokeStyle='#77e2d586';ctx.lineWidth=1;ctx.setLineDash([5,8]);ctx.beginPath();lineInView(ctx,a,b,state.width,state.height);ctx.stroke();ctx.setLineDash([]);}}
   const ship=screen(state.save.ship.x,state.save.ship.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,42,false,state.zoom);
 }
 function drawChartStar(x,y,r,color,now,seed){
@@ -1094,7 +1076,7 @@ function drawChart(now) {
     else if(star.id==='origin')label(starName(star.seed)+' · HOME',p.x,p.y-26);
   }
   if(state.autopilot?.type==='star'){const s=starAt(state.autopilot.id);const a=screen(state.save.chart.x,state.save.chart.y),b=screen(s.x,s.y);
-    ctx.strokeStyle='#76dac680';ctx.lineWidth=1;ctx.setLineDash([5,7]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);}
+    ctx.strokeStyle='#76dac680';ctx.lineWidth=1;ctx.setLineDash([5,7]);ctx.beginPath();lineInView(ctx,a,b,state.width,state.height);ctx.stroke();ctx.setLineDash([]);}
   const ship=screen(state.save.chart.x,state.save.chart.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,36,false,state.zoom);
   ctx.font="9px 'SpaceBitz Pixel',monospace";ctx.fillStyle='#91b1be';ctx.fillText('LOCAL SECTOR  /  LIGHT-YEARS',state.width/2,Math.max(70,state.height*.14));
 }
@@ -1151,10 +1133,12 @@ function frame(now) {
   if(realDt>0)state.fps+=(1000/realDt-state.fps)*.06;
   if(!document.hidden){
     if(state.save){update(dt,realDt);if(!$('modal').classList.contains('visible')&&!settings.reducedMotion)state.stellarSeconds+=dt/1000;}
-    ctx.setTransform(state.dpr,0,0,state.dpr,0,0);backdrop(now);
-    if(state.scene==='system')drawSystem(now);
-    else if(state.scene==='chart')drawChart(now);
-    else if(state.scene==='surface')drawGround(now);
+    backdrop(now);ctx.save();
+    try{
+      if(state.scene==='system')drawSystem(now);
+      else if(state.scene==='chart')drawChart(now);
+      else if(state.scene==='surface')drawGround(now);
+    }finally{ctx.restore();}
     if(state.save && now-state.lastUI>300){state.lastUI=now;updateUI();}
   }
   requestAnimationFrame(frame);

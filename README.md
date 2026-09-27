@@ -41,13 +41,15 @@ Tap/click empty terrain or space to highlight a square, then choose **Go Here**.
 
 ## Art and terrain
 
-The compact translucent panels use stepped pixel corners. Warp Drive is a lever: it pulls during engagement, lights during transit and returns when complete. Reduced-motion mode keeps its state changes without pulsing animation.
+The compact translucent panels use stepped pixel corners. Warp Drive uses a red pixel knob on a shaded metal base: its handle pivots during engagement, lights during transit and returns when complete. Reduced-motion mode keeps its state changes without pulsing animation.
 
 The explorer's standing height is exactly one-third of the parked ship's visible height. Four facing directions each have eight distance-driven poses and a separate idle stance. The astronaut, shadow, ships, lander and samples scale with camera zoom.
 
-Stellar surfaces show slowly drifting convection with smoothly blended frames, small active-region sunspots that grow/fade, bright flare kernels and occasional loops. Spot diameters stay below 28,000 km. Activity timing is artistically accelerated to remain visible during play; it does not predict real solar weather. Reduced-motion mode freezes that visual activity.
+Stellar surfaces show slowly drifting convection with smoothly blended frames, small active-region sunspots that grow/fade, bright flare kernels and occasional loops. Stellar texture frames are reused and blended at a bounded resolution. Spot diameters stay below 28,000 km. Activity timing is artistically accelerated to remain visible during play; it does not predict real solar weather. Reduced-motion mode freezes that visual activity.
 
 Terrain samples continuous, seeded noise in world coordinates, using small cached raster chunks. Pixel density is adjustable. Landing sites have a dry clearing; water slows both manual walking and waypoint travel.
+
+Background stars drift independently of the ship and camera. System orbit paths and zone shading are clipped to the viewport before drawing; close-up body textures are source-cropped so true physical distances never become enormous GPU paths or raster targets. Each frame clears opaque space before the scene is drawn.
 
 ## Saves and installation
 
@@ -66,12 +68,13 @@ Run `npm test` (Node's built-in test runner; no package installation required).
 - `motion.js` / `navigation.js` / `sprites.js`: movement, travel, save migration and character/ship art.
 - `scale.js`: fixed units, grid snapping and distance formatting.
 - `stellar.js`: smoothly blended convection, sunspots and flares.
+- `rendering.js`: bounded screen-space geometry, clipped textures, frame clearing and independent star drift.
 - `settings.js`: validated preferences; native soundtrack lifecycle is in `main.js`.
 - `main.js`: input, game state, UI, canvas scenes, autosave.
 - `sw.js`: app-shell cache scoped to this app, including every runtime module.
 - `assets/`: original pixel lettering and title, rebuilt with `python tools/build-retro-assets.py` (optional development dependency: `fonttools`; no runtime dependency).
 
-Tests cover clock ratios, planetary and lunar periods, scale and orbital clearance, deterministic terrain and chunk continuity, ship steering and star avoidance, settings migration, audio scheduling, and offline asset completeness. Browser checks supplement these; automated checks do not simulate every phone or browser's audio policy.
+Tests cover clock ratios, planetary and lunar periods, scale and orbital clearance, deterministic terrain and chunk continuity, ship steering and star avoidance, settings migration, audio scheduling, and offline asset completeness. GitHub Actions runs `scripts/check-browser.mjs` in Chromium and WebKit before deploying, covering Sol/generated startup, save loading, close-up zoom, background independence, opaque clearing and warp engagement. Browser screenshots are attached to the workflow run. These desktop engines do not simulate every phone's GPU or audio policy.
 
 Reference values: [NASA planetary fact sheets](https://nssdc.gsfc.nasa.gov/planetary/factsheet/). Browser audio behavior: [MDN autoplay guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay).
 

@@ -40,5 +40,5 @@ test('target card is intentionally minimal',()=>{
 
 test('background contains no offset nebula/backlight',()=>{
   assert.doesNotMatch(main,/w\*\.7,h\*\.4|#338e9c|\bneb\b/);
-  assert.match(main,/b\.fillStyle='#000104'/);
+  assert.match(main,/clearFrame\(ctx,w,h,state.dpr\)/);
 });
