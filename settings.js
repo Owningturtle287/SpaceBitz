@@ -1,6 +1,6 @@
 export const DEFAULT_SETTINGS=Object.freeze({
-  version:7,music:true,volume:.75,zone:true,orbits:true,labels:true,
-  starMotion:true,twinkle:true,reducedMotion:false,showCoords:true,showFPS:false,
+  version:8,music:true,volume:.75,zone:true,orbits:true,labels:true,
+  starMotion:true,twinkle:true,reducedMotion:false,showCoords:true,showGrid:false,showFPS:false,
   travelLines:true,controls:'auto',joyX:16,joyOffset:0,pixelSize:2,
   resolution:'2',paused:false,cheats:false,timeMode:'accelerated',timeZone:'local',orientation:'landscape',
   centerButton:'right',centerX:29,centerY:76

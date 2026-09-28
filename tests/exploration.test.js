@@ -42,3 +42,10 @@ test('every offline shell entry and module dependency exists',()=>{
     for(const match of text.matchAll(/from '(.+?)'/g))assert.ok(shell.includes(match[1]),match[1]+' not cached');
   }
 });
+
+test('grid starts hidden for new and legacy preferences and remembers an explicit choice',()=>{
+  assert.equal(normalizeSettings().showGrid,false);
+  assert.equal(normalizeSettings({version:7}).showGrid,false);
+  assert.equal(normalizeSettings({showGrid:true}).showGrid,true);
+  assert.equal(normalizeSettings({showGrid:false}).showGrid,false);
+});

@@ -1,4 +1,4 @@
-const CACHE='spacebitz-field-v1.5.1-bounded-rendering';
+const CACHE='spacebitz-field-v1.5.2-controls-polish';
 const SHELL=['./','./index.html','./main.js','./model.js','./scale.js','./navigation.js','./stellar.js','./rendering.js','./settings.js','./terrain.js','./motion.js','./sprites.js','./celestial.js','./style.css','./assets/spacebitz-pixel.woff','./assets/spacebitz-title.svg','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));

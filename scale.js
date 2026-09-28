@@ -25,8 +25,12 @@ export function formatDistance(worldDistance,scene){
   return abs+1e-9>=LIGHT_SECONDS_PER_AU?number(n/LIGHT_SECONDS_PER_AU,3)+' AU':number(n,abs<.001?8:abs<1?5:3)+' ls';
 }
 export function formatCoordinates(point,scene){
-  return `X ${formatDistance(point.x,scene)} · Y ${formatDistance(point.y,scene)}`;
+  // Coordinates identify individual squares, even beyond a km or AU boundary.
+  const unit=sceneUnit(scene),suffix=scene==='surface'?'m':scene==='chart'?'ly':'ls';
+  const integer=n=>(Math.round(n/unit)||0).toLocaleString('en-US',{maximumFractionDigits:0});
+  return `X ${integer(point.x)} ${suffix} · Y ${integer(point.y)} ${suffix}`;
 }
+export const formatDiameter=km=>Math.round(km).toLocaleString('en-US')+' km';
 export const formatSystemKm=km=>formatDistance(km*SYSTEM_PX_PER_KM,'system');
 export function gridStride(scene,zoom){
   // Only skip lines when zoomed out; the underlying square never changes units.

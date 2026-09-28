@@ -30,7 +30,7 @@
         </div>
       </aside>
       <div class="top-actions">
-        <div class="time-stack"><span id="clock" class="clock">01 JAN 2026</span><span id="telemetry" class="clock coordinates" hidden></span></div>
+        <div class="time-stack"><span id="clock" class="clock">01 JAN 2026</span><div class="coordinate-row"><span id="telemetry" class="clock coordinates" hidden></span><button id="gridToggle" class="grid-toggle clock" type="button" aria-label="Show coordinate grid" aria-pressed="false">GRID OFF</button></div></div>
         <div class="utility-stack">
           <button id="settingsOpen" class="icon-button settings-button utility-button" aria-label="Open settings"><span class="settings-glyph" aria-hidden="true"></span><span class="utility-label">SET</span></button>
           <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
@@ -44,7 +44,10 @@
     </section>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
     <button id="homeButton" class="center-button hud-float" type="button" aria-label="Recenter view">
-      <span class="center-reticle" aria-hidden="true">⌖</span><span class="center-label">CENTER</span>
+      <svg class="center-reticle" viewBox="0 0 24 24" aria-hidden="true" shape-rendering="crispEdges">
+        <path fill="#8ee9d4" d="M2 2h7v2H4v5H2zm13 0h7v7h-2V4h-5zM2 15h2v5h5v2H2zm18 0h2v7h-7v-2h5zM11 5h2v4h-2zm0 10h2v4h-2zM5 11h4v2H5zm10 0h4v2h-4z"/>
+        <path fill="#35556d" d="M9 9h6v6H9z"/><path fill="#eef9dc" d="M10 10h4v4h-4z"/>
+      </svg><span class="center-label">CENTER</span>
     </button>
     <button id="mapButton" class="warp-drive-button" type="button" aria-label="Open Warp Drive to interstellar chart">
       <svg class="warp-mechanism" viewBox="0 0 48 52" aria-hidden="true" shape-rendering="crispEdges">
@@ -76,7 +79,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.5.1</span>
+        <span class="version-chip main-menu-version">v1.5.2</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>

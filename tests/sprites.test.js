@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {astronautFrame,astronautSprite,paintAstronaut,paintShip,WALK_FRAMES,WALK_CYCLE_DISTANCE} from '../sprites.js';
+import {astronautFrame,astronautSprite,paintAstronaut,paintShip,WALK_FRAMES,WALK_CYCLE_DISTANCE,walkingLegs} from '../sprites.js';
 import {ASTRONAUT_SCALE} from '../scale.js';
 import {updateMotion} from '../motion.js';
 
@@ -62,4 +62,13 @@ test('ships and engine plumes scale with the camera in all scenes without a size
     assert.equal(ctx.calls.filter(c=>c[0]==='fillRect').length,parked?0:6);
     assert.equal(ctx.calls.at(-1)[0],'restore');
   }
+});
+
+test('side-view boots return forward in the air and push backward on the ground',()=>{
+  for(const foot of ['near','far'])for(let frame=0;frame<8;frame++){
+    const a=walkingLegs(frame)[foot],b=walkingLegs((frame+1)%8)[foot];
+    if(b.offset>a.offset)assert.ok(a.lift>0||b.lift>0,'forward return must lift');
+    if(b.offset<a.offset)assert.equal(a.lift+b.lift,0,'backward stance must stay planted');
+  }
+  assert.deepEqual(walkingLegs(-1),{near:{offset:0,lift:0},far:{offset:-0,lift:0}});
 });

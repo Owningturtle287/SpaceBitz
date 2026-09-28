@@ -35,6 +35,12 @@ const POSES=[
   {stride:0,lift:-2,bob:0,arm:0}, {stride:-2,lift:-1,bob:-1,arm:2}
 ];
 const IDLE_POSE={stride:0,lift:0,bob:0,arm:0};
+// In right-facing space, the planted boot travels backward; the returning
+// boot lifts while travelling forward. Left-facing art mirrors the same gait.
+export function walkingLegs(frame){
+  const p=frame<0?IDLE_POSE:POSES[Math.floor(frame)%WALK_FRAMES];
+  return {near:{offset:p.stride,lift:Math.max(0,p.lift)},far:{offset:-p.stride,lift:Math.max(0,-p.lift)}};
+}
 export function astronautFrame(motion) {
   return motion.moving?Math.floor((motion.steps||0)/WALK_CYCLE_DISTANCE*WALK_FRAMES)%WALK_FRAMES:-1;
 }
@@ -44,16 +50,29 @@ export function astronautSprite(direction='down',frame=-1) {
   return makeSprite(`suit:${direction}:${frame}`,32,40,g=>{
     const box=(color,x,y,w,h)=>{g.fillStyle=color;g.fillRect(x,y,w,h);};
     const p=frame<0?IDLE_POSE:POSES[frame],c=SUIT;
+    const gait=walkingLegs(frame);
     const side=direction==='left'||direction==='right',back=direction==='up';
     if(direction==='left'){g.translate(32,0);g.scale(-1,1);}
     const leg=(x,offset,lift,far=false)=>{
-      const y=27-lift;
-      box(c.outline,x+offset-1,y,7,11);
-      box(far?c.shadow:c.mid,x+offset,y,5,7);
-      box(far?c.mid:c.light,x+offset,y,3,5);
-      box(c.red,x+offset,y+5,5,2);
-      box(c.outline,x+offset-1,y+8,8,3);
-      box(far?c.shadow:c.mid,x+offset,y+8,6,1);
+      const y=27-lift,boot=x+offset,knee=x+Math.round(offset/2);
+      // Connected thigh, knee and shin instead of sliding the entire leg.
+      box(c.outline,x-1,26+p.bob,7,5);
+      box(far?c.shadow:c.light,x,27+p.bob,5,3);
+      box(c.outline,knee-1,y+2,7,5);
+      box(far?c.shadow:c.mid,knee,y+2,5,4);
+      box(far?c.mid:c.white,knee+1,y+2,3,2);
+      box(c.outline,boot-1,y+5,7,6);
+      box(c.red,boot,y+5,5,2);
+      if(side){
+        box(c.outline,boot-1,y+8,8,3);
+        box(far?c.shadow:c.mid,boot,y+8,6,1);
+        box(c.light,boot+4,y+8,2,1);
+      }else{
+        // Front toes and rear heels stay centred on each leg, never sideways.
+        box(c.outline,boot-1,y+8,7,3);
+        box(back?c.shadow:c.mid,boot,y+8,5,1);
+        box(back?c.teal:c.light,boot+1,y+8,3,1);
+      }
     };
     const arm=(x,swing,far=false)=>{
       const y=19+p.bob;
@@ -74,10 +93,10 @@ export function astronautSprite(direction='down',frame=-1) {
     // Rear limb and backpack silhouette, then the near-side body and arm.
     if(side){
       arm(18,-p.arm,true);
-      leg(14,-p.stride,Math.max(0,p.lift),true);
+      leg(14,gait.far.offset,gait.far.lift,true);
       box(c.outline,5,16+p.bob,9,14);box(c.shadow,6,17+p.bob,6,11);
       box(c.teal,6,18+p.bob,2,6);box(c.red,6,25+p.bob,6,2);
-      leg(13,p.stride,Math.max(0,-p.lift));
+      leg(13,gait.near.offset,gait.near.lift);
     }else{
       box(c.outline,7,17+p.bob,19,12);box(c.shadow,8,18+p.bob,17,9);
       leg(10,0,Math.max(0,p.lift)+(p.stride<0?1:0),back);

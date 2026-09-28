@@ -10,9 +10,9 @@ For local development, serve this directory with `python3 -m http.server 8000` a
 
 - Tap a world or choose it from the system list. **Travel** flies toward it; **Land** becomes available nearby. Gas and ice giants have no solid landing surface; explore their moons.
 - **Star chart** opens nearby generated systems. Select a star, travel to it, then enter its system.
-- Use WASD / arrow keys or the touch joystick. Drag to pan; pinch, scroll, or use + / − to zoom. **Fit System** in the system dropdown fits the orbital map; **Center** follows the ship.
+- Use WASD / arrow keys or the touch joystick. Drag to pan; pinch, scroll, or use + / − to zoom. **Fit System** in the system dropdown fits the orbital map; **Center** immediately follows the ship, then smoothly zooms in at system level (instant with reduced motion).
 - Collect glowing surface samples and return to the lander to launch. Your logbook records first landings and samples.
-- Settings are available in the startup menu and in game: music and volume, star drift and twinkle, orbit and Goldilocks overlays, labels, travel trails, coordinates, FPS, terrain detail, rendering resolution, input mode, joystick placement, pause, and optional instant travel.
+- Settings are available in the startup menu and in game: music and volume, star drift and twinkle, orbit and Goldilocks overlays, labels, travel trails, coordinates, coordinate grid, FPS, terrain detail, rendering resolution, input mode, joystick placement, pause, and optional instant travel.
 - The original 48 BPM melody plays continuously through the menu and gameplay. Where autoplay is blocked, the first tap or keypress starts audio; the menu also has an **Enable music** button. Music pauses while the app is hidden.
 
 ## Clock and astronomical model
@@ -35,7 +35,7 @@ Use **Fit System** in the system dropdown for the full orbital map, **Info → F
 | System | 1 light-second | Central star | ls, then AU at 500 ls |
 | Interstellar chart | 1 light-year | Home system | ly |
 
-The **500 light-seconds = 1 AU** convention is intentionally rounded for the game. Physical diameters and orbits are stored in kilometres/AU; the system's light-second conversion uses AU/500 consistently. The standard cannot be changed in Settings. Coordinates use +X right and +Y down. On zoomed-out views, intermediate grid lines are skipped for legibility without changing the underlying unit. The chart is procedural, not a map of real nearby stars.
+The **500 light-seconds = 1 AU** convention is intentionally rounded for the game. Physical diameters and orbits are stored in kilometres/AU; the system's light-second conversion uses AU/500 consistently. The standard cannot be changed in Settings. Coordinates use +X right and +Y down, rounded to whole base units (m, ls or ly) without decimal places. Body diameters always display kilometres. The grid defaults off; use **GRID OFF / ON** beside coordinates or **Settings → Coordinate grid** to toggle it. The choice is saved. Selected squares and routes remain visible with the grid off. On zoomed-out views, intermediate grid lines are skipped for legibility without changing the underlying unit. The chart is procedural, not a map of real nearby stars.
 
 Tap/click empty terrain or space to highlight a square, then choose **Go Here**. The target panel shows the location and remaining distance. **Clear**, Escape, or manual movement cancels the route; arrival stops at the exact square centre. Tapping celestial objects still selects those objects. Coordinates appear directly beneath the clock with matching styling.
 
@@ -50,6 +50,8 @@ Stellar surfaces show slowly drifting convection with smoothly blended frames, s
 Terrain samples continuous, seeded noise in world coordinates, using small cached raster chunks. Pixel density is adjustable. Landing sites have a dry clearing; water slows both manual walking and waypoint travel.
 
 Background stars drift independently of the ship and camera. System orbit paths and zone shading are clipped to the viewport before drawing; close-up body textures are source-cropped so true physical distances never become enormous GPU paths or raster targets. Each frame clears opaque space before the scene is drawn. WebKit uses its software canvas path to avoid an observed high-DPI first-frame scaling failure; other engines retain their accelerated path.
+
+Panel backgrounds are 25% opaque; labels, icons and the joystick thumb remain solid. Landscape controls sit near the lower corners. The warp lever remains pulled right in interstellar space and returns on entering a system. The explorer uses connected knee/boot artwork, a grounded backward stance and lifted forward return, with centred front/back feet.
 
 ## Saves and installation
 
@@ -74,7 +76,7 @@ Run `npm test` (Node's built-in test runner; no package installation required).
 - `sw.js`: app-shell cache scoped to this app, including every runtime module.
 - `assets/`: original pixel lettering and title, rebuilt with `python tools/build-retro-assets.py` (optional development dependency: `fonttools`; no runtime dependency).
 
-Tests cover clock ratios, planetary and lunar periods, scale and orbital clearance, deterministic terrain and chunk continuity, ship steering and star avoidance, settings migration, audio scheduling, and offline asset completeness. GitHub Actions runs `scripts/check-browser.mjs` in Chromium and WebKit before deploying, covering Sol/generated startup, save loading, close-up zoom, background independence, opaque clearing and warp engagement. Browser screenshots are attached to the workflow run. These desktop engines do not simulate every phone's GPU or audio policy.
+Tests cover clock ratios, planetary and lunar periods, scale and orbital clearance, deterministic terrain and chunk continuity, ship steering and star avoidance, settings migration, audio scheduling, and offline asset completeness. GitHub Actions runs `scripts/check-browser.mjs` in Chromium and WebKit before deploying, covering Sol/generated startup, save loading, close-up zoom, background independence, opaque clearing warp engagement and latching, grid preferences, integer coordinates, kilometre diameters, panel opacity and centering zoom. Browser screenshots are attached to the workflow run. These desktop engines do not simulate every phone's GPU or audio policy.
 
 Reference values: [NASA planetary fact sheets](https://nssdc.gsfc.nasa.gov/planetary/factsheet/). Browser audio behavior: [MDN autoplay guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay).
 

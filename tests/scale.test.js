@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {AU_KM,SUN_DIAMETER_KM,SOL_RADIUS,SYSTEM_PX_PER_KM,SYSTEM_UNIT,SURFACE_UNIT,CHART_UNIT,ASTRONAUT_SCALE,ASTRONAUT_PIXEL_HEIGHT,LANDER_SIZE,SHIP_PIXEL_HEIGHT,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm} from '../scale.js';
+import {AU_KM,SUN_DIAMETER_KM,SOL_RADIUS,SYSTEM_PX_PER_KM,SYSTEM_UNIT,SURFACE_UNIT,CHART_UNIT,ASTRONAUT_SCALE,ASTRONAUT_PIXEL_HEIGHT,LANDER_SIZE,SHIP_PIXEL_HEIGHT,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter} from '../scale.js';
 import {makeSystem,visualRadius,orbitRadius,orbitalElements,orbitPoint,bodyPosition,TAU} from '../model.js';
-import {migrateLayout,travelSpeed,systemFitZoom} from '../navigation.js';
+import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt} from '../navigation.js';
 import {navigationTarget} from '../motion.js';
 import {stellarActivity} from '../stellar.js';
 const close=(a,b,tol=1e-8)=>assert.ok(Math.abs(a-b)<tol,`${a} != ${b}`);
@@ -85,4 +85,20 @@ test('stellar spots stay physically small, evolve continuously and produce occas
     });
   }
   assert.ok(flareCount>0&&flareCount<300);
+});
+
+test('coordinates are whole base-grid units, while diameters always use kilometres',()=>{
+  for(const [scene,unit,suffix] of [['surface',SURFACE_UNIT,'m'],['system',SYSTEM_UNIT,'ls'],['chart',CHART_UNIT,'ly']]){
+    assert.equal(formatCoordinates({x:1500.2*unit,y:-2.8*unit},scene),`X 1,500 ${suffix} · Y -3 ${suffix}`);
+    assert.equal(formatCoordinates({x:-.1*unit,y:.1*unit},scene),`X 0 ${suffix} · Y 0 ${suffix}`);
+  }
+  assert.equal(formatDiameter(12742),'12,742 km');
+  assert.equal(formatDiameter(SUN_DIAMETER_KM),'1,391,400 km');
+});
+test('center zoom is bounded, monotonic and smooth over astronomical zoom ranges',()=>{
+  for(const from of [.000001,.85,1.3]){
+    let previous=from;
+    for(let i=0;i<=100;i++){const z=centerZoomAt(from,1.3,i/100);assert.ok(z>=previous-1e-12&&z<=1.3+1e-12);previous=z;}
+    close(centerZoomAt(from,1.3,-1),from);close(centerZoomAt(from,1.3,2),1.3);
+  }
 });

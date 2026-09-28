@@ -24,7 +24,7 @@ try{
     const response=await route.fetch();let source=await response.text();
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
-    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,update,updateUI,create,start,select,showDetails};';
+    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,update,updateUI,create,start,select,showDetails,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom};';
     await route.fulfill({response,body:source});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
@@ -45,6 +45,46 @@ try{
   assert.equal(initial.canvasWidth,initial.width*initial.dpr);assert.equal(initial.width,initial.rect.width);
   assert.ok(initial.shipPixels>200,`Ship missing from the viewport centre on startup: ${JSON.stringify(initial)}`);
   await page.screenshot({path:`.qa/${engine}-sol.png`});
+  assert.equal(await page.locator('#gridToggle').getAttribute('aria-pressed'),'false');
+  const controls=await page.evaluate(()=>{
+    const alpha=id=>getComputedStyle(document.getElementById(id)).backgroundColor;
+    const rect=id=>{const r=document.getElementById(id).getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom};};
+    return {panels:['systemChartToggle','clock','telemetry','joystick','homeButton','mapButton'].map(alpha),thumb:alpha('stick'),joy:rect('joystick'),warp:rect('mapButton')};
+  });
+  for(const fill of controls.panels)assert.match(fill,/, 0\.25\)$/,fill);
+  assert.ok(!controls.thumb.startsWith('rgba'),controls.thumb);
+  assert.ok(controls.joy.left<100&&390-controls.joy.bottom<=7);
+  assert.ok(844-controls.warp.right<=7&&390-controls.warp.bottom<=7);
+  await page.locator('#gridToggle').click();
+  assert.equal(await page.locator('#gridToggle').getAttribute('aria-pressed'),'true');
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('spacebitz:field:settings')).showGrid),true);
+  await page.locator('#settingsOpen').click();assert.equal(await page.locator('#setting-showGrid').isChecked(),true);
+  await page.locator('#setting-showGrid').uncheck();await page.evaluate(()=>window.__game.closeModal());
+  assert.equal(await page.locator('#gridToggle').getAttribute('aria-pressed'),'false');
+  await page.evaluate(()=>{
+    const g=window.__game,s=g.state; s.followBody=null;s.camera={x:0,y:0};s.zoom=.00001;
+    document.getElementById('homeButton').click();
+    if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y||s.zoom!==.00001)throw new Error('Center must snap before zooming');
+    g.update(325,0);if(!(s.zoom>.00001&&s.zoom<1.3))throw new Error('No intermediate zoom');
+    g.update(325,0);if(Math.abs(s.zoom-1.3)>1e-9||s.centerZoom)throw new Error('Zoom did not finish');
+    s.zoom=.001;document.getElementById('homeButton').click();g.zoom(.5);
+    if(s.centerZoom)throw new Error('Manual zoom did not cancel animation');
+    g.settings.reducedMotion=true;document.getElementById('homeButton').click();
+    if(s.zoom!==1.3||s.centerZoom)throw new Error('Reduced-motion zoom must be immediate');g.settings.reducedMotion=false;
+    const earth=s.system.planets.find(p=>p.name==='Earth');g.showDetails(earth);
+    const tile=[...document.querySelectorAll('.detail-tile')].find(e=>e.textContent.includes('DIAMETER'));
+    if(!tile.textContent.includes('12,742 km'))throw new Error('Diameter not kilometres');g.closeModal();
+    g.enterSurface(earth);g.updateUI();
+    if(/\d+\.\d+/.test(document.getElementById('telemetry').textContent))throw new Error('Fractional coordinates');
+    const c=document.getElementById('sky'),ctx=c.getContext('2d');
+    g.backdrop(1000);g.drawGround(1000);g.drawCoordinateGrid();const off=c.toDataURL();
+    g.settings.showGrid=true;g.backdrop(1000);g.drawGround(1000);g.drawCoordinateGrid();
+    if(c.toDataURL()===off)throw new Error('Grid toggle did not change raster');
+    g.settings.showGrid=false;s.waypoint={x:0,y:0,size:18.6};g.drawCoordinateGrid();
+    s.waypoint=null;g.backdrop(1000);g.drawGround(1000);g.updateUI();
+  });
+  await page.screenshot({path:`.qa/${engine}-surface.png`});
+  await page.evaluate(()=>window.__game.launch());
   const results=await page.evaluate(async()=>{
     const g=window.__game,{state,settings}=g,canvas=document.getElementById('sky'),ctx=canvas.getContext('2d');
     const {bodyPosition,makeSystem,visualRadius,orbitRadius,habitableZone}=await import('/model.js');
@@ -93,6 +133,12 @@ try{
   await page.locator('#mapButton').screenshot({path:`.qa/${engine}-lever-engaged.png`});
   await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(16,0);});
   assert.equal(await page.evaluate(()=>window.__game.state.scene),'chart');
+  assert.equal(await page.locator('#mapButton').evaluate(e=>e.classList.contains('latched')),true);
+  assert.equal(await page.locator('#mapButton').getAttribute('aria-busy'),'false');
+  await page.waitForTimeout(350);await page.locator('#mapButton').screenshot({path:`.qa/${engine}-lever-latched.png`});
+  await page.locator('#mapButton').click();
+  await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(16,0);});
+  assert.equal(await page.locator('#mapButton').evaluate(e=>e.classList.contains('latched')),false);
   await page.evaluate(()=>{window.__game.state.warpUntil=0;window.__game.create(false);window.__game.frame(performance.now());});
   assert.equal(await page.evaluate(()=>window.__game.state.scene),'system');
   await page.reload();await page.locator('#startGame').click();await page.locator('.load-save').first().click();

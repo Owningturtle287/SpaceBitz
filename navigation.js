@@ -1,6 +1,11 @@
 import {TAU,bodyPosition,orbitalElements,visualRadius} from './model.js';
 import {SURFACE_UNIT,CHART_UNIT,SYSTEM_UNIT} from './scale.js';
 
+export function centerZoomAt(from,to,progress){
+  const t=Math.max(0,Math.min(1,progress)),ease=t*t*(3-2*t);
+  return from*Math.pow(to/from,ease);
+}
+
 export function systemFitZoom(system,width,height,days=0){
   const reach=Math.max(...system.planets.map(p=>{const o=orbitalElements(p,days);return o.a*(1+o.e)*1.1;}));
   return Math.max(.000001,Math.min(width,height)*.42/reach);
