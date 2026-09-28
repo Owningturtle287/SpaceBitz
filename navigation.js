@@ -35,3 +35,9 @@ export function migrateLayout(save,system){
   save.ship={x:p.x+visualRadius(nearest.diameter)+60,y:p.y};
   save.layoutVersion=3;return save;
 }
+
+// Stop on the ship-facing side, clear of the stellar avoidance envelope.
+export function starApproachPoint(ship,radius){
+  const angle=Math.atan2(ship.y,ship.x),distance=radius*1.08+150;
+  return {x:Math.cos(angle)*distance,y:Math.sin(angle)*distance};
+}

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AU_KM,SUN_DIAMETER_KM,SOL_RADIUS,SYSTEM_PX_PER_KM,SYSTEM_UNIT,SURFACE_UNIT,CHART_UNIT,ASTRONAUT_SCALE,ASTRONAUT_PIXEL_HEIGHT,LANDER_SIZE,SHIP_PIXEL_HEIGHT,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter} from '../scale.js';
 import {makeSystem,visualRadius,orbitRadius,orbitalElements,orbitPoint,bodyPosition,TAU} from '../model.js';
-import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt} from '../navigation.js';
+import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt,starApproachPoint} from '../navigation.js';
 import {navigationTarget} from '../motion.js';
 import {stellarActivity} from '../stellar.js';
 const close=(a,b,tol=1e-8)=>assert.ok(Math.abs(a-b)<tol,`${a} != ${b}`);
@@ -100,5 +100,20 @@ test('center zoom is bounded, monotonic and smooth over astronomical zoom ranges
     let previous=from;
     for(let i=0;i<=100;i++){const z=centerZoomAt(from,1.3,i/100);assert.ok(z>=previous-1e-12&&z<=1.3+1e-12);previous=z;}
     close(centerZoomAt(from,1.3,-1),from);close(centerZoomAt(from,1.3,2),1.3);
+  }
+});
+
+test('stellar approach stays on the near side and outside the avoidance envelope',()=>{
+  for(const radius of [SOL_RADIUS,SOL_RADIUS*5])for(const angle of [0,1,3,-2]){
+    const ship={x:Math.cos(angle)*radius*20,y:Math.sin(angle)*radius*20};
+    const goal=starApproachPoint(ship,radius);
+    assert.ok(Math.hypot(goal.x,goal.y)>radius+38);
+    close(Math.atan2(goal.y,goal.x),angle);
+    assert.equal(navigationTarget(ship,goal,radius),goal);
+    for(let i=0;i<2000&&Math.hypot(ship.x-goal.x,ship.y-goal.y)>.2;i++){
+      const dx=goal.x-ship.x,dy=goal.y-ship.y,d=Math.hypot(dx,dy),step=Math.min(d,travelSpeed('system',d)*.016);
+      ship.x+=dx/d*step;ship.y+=dy/d*step;assert.ok(Math.hypot(ship.x,ship.y)>radius+38);
+    }
+    assert.ok(Math.hypot(ship.x-goal.x,ship.y-goal.y)<=.2);
   }
 });

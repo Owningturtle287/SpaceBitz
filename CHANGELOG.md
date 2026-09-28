@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.3 — 2026-09-28
+
+- Moved the grid toggle exclusively into Settings, preserving its saved value and off-by-default behavior.
+- Doubled Center zoom duration to 1.3 seconds and added the same interruptible zoom on planet/moon surfaces; immediate centering and reduced-motion support remain.
+- Placed a compact lever-only Warp Drive control beside Center, with its label beneath; hidden on surfaces and still latched right in interstellar view.
+- Moved landscape interaction actions into a narrower bottom-right panel.
+- Combined date/time, integer coordinates and FPS into one brighter, bold adaptive panel; each field can be toggled in Settings, and the panel disappears when all are hidden.
+- Replaced the surface Expedition label/dropdown with the world name and general planet/moon facts. World information dropdowns and dialogs are opaque; other panels retain their translucent styling.
+- Enabled travel to system stars, stopping on the near side outside the stellar disk with an appropriate arrival zoom and stable holding position.
+
 ## 1.5.2 — 2026-09-28
 
 - Added a saved GRID ON/OFF toggle beside coordinates and in Settings; the grid defaults off while selected squares and waypoint routes remain usable.

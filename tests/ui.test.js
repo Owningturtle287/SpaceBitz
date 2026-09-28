@@ -11,8 +11,8 @@ test('flight HUD uses dedicated warp drive and upper-right log utility',()=>{
   assert.doesNotMatch(index,/id="statusText"/);
   assert.match(index,/<header class="topbar">[\s\S]*id="systemChart"/);
   assert.match(index,/id="mapButton" class="warp-drive-button"/);
-  assert.match(index,/class="warp-label">WARP DRIVE</);
-  assert.match(index,/class="warp-sub">INTERSTELLAR</);
+  assert.match(index,/class="warp-label">Warp Drive</);
+  assert.doesNotMatch(index,/class="warp-sub"|id="gridToggle"/);
   assert.match(index,/class="utility-stack"[\s\S]*id="settingsOpen"[\s\S]*id="journalButton"/);
   assert.match(index,/class="log-glyph"/);
 });

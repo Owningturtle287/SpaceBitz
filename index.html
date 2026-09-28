@@ -25,12 +25,16 @@
         <div id="systemChartContent" class="mission-content" hidden>
           <p id="hint">Select a world to explore.</p>
           <div id="zoneLegend" class="legend"><i></i> TEMPERATE ZONE <button id="zoneToggle" type="button" class="text-button" aria-pressed="true">ON</button></div>
+          <div id="surfaceInfo" class="surface-info" hidden></div>
           <div id="bodyList" class="body-list" aria-label="Celestial bodies"></div>
           <button id="systemFit" class="text-button" type="button">FIT SYSTEM</button>
         </div>
       </aside>
       <div class="top-actions">
-        <div class="time-stack"><span id="clock" class="clock">01 JAN 2026</span><div class="coordinate-row"><span id="telemetry" class="clock coordinates" hidden></span><button id="gridToggle" class="grid-toggle clock" type="button" aria-label="Show coordinate grid" aria-pressed="false">GRID OFF</button></div></div>
+        <div id="flightReadout" class="flight-readout glass">
+          <span id="clock">01 JAN 2026</span>
+          <div id="telemetry" hidden><span id="coordsReadout" hidden></span><span id="fpsReadout" hidden></span></div>
+        </div>
         <div class="utility-stack">
           <button id="settingsOpen" class="icon-button settings-button utility-button" aria-label="Open settings"><span class="settings-glyph" aria-hidden="true"></span><span class="utility-label">SET</span></button>
           <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
@@ -43,6 +47,7 @@
       <div class="target-actions"><button id="primaryAction" class="button primary">TRAVEL</button><button id="secondaryAction" class="button subtle" hidden>INFO</button></div>
     </section>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
+    <div id="navigationControls" class="navigation-controls">
     <button id="homeButton" class="center-button hud-float" type="button" aria-label="Recenter view">
       <svg class="center-reticle" viewBox="0 0 24 24" aria-hidden="true" shape-rendering="crispEdges">
         <path fill="#8ee9d4" d="M2 2h7v2H4v5H2zm13 0h7v7h-2V4h-5zM2 15h2v5h5v2H2zm18 0h2v7h-7v-2h5zM11 5h2v4h-2zm0 10h2v4h-2zM5 11h4v2H5zm10 0h4v2h-4z"/>
@@ -72,14 +77,14 @@
         <path fill="#18263d" d="M7 46h3v2H7zm31 0h3v2h-3z"/>
         <path class="warp-base-light" fill="#6b9991" d="M19 46h10v2H19z"/>
       </svg>
-      <span class="warp-copy"><strong class="warp-label">WARP DRIVE</strong><small class="warp-sub">INTERSTELLAR</small></span>
-      <span class="warp-lamp" aria-hidden="true"></span>
+      <span class="warp-label">Warp Drive</span>
     </button>
+    </div>
   </div>
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.5.2</span>
+        <span class="version-chip main-menu-version">v1.5.3</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>
