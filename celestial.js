@@ -56,3 +56,4 @@ export function celestialSprite(body,days,worldPosition={x:0,y:0}) {
   if(frames.size>160)frames.delete(frames.keys().next().value);
   return c;
 }
+export const celestialCacheStats=()=>({maps:maps.size,frames:frames.size});

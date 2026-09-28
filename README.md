@@ -1,6 +1,6 @@
 # SpaceBitz
 
-An installable retro space exploration game. Start in our Solar System or generate a seeded galaxy, visit planets and moons, collect samples, and keep a voyage logbook.
+An installable retro space exploration game. Start on Earth or a generated home planet, visit planets and moons, collect samples, and keep a voyage logbook.
 
 ## Play
 
@@ -8,10 +8,11 @@ An installable retro space exploration game. Start in our Solar System or genera
 
 For local development, serve this directory with `python3 -m http.server 8000` and open `http://localhost:8000`. There is no build step or external runtime dependency.
 
+- New games start on their home planet beside the lander. Choose **Launch** to explore space; the planet remains identified as home in its information and voyage log.
 - Tap a world or choose it from the system list. **Travel** flies toward it; **Land** becomes available nearby. Gas and ice giants have no solid landing surface; explore their moons.
 - Select the central star and choose **Travel** to approach its near side and stop outside the stellar disk.
 - **Warp Drive**, beside Center, opens nearby generated systems. Select a star, travel to it, then enter its system.
-- Use WASD / arrow keys or the touch joystick. Drag to pan; pinch, scroll, or use + / − to zoom. **Fit System** in the system dropdown fits the orbital map; **Center** immediately follows the ship or surface explorer, then zooms in over 1.3 seconds (instant with reduced motion).
+- Use WASD / arrow keys or the touch joystick. System flight speed is independent of zoom: choose **Maneuver** or **Cruise** in Settings (Cruise is 20 ls/s), with an optional speed readout. Active travel shows a **Cancel** button; Escape also cancels. Drag to pan; pinch, scroll, or use + / − to zoom. **Fit System** in the system dropdown fits the orbital map; **Center** immediately follows the ship or surface explorer, then zooms in over 1.3 seconds (instant with reduced motion).
 - Collect glowing surface samples and return to the lander to launch. Your logbook records first landings and samples.
 - Settings are available in the startup menu and in game: music and volume, star drift and twinkle, orbit and Goldilocks overlays, labels, travel trails, coordinates, coordinate grid, FPS, terrain detail, rendering resolution, input mode, joystick placement, pause, and optional instant travel.
 - The original 48 BPM melody plays continuously through the menu and gameplay. Where autoplay is blocked, the first tap or keypress starts audio; the menu also has an **Enable music** button. Music pauses while the app is hidden.
@@ -52,11 +53,11 @@ Terrain samples continuous, seeded noise in world coordinates, using small cache
 
 Background stars drift independently of the ship and camera. System orbit paths and zone shading are clipped to the viewport before drawing; close-up body textures are source-cropped so true physical distances never become enormous GPU paths or raster targets. Each frame clears opaque space before the scene is drawn. WebKit uses its software canvas path to avoid an observed high-DPI first-frame scaling failure; other engines retain their accelerated path.
 
-HUD and menu backgrounds are 25% opaque; labels, icons and the joystick thumb remain solid. Planet/moon information dialogs and the surface facts dropdown are fully opaque. On surfaces, the upper-left world name opens general facts and Warp Drive is hidden. Landscape interactions sit in a narrow lower-right panel. Warp Drive is a small lever beside Center, remains pulled right in interstellar space, and returns on entering a system. Date/time, coordinates and FPS share a brighter, bold panel that fits its visible fields; each can be toggled in Settings, and disabling all three hides the panel. The explorer uses connected knee/boot artwork, a grounded backward stance and lifted forward return, with centred front/back feet.
+HUD and menu backgrounds are 25% opaque; labels, icons and the joystick thumb remain solid. Planet/moon information dialogs and the surface facts dropdown are fully opaque. On surfaces, the upper-left world name opens general facts and Warp Drive is hidden. Landscape interactions sit in a narrow lower-right panel. Warp Drive is a small lever beside Center, remains pulled right in interstellar space, and returns on entering a system. Date/time, coordinates and FPS share a brighter, bold panel that fits its visible fields; each can be toggled in Settings, and disabling all three hides the panel. Tiny or offscreen ships have a separate locator without enlarging their physical sprites. Custom navigation controls avoid visible HUD panels, and short notifications sit away from the centre. The explorer uses connected knee/boot artwork, a grounded backward stance and lifted forward return, with centred front/back feet.
 
 ## Saves and installation
 
-Progress autosaves locally. **Save & Main Menu** and **Export Save** are in Settings; import is on the startup screen. Existing saves retain discoveries, logbooks, local surface locations and chart progress. Ships saved in the old compressed system are safely repositioned beside their nearest legacy planet on first load; this migration runs once. Older `spacebitz:saves` exports can be imported as new universes; old terrain and exact positions do not carry over. Storage is device specific; clearing site data deletes local saves, so export important voyages.
+Progress autosaves locally. **Save & Main Menu** and **Export Save** are in Settings; import is on the startup screen. Existing saves retain discoveries, logbooks, local surface locations and chart progress. Modern exported saves import as a separate voyage with their scene, current system, all positions, home planet and exploration history intact. Invalid modern locations are rejected rather than silently resetting the voyage. Ships saved in the old compressed system are safely repositioned beside their nearest legacy planet on first load; this migration runs once. Older `spacebitz:saves` exports can be imported as new universes; old terrain and exact positions do not carry over. Storage is device specific; clearing site data deletes local saves, so export important voyages.
 
 On Android Chrome, use **Install app** from the browser menu or the in-game installation prompt. On iPhone Safari, choose **Share → Add to Home Screen**. The installed progressive web app works offline after its first complete online load; this repository does not ship a native APK or IPA.
 
@@ -72,6 +73,7 @@ Run `npm test` (Node's built-in test runner; no package installation required).
 - `scale.js`: fixed units, grid snapping and distance formatting.
 - `stellar.js`: smoothly blended convection, sunspots and flares.
 - `rendering.js`: bounded screen-space geometry, clipped textures, frame clearing and independent star drift.
+- `saves.js` / `hud.js`: validated voyage restoration, control placement and ship locators.
 - `settings.js`: validated preferences; native soundtrack lifecycle is in `main.js`.
 - `main.js`: input, game state, UI, canvas scenes, autosave.
 - `sw.js`: app-shell cache scoped to this app, including every runtime module.
@@ -82,3 +84,11 @@ Tests cover clock ratios, planetary and lunar periods, scale and orbital clearan
 Reference values: [NASA planetary fact sheets](https://nssdc.gsfc.nasa.gov/planetary/factsheet/). Browser audio behavior: [MDN autoplay guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay).
 
 Scale references: [NASA Sun facts](https://nssdc.gsfc.nasa.gov/planetary/factsheet/sunfact.html), [JPL approximate planetary positions](https://ssd.jpl.nasa.gov/planets/approx_pos.html), [JPL satellite mean elements](https://ssd.jpl.nasa.gov/sats/elem/sep.html). Full release history: [CHANGELOG.md](CHANGELOG.md) and **Settings → Change log**.
+
+## Release 1.6 stellar animation and performance
+
+Interstellar star brightness changes gently and independently, respecting Twinkle and Reduce Motion. System stars combine evolving spherical granulation, bounded small sunspots, flare kernels and limb plasma arcs. The activity is artistic, not a live solar forecast. Textures are generated at six keyframes per second and blended between frames; geometry and texture caches are capped.
+
+The browser gate exercises 1,200 rendered frames across 20 generated systems, checking render time and cache bounds in Chromium and WebKit, in addition to startup, surface launch, save restoration, travel cancellation and extreme zoom checks. This is a repeatable desktop-browser stress check, not evidence of physical-phone thermal or battery performance.
+
+For physical-device validation: play for 15 minutes on iPhone Safari and Android Chrome with FPS enabled, rotate several times, visit multiple worlds, approach a star and zoom through the full range. Compare frame rate at the beginning and end, check device heat and responsiveness, and verify that backgrounding/resuming preserves the voyage. Export a backup before clearing site data.

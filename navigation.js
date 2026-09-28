@@ -41,3 +41,8 @@ export function starApproachPoint(ship,radius){
   const angle=Math.atan2(ship.y,ship.x),distance=radius*1.08+150;
   return {x:Math.cos(angle)*distance,y:Math.sin(angle)*distance};
 }
+
+// Manual control is a world-space speed; camera zoom never changes it.
+export function manualSpeed(scene,mode='maneuver'){
+  return scene==='surface'?SURFACE_UNIT*2.2:scene==='chart'?CHART_UNIT*4.5:mode==='cruise'?SYSTEM_UNIT*20:260;
+}

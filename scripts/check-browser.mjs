@@ -24,13 +24,17 @@ try{
     const response=await route.fetch();let source=await response.text();
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
-    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,update,updateUI,create,start,select,showDetails,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom};';
+    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,update,updateUI,create,start,select,showDetails,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel};';
     await route.fulfill({response,body:source});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await page.locator('#startGame').click();
   const started=Date.now();await page.locator('#solGame').click();
-  await page.waitForFunction(()=>window.__game?.state.scene==='system'&&window.__game.state.lastUI>0);
+  await page.waitForFunction(()=>window.__game?.state.scene==='surface'&&window.__game.state.lastUI>0);
+  assert.equal(await page.evaluate(()=>window.__game.state.save.homePlanet),await page.evaluate(()=>window.__game.state.save.landed));
+  await mkdir('.qa',{recursive:true});
+  await page.screenshot({path:`.qa/${engine}-home-start.png`});
+  await page.evaluate(()=>{window.__game.launch();window.__game.frame(performance.now());});
   const startupMs=Date.now()-started;assert.ok(startupMs<10000,`Startup stalled: ${startupMs}ms`);
   await page.evaluate(async()=>{await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
   await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
@@ -112,12 +116,31 @@ try{
     for(let i=0;i<3000&&s.autopilot;i++){
       g.update(16,0);if(Math.hypot(s.save.ship.x,s.save.ship.y)<r+38)throw new Error('Star approach entered the stellar disk');
     }
-    if(s.autopilot||document.getElementById('primaryAction').textContent!=='IN ORBIT')throw new Error('Star travel did not arrive');
+    if(s.autopilot||document.getElementById('primaryAction').textContent!=='HOLDING')throw new Error('Star travel did not arrive');
     const parked={...s.save.ship};g.update(1000,0);
     if(s.save.ship.x!==parked.x||s.save.ship.y!==parked.y)throw new Error('Stellar stop drifts');
     g.backdrop(1000);g.drawSystem(1000);
   });
   await page.screenshot({path:`.qa/${engine}-star-arrival.png`});
+  await page.evaluate(async()=>{
+    const g=window.__game,s=g.state;
+    const {importVoyage}=await import('/saves.js');
+    const raw=JSON.parse(JSON.stringify(s.save)),copy=importVoyage(raw,'import-qa');g.start(copy);
+    for(const key of ['currentSystem','scene','ship','surface','chart','route','homePlanet','discoveries'])if(JSON.stringify(copy[key])!==JSON.stringify(raw[key]))throw new Error('Import changed '+key);
+    const far=s.system.planets.at(-1);g.select(far);g.primary();
+    if(document.getElementById('primaryAction').textContent!=='TRAVELING'||document.getElementById('cancelTravel').hidden)throw new Error('Travel controls missing');
+    document.getElementById('cancelTravel').click();if(s.autopilot)throw new Error('Cancel failed');
+    const movements=[];
+    for(const zoom of [.01,1,20]){s.followBody=null;s.zoom=zoom;const x=s.save.ship.x;s.keys.add('d');g.update(100,0);s.keys.clear();movements.push(s.save.ship.x-x);}
+    if(Math.max(...movements)-Math.min(...movements)>1e-7)throw new Error('Manual speed changes with zoom');
+    g.settings.centerButton='custom';g.settings.centerX=90;g.settings.centerY=90;g.applyCenterButtonLayout();
+  });
+  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+  const noOverlap=await page.evaluate(()=>{
+    const a=document.getElementById('navigationControls').getBoundingClientRect(),b=document.getElementById('targetCard').getBoundingClientRect();
+    return a.right<=b.left||a.left>=b.right||a.bottom<=b.top||a.top>=b.bottom;
+  });assert.ok(noOverlap,'Custom controls overlap interaction panel');
+  await page.evaluate(()=>{window.__game.settings.centerButton='right';window.__game.applyCenterButtonLayout();});
   const results=await page.evaluate(async()=>{
     const g=window.__game,{state,settings}=g,canvas=document.getElementById('sky'),ctx=canvas.getContext('2d');
     const {bodyPosition,makeSystem,visualRadius,orbitRadius,habitableZone}=await import('/model.js');
@@ -173,10 +196,28 @@ try{
   await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(16,0);});
   assert.equal(await page.locator('#mapButton').evaluate(e=>e.classList.contains('latched')),false);
   await page.evaluate(()=>{window.__game.state.warpUntil=0;window.__game.create(false);window.__game.frame(performance.now());});
-  assert.equal(await page.evaluate(()=>window.__game.state.scene),'system');
+  assert.equal(await page.evaluate(()=>window.__game.state.scene),'surface');
   await page.reload();await page.locator('#startGame').click();await page.locator('.load-save').first().click();
-  await page.waitForFunction(()=>window.__game?.state.scene==='system'&&window.__game.state.lastUI>0);
+  await page.waitForFunction(()=>window.__game?.state.scene==='surface'&&window.__game.state.lastUI>0);
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
   await page.screenshot({path:`.qa/${engine}-portrait.png`});
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results},null,2));
+  await page.evaluate(()=>{window.__qaPause=true;});
+  const soak=await page.evaluate(async()=>{
+    const g=window.__game,s=g.state,{makeSystem,bodyPosition}=await import('/model.js');
+    const {stellarCacheStats}=await import('/stellar.js'),{celestialCacheStats}=await import('/celestial.js');
+    const ctx=document.getElementById('sky').getContext('2d'),times=[],started=performance.now();
+    for(let i=0;i<1200;i++){
+      if(i%60===0){s.system=makeSystem('soak-'+i/60);s.save.currentSystem=s.system.seed;s.scene='system';s.selected=null;s.followBody=null;s.autopilot=null;}
+      const nearStar=i%120<60;s.zoom=nearStar?.08:12;
+      s.camera=nearStar?{x:0,y:0}:bodyPosition(s.system.planets[0],s.save.days,s.system);
+      s.stellarSeconds=i/30;s.save.ship={x:s.camera.x+300,y:s.camera.y};
+      const start=performance.now();g.backdrop(i*33);g.drawSystem(i*33);ctx.getImageData(0,0,1,1);times.push(performance.now()-start);
+      if(i%10===0)await new Promise(r=>requestAnimationFrame(r));
+    }
+    times.sort((a,b)=>a-b);
+    const stats={frames:1200,elapsedMs:performance.now()-started,p95Ms:times[1140],maxMs:times.at(-1),stellar:stellarCacheStats(),celestial:celestialCacheStats()};
+    if(stats.p95Ms>250||stats.stellar.frames>4||stats.celestial.frames>160||stats.celestial.maps>48)throw new Error('Soak exceeded render/cache bounds '+JSON.stringify(stats));
+    return stats;
+  });
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results,soak},null,2));
 }finally{await browser.close();server.close();}

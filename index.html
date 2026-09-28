@@ -33,7 +33,7 @@
       <div class="top-actions">
         <div id="flightReadout" class="flight-readout glass">
           <span id="clock">01 JAN 2026</span>
-          <div id="telemetry" hidden><span id="coordsReadout" hidden></span><span id="fpsReadout" hidden></span></div>
+          <div id="telemetry" hidden><span id="coordsReadout" hidden></span><span id="fpsReadout" hidden></span><span id="speedReadout" hidden></span></div>
         </div>
         <div class="utility-stack">
           <button id="settingsOpen" class="icon-button settings-button utility-button" aria-label="Open settings"><span class="settings-glyph" aria-hidden="true"></span><span class="utility-label">SET</span></button>
@@ -45,6 +45,7 @@
       <div class="target-line"><h2 id="targetName">Chart a course</h2></div>
       <p id="targetDistance" class="target-distance"></p>
       <div class="target-actions"><button id="primaryAction" class="button primary">TRAVEL</button><button id="secondaryAction" class="button subtle" hidden>INFO</button></div>
+      <button id="cancelTravel" class="button subtle cancel-travel" hidden>CANCEL</button>
     </section>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
     <div id="navigationControls" class="navigation-controls">
@@ -84,7 +85,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.5.3</span>
+        <span class="version-chip main-menu-version">v1.6.0</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>

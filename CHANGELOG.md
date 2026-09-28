@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.6.0 — 2026-09-28
+
+- New voyages begin landed beside the ship on their home planet, recorded in the logbook and retained in saves. Sol begins on Earth.
+- Modern save imports restore the current system, scene, all positions, home planet, discoveries, log and route as a separate voyage. Malformed locations are rejected; legacy imports retain migration support.
+- Manual flight speed no longer depends on zoom. Settings offers Maneuver and Cruise modes plus an optional speed readout.
+- Unified traveling feedback, destination distance and a Cancel action across planet, star, surface, waypoint and warp travel. Escape also cancels active travel.
+- Added bounded ship locators when the true-scale sprite is tiny or offscreen. Stellar arrival now says Holding, accurately describing its stationary position.
+- Custom control placement avoids visible panels, enlarged compact action targets, improved Warp Drive lettering and reduced notification size/duration.
+- Interstellar stars gently dim at individual rates. System stars use evolving spherical granulation, small sunspots, warm flare kernels and breathing limb plasma arcs, with bounded caches and reduced-motion support.
+- Added save, navigation, placement and animation regression tests and a 1,200-frame multi-system browser stress check. Physical-device thermal/battery testing remains a separate manual check.
+
 ## 1.5.3 — 2026-09-28
 
 - Moved the grid toggle exclusively into Settings, preserving its saved value and off-by-default behavior.

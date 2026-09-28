@@ -1,4 +1,4 @@
-/* SpaceBitz 1.5.3 — compact translucent 16-bit console skin. */
+/* SpaceBitz 1.6.0 — compact translucent 16-bit console skin. */
 @font-face{font-family:SpaceBitz Pixel;src:url('./assets/spacebitz-pixel.woff') format('woff');font-display:swap}
 :root{
   color-scheme:dark;
@@ -299,3 +299,12 @@ body[data-scene=surface] .mission-content{width:260px;max-width:calc(100vw - 32p
   #telemetry{gap:3px 6px}
 }
 @media(max-width:360px){.top-system-chart{width:120px}.flight-readout{max-width:142px}#clock,#telemetry{font-size:9px}}
+/* Compact controls keep generous touch targets and readable lettering. */
+#mapButton .warp-label{font:700 8px/1.2 var(--mono);letter-spacing:-.3px}
+#mapButton{overflow:visible}
+.utility-button{min-width:44px;min-height:44px}
+.target-actions .button,#targetCard .button{min-height:40px}
+.cancel-travel{width:100%;margin-top:6px;color:var(--gold)}
+#speedReadout{color:#b8dafa;font-size:9px}
+.toast{top:auto;bottom:calc(92px + env(safe-area-inset-bottom));max-width:min(300px,calc(100vw - 32px));padding:6px 10px;font:11px/1.4 var(--mono);border-width:1px}
+@media(orientation:landscape){.toast{bottom:calc(10px + env(safe-area-inset-bottom));max-width:min(260px,32vw);font-size:10px}}
