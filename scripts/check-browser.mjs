@@ -96,7 +96,7 @@ try{
     if(s.camera.x!==s.save.surface.x||s.centerZoom.duration!==1300)throw new Error('Surface center did not snap/start');
     g.update(650,0);if(!(s.zoom>.65&&s.zoom<1.3))throw new Error('Surface zoom has no intermediate frame');
     g.update(650,0);if(Math.abs(s.zoom-1.3)>1e-9||s.centerZoom)throw new Error('Surface zoom failed');
-    if(/\d+\.\d+/.test(document.getElementById('telemetry').textContent))throw new Error('Fractional coordinates');
+    if(/\d+\.\d+/.test(document.getElementById('coordsReadout').textContent))throw new Error('Fractional coordinates');
     const c=document.getElementById('sky'),ctx=c.getContext('2d');
     g.backdrop(1000);g.drawGround(1000);g.drawCoordinateGrid();const off=c.toDataURL();
     g.settings.showGrid=true;g.backdrop(1000);g.drawGround(1000);g.drawCoordinateGrid();
