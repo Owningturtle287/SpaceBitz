@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AU_KM,SYSTEM_VISUAL_SCALE,SUN_DIAMETER_KM,SOL_RADIUS,SYSTEM_PX_PER_KM,SYSTEM_UNIT,SURFACE_UNIT,CHART_UNIT,ASTRONAUT_SCALE,ASTRONAUT_PIXEL_HEIGHT,LANDER_SIZE,SHIP_PIXEL_HEIGHT,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter} from '../scale.js';
 import {makeSystem,visualRadius,orbitRadius,orbitalElements,orbitPoint,bodyPosition,TAU} from '../model.js';
-import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt,starApproachPoint,systemDrive,advanceToArrival} from '../navigation.js';
+import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt,starApproachPoint,systemDrive,advanceToArrival,cameraViewAt} from '../navigation.js';
 import {navigationTarget} from '../motion.js';
 import {stellarActivity} from '../stellar.js';
 const close=(a,b,tol=1e-8)=>assert.ok(Math.abs(a-b)<tol,`${a} != ${b}`);
@@ -151,4 +151,16 @@ test('arrival completes on the integrating frame even when the destination moves
   assert.equal(arrived,true);close(goal.x-p.x,10);
   const near={x:1,y:2};assert.equal(advanceToArrival(near,{x:1,y:2},0,100,.1),true);
   const far={x:0,y:0};assert.equal(advanceToArrival(far,{x:100,y:0},10,10,1),false);close(far.x,10);
+});
+
+test('camera fly starts at the current view and smoothly pans and zooms to its destination',()=>{
+  const from={x:9e8,y:-3e8},to={x:0,y:0};
+  for(const [a,b]of [[1.3,1e-8],[1e-8,1.3],[1,1],[1,1.00000001]]){
+    assert.deepEqual(cameraViewAt(from,to,a,b,0),{zoom:a,camera:from});
+    assert.deepEqual(cameraViewAt(from,to,a,b,1),{zoom:b,camera:to});
+    let previous=from.x;
+    for(let t=.01;t<1;t+=.01){const view=cameraViewAt(from,to,a,b,t);assert.ok(view.camera.x<=previous&&view.camera.x>=0);assert.ok(view.zoom>=Math.min(a,b)&&view.zoom<=Math.max(a,b));previous=view.camera.x;}
+  }
+  const early=cameraViewAt(from,to,1.3,1e-8,.01);
+  assert.ok(Math.abs(from.x-early.camera.x)*early.zoom<1,'Close-up must not whip across the system');
 });

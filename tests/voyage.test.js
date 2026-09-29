@@ -69,7 +69,7 @@ test('system entry chooses the outermost orbit even if the planet list is reorde
 test('system locator restores the tiny onscreen ship marker while edge arrows remain offscreen only',()=>{
   const calls=[],ctx=new Proxy({}, {get:(_,key)=>(...args)=>calls.push([key,...args]),set:()=>true});
   paintLocator(ctx,400,200,.01,800,400,true);
-  assert.ok(calls.some(c=>c[0]==='strokeRect'));assert.ok(calls.some(c=>c[0]==='fillText'&&c[1]==='SHIP'));
+  assert.equal(calls.filter(c=>c[0]==='lineTo').length,2);assert.ok(calls.some(c=>c[0]==='closePath'));assert.ok(!calls.some(c=>c[0]==='strokeRect'));assert.ok(calls.some(c=>c[0]==='fillText'&&c[1]==='SHIP'));
   assert.ok(!calls.some(c=>c[0]==='rotate'));calls.length=0;
   paintLocator(ctx,900,200,40,800,400,true);
   assert.ok(calls.some(c=>c[0]==='rotate'));assert.ok(!calls.some(c=>c[0]==='fillText'));

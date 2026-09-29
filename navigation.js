@@ -6,6 +6,17 @@ export function centerZoomAt(from,to,progress){
   return from*Math.pow(to/from,ease);
 }
 
+// Couple pan to the changing visible world span. This avoids sweeping millions
+// of world units across a close-up before the zoom has opened up the view.
+export function cameraViewAt(fromCamera,toCamera,fromZoom,toZoom,progress){
+  const t=Math.max(0,Math.min(1,progress)),ease=t*t*(3-2*t);
+  if(t===1)return {zoom:toZoom,camera:{...toCamera}};
+  const zoom=centerZoomAt(fromZoom,toZoom,t);
+  const ratio=fromZoom/toZoom;
+  const pan=Math.abs(ratio-1)<1e-6?ease:Math.max(0,Math.min(1,(fromZoom/zoom-1)/(ratio-1)));
+  return {zoom,camera:{x:fromCamera.x+(toCamera.x-fromCamera.x)*pan,y:fromCamera.y+(toCamera.y-fromCamera.y)*pan}};
+}
+
 export function systemFitZoom(system,width,height,days=0){
   const reach=Math.max(...system.planets.map(p=>{const o=orbitalElements(p,days);return o.a*(1+o.e)*1.1;}));
   return Math.max(SYSTEM_MIN_ZOOM,Math.min(width,height)*.42/reach);

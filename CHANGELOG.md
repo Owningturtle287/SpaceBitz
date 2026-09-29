@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.2 — 2026-09-29
+
+- Replaced the tiny onscreen system ship box with a triangular outline, retaining the SHIP label and offscreen directional arrows.
+- Completed journeys now ease into a close-up centered on the ship over 1.3 seconds, including after manual overview zoom during travel. Surface arrival centers on the explorer at maximum zoom; fresh gestures can interrupt the animation.
+- System Fit now animates from the exact current camera position and zoom, smoothly combining the zoom-out and pan into the full-system view without snapping to the star first. Reduced-motion mode remains immediate.
+
 ## 1.7.1 — 2026-09-29
 
 - Hyperdrive now travels at a fixed 0.5 AU per second between planets and to stars. Local transfers between a planet and its moons, or sibling moons, use Orbit Drive at 0.1 light-seconds per second; the drive stays fixed for the journey.

@@ -52,15 +52,16 @@ try{
   assert.equal(await page.locator('#gridToggle').count(),0);
   assert.equal(await page.locator('#systemChartContent #systemFit').count(),0);
   assert.equal((await page.locator('#systemFit').innerText()).trim(),'');
+  const fitStart=await page.evaluate(()=>({...window.__game.state.camera}));
   await page.locator('#systemFit').click();
-  assert.equal(await page.evaluate(()=>window.__game.state.camera.x),0);
-  assert.equal(await page.evaluate(()=>window.__game.state.camera.y),0);
+  assert.deepEqual(await page.evaluate(()=>({...window.__game.state.camera})),fitStart);
   await page.evaluate(async()=>{
     const g=window.__game,s=g.state,{systemFitZoom}=await import('/navigation.js');
     const from=s.centerZoom.from,to=systemFitZoom(s.system,s.width,s.height,s.save.days);
     if(s.zoom!==from||s.centerZoom.duration!==2600)throw new Error('Fit zoom must animate slowly');
-    g.update(1300,0);if(!(s.zoom<from&&s.zoom>to)||s.camera.x!==0||s.camera.y!==0)throw new Error('No intermediate system fit');
-    g.update(1300,0);if(Math.abs(s.zoom-to)>1e-12||s.centerZoom)throw new Error('System fit incomplete');
+    const origin={...s.camera};
+    g.update(1300,0);if(!(s.zoom<from&&s.zoom>to)||Math.hypot(s.camera.x,s.camera.y)>=Math.hypot(origin.x,origin.y)||Math.hypot(s.camera.x,s.camera.y)===0)throw new Error('Fit must pan and zoom from current view');
+    g.update(1300,0);if(Math.abs(s.zoom-to)>1e-12||s.centerZoom||s.camera.x!==0||s.camera.y!==0)throw new Error('System fit incomplete');
     g.backdrop(1000);g.drawSystem(1000);
     document.getElementById('systemFit').click();g.zoom(.5);if(s.centerZoom)throw new Error('Fit animation did not cancel');
     g.settings.reducedMotion=true;document.getElementById('systemFit').click();
@@ -158,6 +159,14 @@ try{
     if(s.zoom!==manualZoom)throw new Error('Travel overrides manual zoom');
     for(let i=0;i<4000&&s.autopilot;i++)g.update(16,16);
     if(s.autopilot||s.followBody?.id!==moon.id)throw new Error('Moon transfer never arrived');
+    if(!s.centerZoom||s.centerZoom.to<1.3)throw new Error('Manual travel zoom prevented arrival close-up');
+    g.update(1300,1300);
+    if(s.zoom<1.3||s.centerZoom||s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('Arrival did not track moving ship into close-up');
+    g.backdrop(1000);g.drawSystem(1000);
+  });
+  await page.screenshot({path:`.qa/${engine}-moon-arrival.png`});
+  await page.evaluate(()=>{
+    const g=window.__game,s=g.state,earth=s.system.planets.find(p=>p.name==='Earth');
     g.select(earth);g.primary();if(s.autopilot?.drive!=='orbit')throw new Error('Moon return must use Orbit Drive');g.cancelTravel();
     g.settings.paused=true;s.selected=earth;g.enterSurface(earth);
     s.camera={x:700,y:0};g.backdrop(1000);g.drawGround(1000);g.updateUI();
@@ -172,11 +181,31 @@ try{
       g.update(16,0);if(Math.hypot(s.save.ship.x,s.save.ship.y)<r+38)throw new Error('Star approach entered the stellar disk');
     }
     if(s.autopilot||document.getElementById('primaryAction').textContent!=='HOLDING')throw new Error('Star travel did not arrive');
-    const parked={...s.save.ship};g.update(1000,0);
+    const parked={...s.save.ship};g.update(1300,0);
+    if(s.zoom<1.3||s.centerZoom||s.camera.x!==parked.x||s.camera.y!==parked.y)throw new Error('Star arrival did not zoom onto ship');
     if(s.save.ship.x!==parked.x||s.save.ship.y!==parked.y)throw new Error('Stellar stop drifts');
     g.backdrop(1000);g.drawSystem(1000);
   });
   await page.screenshot({path:`.qa/${engine}-star-arrival.png`});
+  await page.evaluate(()=>{
+    const g=window.__game,s=g.state,saved={landed:s.save.landed,selected:s.selected,scene:s.scene,zoom:s.zoom,camera:{...s.camera},followBody:s.followBody,ship:{...s.save.ship},surface:{...s.save.surface},chart:{...s.save.chart}};
+    for(const scene of ['system','surface','chart'])for(const reduced of [false,true]){
+      s.scene=scene;s.selected=null;s.save.landed=scene==='surface'?'sol:Earth':null;g.settings.reducedMotion=reduced;s.zoom=scene==='system'?.00001:.65;s.followBody=null;
+      const p=scene==='surface'?s.save.surface:scene==='chart'?s.save.chart:s.save.ship;
+      s.camera={x:p.x+100,y:p.y+100};s.autopilot={type:'waypoint',x:p.x,y:p.y};
+      g.update(16,0);if(s.autopilot)throw new Error('Waypoint not complete');
+      if(!reduced&&!s.centerZoom)throw new Error('Arrival animation missing');
+      g.update(1300,0);
+      if(s.zoom<(scene==='surface'?2.4:1.3)||s.camera.x!==p.x||s.camera.y!==p.y)throw new Error('Arrival framing failed in '+scene);
+    }
+    // A fresh manual zoom must still interrupt an arrival transition.
+    s.scene='system';g.settings.reducedMotion=false;s.zoom=.00001;
+    s.autopilot={type:'waypoint',...s.save.ship};g.update(16,0);g.zoom(.5);const z=s.zoom;g.update(100,0);
+    if(s.centerZoom||s.zoom!==z)throw new Error('Arrival zoom cannot be interrupted');
+    s.save.landed=saved.landed;s.selected=saved.selected;s.scene=saved.scene;s.zoom=saved.zoom;s.camera=saved.camera;s.followBody=saved.followBody;
+    s.save.ship=saved.ship;s.save.surface=saved.surface;s.save.chart=saved.chart;s.autopilot=null;s.waypoint=null;g.updateUI();
+  });
+
   await page.evaluate(async()=>{
     const g=window.__game,s=g.state;
     const {importVoyage}=await import('/saves.js');

@@ -8,7 +8,7 @@ import {celestialSprite} from './celestial.js';
 import {paintStellarSurface,chartBrightness} from './stellar.js';
 import {canvasContextOptions,clearFrame,backgroundPosition,strokeEllipse,circleGeometry,fillAnnulus,fillDisk,drawImageInView,lineInView} from './rendering.js';
 import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM} from './scale.js';
-import {migrateLayout,systemFitZoom,travelSpeed,centerZoomAt,starApproachPoint,manualSpeed,outermostPlanet,systemDrive,advanceToArrival} from './navigation.js';
+import {migrateLayout,systemFitZoom,travelSpeed,centerZoomAt,cameraViewAt,starApproachPoint,manualSpeed,outermostPlanet,systemDrive,advanceToArrival} from './navigation.js';
 
 import {importVoyage} from './saves.js';
 import {placeControls,paintLocator} from './hud.js';
@@ -68,6 +68,11 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.7.2',items:[
+    "Replaced the tiny onscreen system ship box with a triangular outline, retaining the SHIP label and offscreen directional arrows.",
+    "Completed journeys now ease into a close-up centered on the ship over 1.3 seconds, including after manual overview zoom during travel. Surface arrival centers on the explorer at maximum zoom; fresh gestures can interrupt the animation.",
+    "System Fit now animates from the exact current camera position and zoom, smoothly combining the zoom-out and pan into the full-system view without snapping to the star first. Reduced-motion mode remains immediate."
+]},
   {version:'1.7.1',items:[
     "Hyperdrive now travels at a fixed 0.5 AU per second between planets and to stars. Local transfers between a planet and its moons, or sibling moons, use Orbit Drive at 0.1 light-seconds per second; the drive stays fixed for the journey.",
     "Fixed endless engine firing on arrival at a receding planet: arrival and station keeping now engage on the same movement step, before the orbit advances again.",
@@ -580,9 +585,8 @@ $('mapButton').onclick=()=>{
 $('systemFit').onclick=()=>{
   state.focusBody=null;state.centerZoom=null;
   const to=systemFitZoom(state.system,state.width,state.height,state.save.days);
-  state.camera={x:0,y:0};
-  if(settings.reducedMotion)state.zoom=to;
-  else state.centerZoom={from:state.zoom,to,elapsed:0,duration:2600,systemFit:true};
+  if(settings.reducedMotion){state.zoom=to;state.camera={x:0,y:0};}
+  else state.centerZoom={from:state.zoom,to,fromCamera:{...state.camera},elapsed:0,duration:2600,systemFit:true};
   if(state.autopilot)state.autopilot.manualZoom=true;
   state.panUntil=Infinity;$('systemChart').classList.remove('open');
   $('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');
@@ -913,7 +917,14 @@ function update(dt,clockDt=dt) {
       if(arrived){
         if(isWaypoint){p.x=destination.x;p.y=destination.y;state.waypoint=null;}
         if(state.scene==='system'&&!isWaypoint&&!isStellar)state.followBody={id:state.autopilot.id,x:p.x-destination.x,y:p.y-destination.y};
-        state.autopilot=null;updateUI();toast(isStellar?'Holding position near star':isWaypoint?'Coordinate reached':state.scene==='chart'?'Star reached · enter the system':state.scene==='surface'?'Lander reached':'Orbit achieved · station keeping active');
+        state.autopilot=null;
+        // Arrival always finishes in a useful close-up, even after a manual
+        // overview during travel. A fresh gesture can interrupt this animation.
+        state.panUntil=0;state.focusBody=null;
+        const to=state.scene==='surface'?2.4:Math.max(state.zoom,1.3);
+        if(settings.reducedMotion){state.centerZoom=null;state.zoom=to;state.camera={...p};}
+        else state.centerZoom={from:state.zoom,to,fromCamera:{...state.camera},elapsed:0,duration:1300};
+        updateUI();toast(isStellar?'Holding position near star':isWaypoint?'Coordinate reached':state.scene==='chart'?'Star reached · enter the system':state.scene==='surface'?'Lander reached':'Orbit achieved · station keeping active');
       }
     }else state.autopilot=null;
   }else if(state.scene==='system'&&state.followBody){
@@ -926,10 +937,14 @@ function update(dt,clockDt=dt) {
   const motion=state.scene==='surface'?state.actorMotion:state.shipMotion;
   updateMotion(motion,p.x-before.x,p.y-before.y,dt);
   if(state.followBody && !manual && !state.autopilot){motion.thrust=0;motion.moving=false;}
-  if(state.centerZoom&&(state.scene==='system'||state.scene==='surface')){
+  if(state.centerZoom){
     const animation=state.centerZoom;animation.elapsed+=dt;
     const progress=settings.reducedMotion?1:animation.elapsed/animation.duration;
-    state.zoom=centerZoomAt(animation.from,animation.to,progress);state.camera=animation.systemFit?{x:0,y:0}:{...p};
+    const targetCamera=animation.systemFit?{x:0,y:0}:p;
+    if(animation.fromCamera){
+      const view=cameraViewAt(animation.fromCamera,targetCamera,animation.from,animation.to,progress);
+      state.zoom=view.zoom;state.camera=view.camera;
+    }else {state.zoom=centerZoomAt(animation.from,animation.to,progress);state.camera={...targetCamera};}
     if(progress>=1)state.centerZoom=null;
   }else if(state.scene==='system'&&state.focusBody&&state.panUntil===Infinity){
     const body=findBody(state.focusBody);

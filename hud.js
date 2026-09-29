@@ -22,7 +22,8 @@ export function paintLocator(ctx,x,y,size,width,height,showTiny=false){
   if(!p.off){
     if(!showTiny||size>=12)return;
     ctx.save();ctx.translate(Math.round(x),Math.round(y));
-    ctx.strokeStyle='#9cddff';ctx.lineWidth=1.5;ctx.strokeRect(-6,-6,12,12);
+    ctx.strokeStyle='#9cddff';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(7,6);ctx.lineTo(-7,6);ctx.closePath();ctx.stroke();
     ctx.fillStyle='#d5f5ff';ctx.fillRect(-1,-1,2,2);
     ctx.font="9px 'SpaceBitz Pixel',monospace";ctx.textAlign='center';ctx.fillText('SHIP',0,-10);ctx.restore();return;
   }
