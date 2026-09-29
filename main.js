@@ -68,6 +68,12 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.8.0',items:[
+    "The tiny system ship triangle now rotates with the ship\u2019s heading while its label stays upright, and appears only below a four-pixel ship size.",
+    "Rebuilt system stars as animated pixel surfaces with stronger circulating convection, evolving bright granules and dark channels, and irregular sunspot groups that emerge, grow and fade.",
+    "Replaced thin vector flare loops with broad, curling pixel plasma extrusions that share the star\u2019s palette and blend into its limb. Larger eruptions grow and subside between quiet intervals.",
+    "Kept stellar rendering bounded with two texture resolutions, six interpolated keyframes per second, four cached stars and cropped drawing at extreme zoom. Reduced-motion stars remain still; physical sizes and travel behavior are unchanged."
+]},
   {version:'1.7.2',items:[
     "Replaced the tiny onscreen system ship box with a triangular outline, retaining the SHIP label and offscreen directional arrows.",
     "Completed journeys now ease into a close-up centered on the ship over 1.3 seconds, including after manual overview zoom during travel. Surface arrival centers on the explorer at maximum zoom; fresh gestures can interrupt the animation.",
@@ -1062,7 +1068,8 @@ function drawStar(x,y,r,color,now,body=null) {
   if(r<1.5){ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(Math.round(x)-3,Math.round(y)-3,6,6);return;}
   const coreVisible=x+r>0&&x-r<w&&y+r>0&&y-r<h;
   const nearViewport=x>-maxDim*.7&&x<w+maxDim*.7&&y>-maxDim*.7&&y<h+maxDim*.7;
-  if(!coreVisible&&!nearViewport)return;
+  const plasmaVisible=x+r*1.38>0&&x-r*1.38<w&&y+r*1.38>0&&y-r*1.38<h;
+  if(!plasmaVisible&&!nearViewport)return;
 
   if(r>maxDim*.32){
     // Close/large stars use a cheap clipped halo instead of a multi-thousand-pixel radial gradient.
@@ -1078,7 +1085,7 @@ function drawStar(x,y,r,color,now,body=null) {
     ctx.fillStyle=glow;circle(x,y,glowR);ctx.fill();
   }
 
-  if(!coreVisible)return;
+  if(!coreVisible){if(body&&plasmaVisible)paintStellarSurface(ctx,body,x,y,r,state.stellarSeconds,state.save.days,settings.reducedMotion,w,h);return;}
   if(r>maxDim*.38){
     ctx.fillStyle=color;fillDisk(ctx,x,y,r,w,h);
   }else{
@@ -1146,7 +1153,7 @@ function drawSystem(now) {
     for(const moon of planet.moons){const mp=bodyPosition(moon,days,sys);drawPlanet(moon,screen(mp.x,mp.y),now,mp);}}
   if(settings.travelLines&&['body','stellar'].includes(state.autopilot?.type)){const end=targetPoint();if(end){const a=screen(state.save.ship.x,state.save.ship.y),b=screen(end.x,end.y);
     ctx.strokeStyle='#77e2d586';ctx.lineWidth=1;ctx.setLineDash([5,8]);ctx.beginPath();lineInView(ctx,a,b,state.width,state.height);ctx.stroke();ctx.setLineDash([]);}}
-  const ship=screen(state.save.ship.x,state.save.ship.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,42,false,state.zoom);paintLocator(ctx,ship.x,ship.y,42*state.zoom,state.width,state.height,true);
+  const ship=screen(state.save.ship.x,state.save.ship.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,42,false,state.zoom);paintLocator(ctx,ship.x,ship.y,42*state.zoom,state.width,state.height,true,state.shipMotion.heading);
 }
 function drawChartStar(x,y,r,color,now,seed){
   const pulse=settings.reducedMotion||!settings.twinkle?1:chartBrightness(seed,now/1000);

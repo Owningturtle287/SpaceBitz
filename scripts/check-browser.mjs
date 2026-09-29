@@ -292,6 +292,24 @@ try{
   await page.evaluate(()=>{window.__game.launch();window.__game.frame(performance.now());});
   await page.screenshot({path:`.qa/${engine}-portrait-system.png`});
   await page.evaluate(()=>{window.__qaPause=true;});
+  const stellar=await page.evaluate(async()=>{
+    const {paintStellarSurface,stellarProminences}=await import('/stellar.js'),{makeSystem}=await import('/model.js');
+    const body=makeSystem('sol').star,c=document.createElement('canvas');c.width=c.height=512;const ctx=c.getContext('2d');
+    const render=(t,reduced=false)=>{ctx.clearRect(0,0,512,512);paintStellarSurface(ctx,body,256,256,170,t,234,reduced,512,512);return ctx.getImageData(0,0,512,512).data;};
+    const a=render(0),b=render(5);let changing=0,dark=0,core=0;
+    for(let y=0;y<512;y++)for(let x=0;x<512;x++)if(Math.hypot(x-256,y-256)<150){const p=(y*512+x)*4;core++;if(Math.abs(a[p]-b[p])+Math.abs(a[p+1]-b[p+1])>15)changing++;if(b[p]<90&&b[p+1]<90)dark++;}
+    if(changing/core<.2)throw new Error('Stellar surface is too static');
+    // Use an actual eruption peak; do not depend on the launch-time phase.
+    let peak=0,height=0;for(let t=0;t<60;t+=.25){const h=Math.max(...stellarProminences(body,t).map(p=>p.height));if(h>height){height=h;peak=t;}}
+    const plume=render(peak);let outside=0;
+    for(let y=0;y<512;y++)for(let x=0;x<512;x++)if(Math.hypot(x-256,y-256)>170*1.08&&plume[(y*512+x)*4+3]>50)outside++;
+    if(outside<30)throw new Error('Pixel flares are missing or too small');
+    const still=render(0,true),later=render(60,true);if(!still.every((v,i)=>v===later[i]))throw new Error('Reduced-motion star changes');
+    let spots=dark;for(const t of [15,30,45]){const frame=render(t);let count=0;for(let y=130;y<382;y++)for(let x=130;x<382;x++){const p=(y*512+x)*4;if(frame[p+3]>250&&frame[p]<90&&frame[p+1]<90)count++;}spots=Math.max(spots,count);}
+    if(spots<5)throw new Error('Sunspots are not visible');
+    render(peak);return {changingFraction:changing/core,spots,outside,peak,image:c.toDataURL()};
+  });
+  await writeFile(`.qa/${engine}-stellar-overhaul.png`,Buffer.from(stellar.image.split(',')[1],'base64'));delete stellar.image;
   const soak=await page.evaluate(async()=>{
     const g=window.__game,s=g.state,{makeSystem,bodyPosition}=await import('/model.js');
     const {stellarCacheStats}=await import('/stellar.js'),{celestialCacheStats}=await import('/celestial.js');
@@ -309,5 +327,5 @@ try{
     if(stats.p95Ms>250||stats.stellar.frames>4||stats.celestial.frames>160||stats.celestial.maps>48)throw new Error('Soak exceeded render/cache bounds '+JSON.stringify(stats));
     return stats;
   });
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results,soak},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results,stellar,soak},null,2));
 }finally{await browser.close();server.close();}

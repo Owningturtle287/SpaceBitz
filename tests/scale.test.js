@@ -4,7 +4,7 @@ import {AU_KM,SYSTEM_VISUAL_SCALE,SUN_DIAMETER_KM,SOL_RADIUS,SYSTEM_PX_PER_KM,SY
 import {makeSystem,visualRadius,orbitRadius,orbitalElements,orbitPoint,bodyPosition,TAU} from '../model.js';
 import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt,starApproachPoint,systemDrive,advanceToArrival,cameraViewAt} from '../navigation.js';
 import {navigationTarget} from '../motion.js';
-import {stellarActivity} from '../stellar.js';
+import {stellarActivity,stellarProminences} from '../stellar.js';
 const close=(a,b,tol=1e-8)=>assert.ok(Math.abs(a-b)<tol,`${a} != ${b}`);
 
 test('one surface metre is one standing explorer high, exactly one-third of the parked ship',()=>{
@@ -79,7 +79,7 @@ test('stellar spots stay physically small, evolve continuously and produce occas
     const a=stellarActivity(star,t),b=stellarActivity(star,t+.01);
     a.forEach((spot,i)=>{
       assert.ok(spot.diameterKm>=0&&spot.diameterKm<=28000);
-      assert.ok(Math.abs(spot.diameterKm-b[i].diameterKm)<15);
+      assert.ok(Math.abs(spot.diameterKm-b[i].diameterKm)<25);
       assert.ok(Math.abs(spot.flare-b[i].flare)<.01);
       if(spot.flare>.5)flareCount++;
     });
@@ -163,4 +163,13 @@ test('camera fly starts at the current view and smoothly pans and zooms to its d
   }
   const early=cameraViewAt(from,to,1.3,1e-8,.01);
   assert.ok(Math.abs(from.x-early.camera.x)*early.zoom<1,'Close-up must not whip across the system');
+});
+
+test('pixel prominences grow and recede continuously within a bounded stellar envelope',()=>{
+  const body=makeSystem('sol').star;let large=0,quiet=0;
+  for(let t=0;t<180;t+=.1){
+    const regions=stellarProminences(body,t),next=stellarProminences(body,t+.016);
+    regions.forEach((r,i)=>{assert.ok(r.height>=0&&r.height<=.34);assert.ok(Math.abs(next[i].height-r.height)<.005);if(r.height>.15)large++;if(r.life===0)quiet++;});
+  }
+  assert.ok(large>0&&quiet>large);
 });

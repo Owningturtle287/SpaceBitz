@@ -17,13 +17,14 @@ export function locatorPoint(x,y,width,height){
   const ratio=off?Math.min((cx-margin)/Math.max(.001,Math.abs(dx)),(cy-margin)/Math.max(.001,Math.abs(dy))):1;
   return {x:off?cx+dx*ratio:x,y:off?cy+dy*ratio:y,angle:Math.atan2(dy,dx),off};
 }
-export function paintLocator(ctx,x,y,size,width,height,showTiny=false){
+export function paintLocator(ctx,x,y,size,width,height,showTiny=false,heading=0){
   const p=locatorPoint(x,y,width,height);
   if(!p.off){
-    if(!showTiny||size>=12)return;
+    if(!showTiny||size>=4)return;
     ctx.save();ctx.translate(Math.round(x),Math.round(y));
+    ctx.save();ctx.rotate(heading+Math.PI/2);
     ctx.strokeStyle='#9cddff';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(7,6);ctx.lineTo(-7,6);ctx.closePath();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(7,6);ctx.lineTo(-7,6);ctx.closePath();ctx.stroke();ctx.restore();
     ctx.fillStyle='#d5f5ff';ctx.fillRect(-1,-1,2,2);
     ctx.font="9px 'SpaceBitz Pixel',monospace";ctx.textAlign='center';ctx.fillText('SHIP',0,-10);ctx.restore();return;
   }

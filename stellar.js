@@ -2,8 +2,8 @@ import {hash,TAU,rotationAngle} from './model.js';
 import {noise} from './terrain.js';
 import {drawImageInView} from './rendering.js';
 const unit=seed=>(hash(seed)%1000000)/1000000;
-const cache=new Map(),FPS=6;
-const smooth=x=>x*x*(3-2*x);
+const cache=new Map(),FPS=6,PAD=1.38;
+const smooth=x=>x*x*(3-2*x),clamp=(x,a=0,b=1)=>Math.max(a,Math.min(b,x));
 export function chartBrightness(seed,seconds){
   const phase=unit(seed)*TAU;
   return .9+.045*Math.sin(seconds*.61+phase)+.025*Math.sin(seconds*1.13+phase*3)+.015*Math.sin(seconds*.23+phase*7);
@@ -11,101 +11,118 @@ export function chartBrightness(seed,seconds){
 const spheres=new Map();
 function sphere(size){
   if(spheres.has(size))return spheres.get(size);
-  const points=[];
+  const points=[],radius=size/(2*PAD);
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-    const nx=(x+.5-size/2)/(size/2),ny=(y+.5-size/2)/(size/2),r2=nx*nx+ny*ny;
-    if(r2<=1)points.push((y*size+x)*4,nx,ny,Math.sqrt(1-r2));
+    const nx=(x+.5-size/2)/radius,ny=(y+.5-size/2)/radius,rho=Math.hypot(nx,ny);
+    if(rho<=PAD)points.push((y*size+x)*4,nx,ny,Math.sqrt(Math.max(0,1-rho*rho)),rho,Math.atan2(ny,nx));
   }
   const result=new Float32Array(points);spheres.set(size,result);return result;
 }
 export function stellarActivity(body,seconds){
-  return Array.from({length:7},(_,i)=>{
-    const seed=body.id+':activity:'+i,cycle=95+unit(seed)*100;
+  return Array.from({length:9},(_,i)=>{
+    const seed=body.id+':activity:'+i,cycle=60+unit(seed)*55;
     const age=((seconds/cycle+unit(seed+':phase'))%1+1)%1;
-    const envelope=age<.78?Math.sin(Math.PI*age/.78)**2:0;
-    const flareCycle=46+unit(seed+':flare')*39;
+    const envelope=age<.8?Math.sin(Math.PI*age/.8)**2:0;
+    const flareCycle=40+unit(seed+':flare')*35;
     const flareAge=((seconds+unit(seed+':offset')*flareCycle)%flareCycle+flareCycle)%flareCycle;
-    const duration=6+unit(seed+':duration')*3;
-    return {longitude:unit(seed+':lon')*TAU,latitude:(unit(seed+':lat')-.5)*.9,
-      // Typical small active-region spots, in km; never giant dark hemispheres.
-      diameterKm:(4000+unit(seed+':size')*24000)*envelope,
+    const duration=7+unit(seed+':duration')*4;
+    return {longitude:unit(seed+':lon')*TAU,latitude:(unit(seed+':lat')-.5)*1.15,
+      diameterKm:(7000+unit(seed+':size')*21000)*envelope,
       life:envelope,flare:flareAge<duration?Math.sin(Math.PI*flareAge/duration)**2:0};
+  });
+}
+// A few sustained eruptions at a time, with quiet intervals per active region.
+// Their reach is an art scale, separate from every physical diameter in the UI.
+export function stellarProminences(body,seconds){
+  return Array.from({length:6},(_,i)=>{
+    const seed=body.id+':prominence:'+i,cycle=32+unit(seed)*28,duration=9+unit(seed+':duration')*6;
+    const age=((seconds+unit(seed+':phase')*cycle)%cycle+cycle)%cycle;
+    const life=age<duration?Math.sin(Math.PI*age/duration)**2:0;
+    return {angle:unit(seed+':angle')*TAU+Math.sin(seconds*.07+i)*.035,
+      life,height:(.2+unit(seed+':height')*.14)*life,width:.10+unit(seed+':width')*.09,
+      bend:(unit(seed+':bend')-.5)*.55,phase:unit(seed+':grain')*TAU};
   });
 }
 function makeFrame(body,seconds,rotation,SIZE){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=SIZE;
-  const g=canvas.getContext('2d'),image=g.createImageData(SIZE,SIZE),seed=hash(body.id);
+  const g=canvas.getContext('2d'),image=g.createImageData(SIZE,SIZE),data=image.data,seed=hash(body.id);
   const base=body.color.match(/\w\w/g).map(h=>parseInt(h,16));
-  const points=sphere(SIZE),angle=rotation+seconds*.008,ca=Math.cos(angle),sa=Math.sin(angle),drift=seconds*.045;
-  // Rotating spherical coordinates and mixed projections avoid diagonal bands.
-  for(let i=0;i<points.length;i+=4){
-    const p=points[i],nx=points[i+1],ny=points[i+2],nz=points[i+3];
+  const points=sphere(SIZE),angle=rotation+seconds*.025,ca=Math.cos(angle),sa=Math.sin(angle),drift=seconds*.26;
+  const plumes=stellarProminences(body,seconds).filter(p=>p.life>.005);
+  for(let i=0;i<points.length;i+=6){
+    const p=points[i],nx=points[i+1],ny=points[i+2],nz=points[i+3],rho=points[i+4],a=points[i+5];
+    if(rho>1){
+      const h=rho-1,rim=.012+.018*noise(Math.cos(a)*27+seconds*.4,Math.sin(a)*27,seed+31);
+      let energy=h<rim?.55*(1-h/rim):0;
+      for(const plume of plumes){
+        if(h>plume.height||plume.height<=0)continue;
+        const rise=h/plume.height;
+        const center=plume.angle+plume.bend*rise*rise;
+        const delta=Math.atan2(Math.sin(a-center),Math.cos(a-center));
+        const width=plume.width*(1-rise*.7)*( .85+.15*Math.sin(rise*22-seconds*1.8+plume.phase));
+        // Broad roots split into ragged, curling fingers of hotter plasma.
+        const shape=clamp(1-Math.abs(delta)/width),grain=noise(nx*45-seconds*.65,ny*45+seconds*.3,seed+51);
+        const strength=shape*(.64+.36*grain)*Math.pow(1-rise,.3);
+        energy=Math.max(energy,strength*plume.life);
+      }
+      if(energy<.06)continue;
+      const hot=clamp((energy-.3)*1.6);
+      for(let k=0;k<3;k++)data[p+k]=Math.round(clamp(base[k]*(.65+energy*.45)+hot*65,0,255)/4)*4;
+      data[p+3]=Math.round(255*clamp(energy*3));continue;
+    }
     const sx=nx*ca+nz*sa,sz=nz*ca-nx*sa;
-    const warp=noise(sx*6+drift*.18,ny*6+sz*3,seed)-.5;
-    const flow=(noise(sx*17+sz*9+warp+drift,ny*17-drift*.31,seed+3)+noise(ny*19+sz*7,sz*17+sx*5-drift*.45,seed+7))*.5;
-    const fine=noise(sx*49+sz*21-drift*.7,ny*49+sz*13+drift*.6,seed+11);
-    const granule=Math.pow(flow,.7),channels=Math.max(0,.43-flow)*.8;
-    const shade=(.59+granule*.52+fine*.16-channels)*(.7+.3*nz);
-    const heat=Math.max(0,flow-.59)*75;
-    for(let k=0;k<3;k++)image.data[p+k]=Math.min(255,base[k]*shade+heat+(k===0?10:0));
-    image.data[p+3]=255;
+    const warp=noise(sx*7+drift*.25,ny*7+sz*3-drift*.12,seed)-.5;
+    const flow=noise(sx*21+sz*11+warp*2+drift,ny*21-drift*.48,seed+3);
+    const eddy=noise(ny*29+sz*9+drift*.6,sz*23+sx*7-drift*.7,seed+7);
+    const fine=noise(sx*61+sz*19-drift,ny*61+sz*13+drift*.8,seed+11);
+    const cell=flow*.64+eddy*.36,channels=clamp((.47-cell)*2.6);
+    const shade=(.68+cell*.5+fine*.16-channels*.24)*(.73+.27*nz);
+    const heat=clamp((cell-.52)*3)*85;
+    for(let k=0;k<3;k++)data[p+k]=Math.round(clamp(base[k]*shade+heat+(k===0?12:0),0,255)/4)*4;
+    data[p+3]=255;
   }
-  g.putImageData(image,0,0);
-  g.save();g.beginPath();g.arc(SIZE/2,SIZE/2,SIZE/2,0,TAU);g.clip();
-  for(const spot of stellarActivity(body,seconds)){
-    const lon=spot.longitude-rotation-seconds*.008*(1-.24*Math.sin(spot.latitude)**2);
-    const depth=Math.cos(lon)*Math.cos(spot.latitude);if(depth<=0||spot.life<.03)continue;
-    const x=SIZE/2+Math.sin(lon)*Math.cos(spot.latitude)*SIZE/2,y=SIZE/2+Math.sin(spot.latitude)*SIZE/2;
-    const r=spot.diameterKm/body.diameter*SIZE/2;
-    g.globalAlpha=spot.life*.64;g.fillStyle='#67382c';g.beginPath();g.ellipse(x,y,r*Math.max(.15,depth),r,0,0,TAU);g.fill();
-    g.globalAlpha=spot.life*.85;g.fillStyle='#241e29';g.beginPath();g.ellipse(x,y,r*.45*Math.max(.15,depth),r*.45,0,0,TAU);g.fill();
+  // Pixel-rasterized active groups: irregular penumbra, dark umbra and small
+  // companion spots. No antialiased ellipses or double-faded subpixel dots.
+  const R=SIZE/(2*PAD);
+  for(const [index,spot]of stellarActivity(body,seconds).entries()){
+    const lon=spot.longitude-rotation-seconds*.025*(1-.24*Math.sin(spot.latitude)**2);
+    const depth=Math.cos(lon)*Math.cos(spot.latitude);if(depth<=.05||spot.life<.06)continue;
+    const cx=SIZE/2+Math.sin(lon)*Math.cos(spot.latitude)*R,cy=SIZE/2+Math.sin(spot.latitude)*R;
+    const radius=spot.diameterKm/body.diameter*R;
+    for(let j=0;j<3;j++){
+      const spread=(j-1)*radius*1.8,x0=cx+spread*depth,y0=cy+spread*.35;
+      const ry=Math.max(.6, radius*(j===1?2.8:1.35)),rx=ry*Math.max(.3,depth);
+      for(let y=Math.max(0,Math.floor(y0-ry*1.4));y<Math.min(SIZE,y0+ry*1.4);y++)for(let x=Math.max(0,Math.floor(x0-rx*1.4));x<Math.min(SIZE,x0+rx*1.4);x++){
+        const p=(y*SIZE+x)*4;if(data[p+3]===0||Math.hypot(x+.5-SIZE/2,y+.5-SIZE/2)>R)continue;
+        const rough=.85+.3*noise(x*.8+seconds*.06,y*.8,seed+index*7);
+        const d=Math.hypot((x+.5-x0)/rx,(y+.5-y0)/ry)/rough;
+        if(d>1.3)continue;
+        const dark=(d<.52?.94:d<.9?.64:.22)*smooth(clamp(spot.life*3));
+        for(let k=0;k<3;k++)data[p+k]=data[p+k]*(1-dark)+[36,23,30][k]*dark;
+      }
+    }
   }
-  g.restore();return canvas;
+  g.putImageData(image,0,0);return canvas;
 }
 export function paintStellarSurface(ctx,body,x,y,r,seconds,days,reducedMotion=false,width=ctx.canvas.width,height=ctx.canvas.height){
-  if(r<1||x+r<0||x-r>width||y+r<0||y-r>height)return;
+  const extent=r*PAD;
+  if(r<1||x+extent<0||x-extent>width||y+extent<0||y-extent>height)return;
   const t=reducedMotion?0:seconds,rotation=reducedMotion?0:rotationAngle(body,days);
-  const size=r<80?64:128,tick=Math.floor(t*FPS),key=`${body.id}:${size}:${reducedMotion}`;
+  const size=r<80?96:192,tick=Math.floor(t*FPS),key=`${body.id}:${size}:${reducedMotion}`;
   let pair=cache.get(key);
   if(!pair||pair.tick!==tick){
     const current=pair?.tick===tick-1?pair.next:makeFrame(body,tick/FPS,rotation,size);
-    pair={tick,current,next:reducedMotion?current:makeFrame(body,(tick+1)/FPS,rotation,size)};
+    pair={tick,current,blend:pair?.blend,next:reducedMotion?current:makeFrame(body,(tick+1)/FPS,rotation,size)};
     cache.set(key,pair);if(cache.size>4)cache.delete(cache.keys().next().value);
   }
   ctx.save();ctx.imageSmoothingEnabled=false;
-  drawImageInView(ctx,pair.current,x-r,y-r,r*2,r*2,width,height);
-  ctx.globalAlpha=smooth(t*FPS-tick);
-  if(ctx.globalAlpha>0)drawImageInView(ctx,pair.next,x-r,y-r,r*2,r*2,width,height);
+  // Blend keyframes before compositing: translucent flare silhouettes must fade
+  // away as well as grow, without ghost remnants of the previous frame.
+  if(!pair.blend){pair.blend=document.createElement('canvas');pair.blend.width=pair.blend.height=size;}
+  const g=pair.blend.getContext('2d'),mix=reducedMotion?0:smooth(t*FPS-tick);
+  g.clearRect(0,0,size,size);g.globalCompositeOperation='source-over';g.globalAlpha=1-mix;g.drawImage(pair.current,0,0);
+  g.globalCompositeOperation='lighter';g.globalAlpha=mix;g.drawImage(pair.next,0,0);g.globalAlpha=1;g.globalCompositeOperation='source-over';
+  drawImageInView(ctx,pair.blend,x-extent,y-extent,extent*2,extent*2,width,height);
   ctx.restore();
-  if(reducedMotion)return;
-  // Low, breathing tongues of plasma around the limb. Skip giant offscreen
-  // disks instead of submitting unbounded geometry at extreme zoom.
-  if(r>=10&&r<Math.max(width,height)*2){
-    ctx.save();ctx.strokeStyle=body.color;ctx.lineWidth=Math.min(3,Math.max(.6,r*.003));
-    for(let i=0;i<18;i++){
-      const a=i*TAU/18+unit(body.id+':rim:'+i)*.14,life=.5+.5*Math.sin(t*.38+i*2.4);
-      const reach=r*(.016+.028*life),px=x+Math.cos(a)*r,py=y+Math.sin(a)*r;
-      if(px<-reach||px>width+reach||py<-reach||py>height+reach)continue;
-      ctx.globalAlpha=.12+life*.25;ctx.beginPath();
-      ctx.moveTo(x+Math.cos(a-.015)*r,y+Math.sin(a-.015)*r);
-      ctx.quadraticCurveTo(x+Math.cos(a+.012)*(r+reach*2),y+Math.sin(a+.012)*(r+reach*2),x+Math.cos(a+.027)*r,y+Math.sin(a+.027)*r);ctx.stroke();
-    }
-    ctx.restore();
-  }
-  // Bright, smoothly growing flare kernels plus occasional low limb loops.
-  for(const region of stellarActivity(body,t)){
-    if(region.flare<.005)continue;
-    const lon=region.longitude-rotation-t*.008,z=Math.cos(lon)*Math.cos(region.latitude);
-    if(z<=0)continue;
-    const px=x+Math.sin(lon)*Math.cos(region.latitude)*r,py=y+Math.sin(region.latitude)*r;
-    const extent=Math.min(120,r*(.004+.032*region.flare));
-    if(px+extent*4<0||px-extent*4>width||py+extent*4<0||py-extent*4>height)continue;
-    ctx.save();ctx.globalAlpha=region.flare*.8;ctx.strokeStyle='#ffbe6b';ctx.lineWidth=Math.min(4,Math.max(.5,r*.0015));
-    const angle=Math.atan2(py-y,px-x);
-    ctx.translate(px,py);ctx.rotate(angle);
-    ctx.beginPath();ctx.moveTo(0,-extent*.6);ctx.bezierCurveTo(extent*(1+2*(1-z)),-extent,extent*(1+2*(1-z)),extent,0,extent*.6);ctx.stroke();
-    ctx.globalAlpha=region.flare*.32;ctx.lineWidth=Math.min(9,ctx.lineWidth*3);ctx.stroke();
-    ctx.fillStyle='#fff2c1';ctx.beginPath();ctx.ellipse(0,0,extent*.22,extent*.5,0,0,TAU);ctx.fill();ctx.restore();
-  }
 }
 export const stellarCacheStats=()=>({frames:cache.size,geometry:spheres.size});

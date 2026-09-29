@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.0 — 2026-09-29
+
+- The tiny system ship triangle now rotates with the ship’s heading while its label stays upright, and appears only below a four-pixel ship size.
+- Rebuilt system stars as animated pixel surfaces with stronger circulating convection, evolving bright granules and dark channels, and irregular sunspot groups that emerge, grow and fade.
+- Replaced thin vector flare loops with broad, curling pixel plasma extrusions that share the star’s palette and blend into its limb. Larger eruptions grow and subside between quiet intervals.
+- Kept stellar rendering bounded with two texture resolutions, six interpolated keyframes per second, four cached stars and cropped drawing at extreme zoom. Reduced-motion stars remain still; physical sizes and travel behavior are unchanged.
+
 ## 1.7.2 — 2026-09-29
 
 - Replaced the tiny onscreen system ship box with a triangular outline, retaining the SHIP label and offscreen directional arrows.
