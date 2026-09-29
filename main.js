@@ -8,7 +8,7 @@ import {celestialSprite} from './celestial.js';
 import {paintStellarSurface,chartBrightness} from './stellar.js';
 import {canvasContextOptions,clearFrame,backgroundPosition,strokeEllipse,circleGeometry,fillAnnulus,fillDisk,drawImageInView,lineInView} from './rendering.js';
 import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM} from './scale.js';
-import {migrateLayout,systemFitZoom,travelSpeed,centerZoomAt,starApproachPoint,manualSpeed,outermostPlanet} from './navigation.js';
+import {migrateLayout,systemFitZoom,travelSpeed,centerZoomAt,starApproachPoint,manualSpeed,outermostPlanet,systemDrive,advanceToArrival} from './navigation.js';
 
 import {importVoyage} from './saves.js';
 import {placeControls,paintLocator} from './hud.js';
@@ -68,6 +68,13 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.7.1',items:[
+    "Hyperdrive now travels at a fixed 0.5 AU per second between planets and to stars. Local transfers between a planet and its moons, or sibling moons, use Orbit Drive at 0.1 light-seconds per second; the drive stays fixed for the journey.",
+    "Fixed endless engine firing on arrival at a receding planet: arrival and station keeping now engage on the same movement step, before the orbit advances again.",
+    "Manual zoom now overrides the travel camera for the rest of that journey. Panning and System Fit remain usable during travel.",
+    "Restored the tiny onscreen ship marker in system view. Light-blue offscreen arrows now locate the ship in system and interstellar views and the lander on surfaces, replacing the old surface locator label.",
+    "System Fit now eases to the full orbital view over 2.6 seconds, supports interruption, and changes instantly with reduced motion."
+]},
   {version:'1.7.0',items:[
     "Replaced the dropdown Fit System text button with a small orbital-centering icon beside the system chart; its accessible label remains available to assistive technology.",
     "Made in-game Settings opaque and positioned the compact interaction panel in the bottom-right corner in both orientations.",
@@ -523,7 +530,7 @@ function nearestSample() {
 }
 function primary() {
   if(!state.save||state.autopilot||state.warpUntil)return;
-  state.centerZoom=null;
+  state.centerZoom=null;state.panUntil=0;state.focusBody=null;
   if(state.waypoint){
     state.panUntil=0;state.followBody=null;
     state.autopilot={type:'waypoint',x:state.waypoint.x,y:state.waypoint.y};
@@ -547,8 +554,9 @@ function primary() {
     const body=state.selected,pos=bodyPosition(body,state.save.days,state.system);
     const dist=Math.hypot(pos.x-state.save.ship.x,pos.y-state.save.ship.y);
     if(dist<visualRadius(body.diameter,body.kind)+48){enterSurface(body);return;}
+    const drive=systemDrive(state.save.ship,body,state.system,state.save.days,state.followBody?.id);
     state.panUntil=0;state.followBody=null;
-    state.autopilot={type:'body',id:body.id,arrivalZoom:Math.min(1,100/(visualRadius(body.diameter)+20))};toast(`Hyperdrive to ${body.name}`);updateUI();return;
+    state.autopilot={type:'body',id:body.id,drive,arrivalZoom:Math.min(1,100/(visualRadius(body.diameter)+20))};toast(`${drive==='orbit'?'Orbit Drive':'Hyperdrive'} to ${body.name}`);updateUI();return;
   }
   const star=state.selected;
   if(!star){select(currentStar());return;}
@@ -571,7 +579,11 @@ $('mapButton').onclick=()=>{
 };
 $('systemFit').onclick=()=>{
   state.focusBody=null;state.centerZoom=null;
-  state.camera={x:0,y:0};state.zoom=systemFitZoom(state.system,state.width,state.height,state.save.days);
+  const to=systemFitZoom(state.system,state.width,state.height,state.save.days);
+  state.camera={x:0,y:0};
+  if(settings.reducedMotion)state.zoom=to;
+  else state.centerZoom={from:state.zoom,to,elapsed:0,duration:2600,systemFit:true};
+  if(state.autopilot)state.autopilot.manualZoom=true;
   state.panUntil=Infinity;$('systemChart').classList.remove('open');
   $('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');
 };
@@ -613,7 +625,7 @@ $('systemChartToggle').onclick=()=>{
   panel.classList.toggle('open',open);content.hidden=!open;
   $('systemChartToggle').setAttribute('aria-expanded',String(open));
 };
-function zoom(factor){state.centerZoom=null;state.zoom=clamp(state.zoom*factor,state.scene==='system'?SYSTEM_MIN_ZOOM:state.scene==='surface'?.65:.34,state.scene==='system'?128:2.4);}
+function zoom(factor){state.centerZoom=null;if(state.autopilot)state.autopilot.manualZoom=true;state.zoom=clamp(state.zoom*factor,state.scene==='system'?SYSTEM_MIN_ZOOM:state.scene==='surface'?.65:.34,state.scene==='system'?128:2.4);}
 
 function addMetric(parent,label,value) {
   const div=document.createElement('div');div.className='metric';
@@ -680,20 +692,20 @@ function updateUI() {
     const p=bodyPosition(sel,state.save.days,sys),distance=Math.hypot(p.x-state.save.ship.x,p.y-state.save.ship.y);
     action=distance<visualRadius(sel.diameter,sel.kind)+48?(sel.solid?'LAND':'NO SOLID SURFACE'):'TRAVEL';
   }
-  if(scene==='system'&&action==='TRAVEL')action='HYPERDRIVE';
+  if(scene==='system'&&action==='TRAVEL')action=systemDrive(state.save.ship,sel,sys,state.save.days,state.followBody?.id)==='orbit'?'ORBIT DRIVE':'HYPERDRIVE';
   const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship;
   let destination=scene==='surface'?{x:0,y:0}:scene==='chart'?sel:sel?.kind==='star'?{x:0,y:0}:sel?bodyPosition(sel,state.save.days,sys):null;
   if(state.waypoint){title=scene==='surface'?'SURFACE SITE':'COORDINATE';action=state.autopilot?.type==='waypoint'?'MOVING…':'GO HERE';details=true;destination=state.waypoint;}
   const traveling=Boolean(state.autopilot||state.warpUntil);
   if(state.autopilot){
-    action=scene==='system'?'HYPERDRIVE':'TRAVELING';destination=targetPoint();details=Boolean(sel)&&!state.waypoint;
+    action=scene==='system'?(state.autopilot.drive==='orbit'?'ORBIT DRIVE':'HYPERDRIVE'):'TRAVELING';destination=targetPoint();details=Boolean(sel)&&!state.waypoint;
     if(state.autopilot.type==='surface')title='LANDER';
   }
   if(state.warpUntil){title='WARP DRIVE';action='ENGAGING';destination=null;}
   $('cancelTravel').hidden=!traveling;
   $('targetCard').hidden=scene!=='surface'&&!sel&&!state.waypoint&&!traveling;
   $('targetName').textContent=title||'Target';
-  $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&!state.waypoint?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?' · 0.25 AU/s':''):'';
+  $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&!state.waypoint?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
   $('primaryAction').textContent=action;
   $('secondaryAction').hidden=!details;$('secondaryAction').textContent=state.waypoint?'CLEAR':'INFO';
   $('primaryAction').disabled=traveling||action==='NO SOLID SURFACE'||action==='HOLDING';
@@ -889,19 +901,20 @@ function update(dt,clockDt=dt) {
   }else if(state.autopilot){const destination=targetPoint();
     if(destination){
       const goal=state.scene==='system'?navigationTarget(p,destination,visualRadius(state.system.star.diameter,'star')):destination;
-      const vx=goal.x-p.x,vy=goal.y-p.y,d=Math.hypot(vx,vy),remaining=Math.hypot(destination.x-p.x,destination.y-p.y);
-      if(state.scene==='system'&&['body','stellar'].includes(state.autopilot.type)){
+      const remaining=Math.hypot(destination.x-p.x,destination.y-p.y);
+      if(state.scene==='system'&&!state.autopilot.manualZoom&&['body','stellar'].includes(state.autopilot.type)){
         const desired=Math.min(state.autopilot.arrivalZoom||1,Math.min(state.width,state.height)*.6/Math.max(1,remaining));
         state.zoom+=(desired-state.zoom)*(1-Math.exp(-dt/220));
       }
       const isWaypoint=state.autopilot.type==='waypoint',isStellar=state.autopilot.type==='stellar';
       const arrival=isWaypoint||isStellar?0:state.scene==='system'?visualRadius(findBody(state.autopilot.id)?.diameter||10000,findBody(state.autopilot.id)?.kind)+38:state.scene==='chart'?22:32;
-      if(remaining<=arrival+.2){
+      const speed=travelSpeed(state.scene,remaining,state.autopilot.drive)*(state.scene==='surface'&&terrain.sampler(findBody(state.save.landed))(p.x,p.y).water?.45:1);
+      const arrived=remaining<=arrival+.2 || (advanceToArrival(p,goal,goal===destination?arrival:0,speed,dt/1000)&&goal===destination);
+      if(arrived){
         if(isWaypoint){p.x=destination.x;p.y=destination.y;state.waypoint=null;}
         if(state.scene==='system'&&!isWaypoint&&!isStellar)state.followBody={id:state.autopilot.id,x:p.x-destination.x,y:p.y-destination.y};
         state.autopilot=null;updateUI();toast(isStellar?'Holding position near star':isWaypoint?'Coordinate reached':state.scene==='chart'?'Star reached · enter the system':state.scene==='surface'?'Lander reached':'Orbit achieved · station keeping active');
-      }else if(d>0){const step=Math.min(goal===destination?remaining-arrival:d,(travelSpeed(state.scene,remaining)*(state.scene==='surface'&&terrain.sampler(findBody(state.save.landed))(p.x,p.y).water?.45:1))*dt/1000);
-        p.x+=vx/d*step;p.y+=vy/d*step;state.panUntil=0;}
+      }
     }else state.autopilot=null;
   }else if(state.scene==='system'&&state.followBody){
     const body=findBody(state.followBody.id);if(body){const pos=bodyPosition(body,state.save.days,state.system);p.x=pos.x+state.followBody.x;p.y=pos.y+state.followBody.y;}
@@ -916,7 +929,7 @@ function update(dt,clockDt=dt) {
   if(state.centerZoom&&(state.scene==='system'||state.scene==='surface')){
     const animation=state.centerZoom;animation.elapsed+=dt;
     const progress=settings.reducedMotion?1:animation.elapsed/animation.duration;
-    state.zoom=centerZoomAt(animation.from,animation.to,progress);state.camera={...p};
+    state.zoom=centerZoomAt(animation.from,animation.to,progress);state.camera=animation.systemFit?{x:0,y:0}:{...p};
     if(progress>=1)state.centerZoom=null;
   }else if(state.scene==='system'&&state.focusBody&&state.panUntil===Infinity){
     const body=findBody(state.focusBody);
@@ -1118,7 +1131,7 @@ function drawSystem(now) {
     for(const moon of planet.moons){const mp=bodyPosition(moon,days,sys);drawPlanet(moon,screen(mp.x,mp.y),now,mp);}}
   if(settings.travelLines&&['body','stellar'].includes(state.autopilot?.type)){const end=targetPoint();if(end){const a=screen(state.save.ship.x,state.save.ship.y),b=screen(end.x,end.y);
     ctx.strokeStyle='#77e2d586';ctx.lineWidth=1;ctx.setLineDash([5,8]);ctx.beginPath();lineInView(ctx,a,b,state.width,state.height);ctx.stroke();ctx.setLineDash([]);}}
-  const ship=screen(state.save.ship.x,state.save.ship.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,42,false,state.zoom);paintLocator(ctx,ship.x,ship.y,42*state.zoom,state.width,state.height);
+  const ship=screen(state.save.ship.x,state.save.ship.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,42,false,state.zoom);paintLocator(ctx,ship.x,ship.y,42*state.zoom,state.width,state.height,true);
 }
 function drawChartStar(x,y,r,color,now,seed){
   const pulse=settings.reducedMotion||!settings.twinkle?1:chartBrightness(seed,now/1000);
@@ -1199,11 +1212,7 @@ function drawGround(now) {
     ctx.fillStyle='#377e9a';ctx.fillRect(-5,-3,10,8);ctx.fillStyle='#6cddc8';ctx.fillRect(-3,-8,6,13);
     ctx.fillStyle='#d6ffe1';ctx.fillRect(-2,-6,2,7);ctx.restore();
   }
-  if(Math.hypot(lander.x-state.width/2,lander.y-state.height/2)>125){
-    const a=Math.atan2(lander.y-state.height/2,lander.x-state.width/2),r=Math.min(state.width,state.height)*.3;
-    const x=state.width/2+Math.cos(a)*r,y=state.height/2+Math.sin(a)*r;
-    ctx.fillStyle='#8ee9d5';ctx.font="10px 'SpaceBitz Pixel',monospace";ctx.textAlign='center';ctx.fillText('⌖ LANDER',x,y);
-  }
+  paintLocator(ctx,lander.x,lander.y,LANDER_SIZE*state.zoom,state.width,state.height);
 }
 function frame(now) {
   const realDt=Math.max(0,now-state.last),dt=Math.min(100,realDt);state.last=now;

@@ -1,5 +1,5 @@
 import {TAU,bodyPosition,orbitalElements,visualRadius} from './model.js';
-import {SURFACE_UNIT,CHART_UNIT,SYSTEM_UNIT,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM,HYPERDRIVE_AU_PER_SECOND,LIGHT_SECONDS_PER_AU} from './scale.js';
+import {SURFACE_UNIT,CHART_UNIT,SYSTEM_UNIT,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM,HYPERDRIVE_AU_PER_SECOND,ORBIT_DRIVE_LS_PER_SECOND,LIGHT_SECONDS_PER_AU} from './scale.js';
 
 export function centerZoomAt(from,to,progress){
   const t=Math.max(0,Math.min(1,progress)),ease=t*t*(3-2*t);
@@ -10,12 +10,12 @@ export function systemFitZoom(system,width,height,days=0){
   const reach=Math.max(...system.planets.map(p=>{const o=orbitalElements(p,days);return o.a*(1+o.e)*1.1;}));
   return Math.max(SYSTEM_MIN_ZOOM,Math.min(width,height)*.42/reach);
 }
-export function travelSpeed(scene,distance){
+export function travelSpeed(scene,distance,drive='hyper'){
   if(scene==='surface')return SURFACE_UNIT*2.2;
   if(scene==='chart')return CHART_UNIT*9;
   // Constant world-space hyperdrive velocity. The final integration step clamps
   // to the arrival boundary, so nearby destinations cannot be overshot.
-  return SYSTEM_UNIT*LIGHT_SECONDS_PER_AU*HYPERDRIVE_AU_PER_SECOND;
+  return SYSTEM_UNIT*(drive==='orbit'?ORBIT_DRIVE_LS_PER_SECOND:LIGHT_SECONDS_PER_AU*HYPERDRIVE_AU_PER_SECOND);
 }
 export function migrateLayout(save,system){
   if(save.layoutVersion===4)return save;
@@ -54,4 +54,25 @@ export function manualSpeed(scene,mode='maneuver'){
 
 export function outermostPlanet(system,days=0){
   return system.planets.reduce((outer,body)=>!outer||orbitalElements(body,days).a>orbitalElements(outer,days).a?body:outer,null);
+}
+
+// A local transfer stays in the same planet/moon family. Freeze the choice at
+// departure so the speed never changes as the ship approaches its destination.
+export function systemDrive(ship,target,system,days=0,sourceId=null){
+  if(!target||target.kind==='star')return 'hyper';
+  const host=target.kind==='moon'?system.planets.find(p=>p.id===target.parent):target;
+  if(!host?.moons?.length)return 'hyper';
+  const family=[host,...host.moons];
+  if(sourceId)return family.some(b=>b.id===sourceId)?'orbit':'hyper';
+  const center=bodyPosition(host,days,system);
+  const reach=Math.max(visualRadius(host.diameter),...host.moons.map(m=>{const o=orbitalElements(m,days);return o.a*(1+o.e)+visualRadius(m.diameter);})) + 100*SYSTEM_VISUAL_SCALE;
+  return Math.hypot(ship.x-center.x,ship.y-center.y)<=reach?'orbit':'hyper';
+}
+
+// Integrate and report arrival in this same frame, before an orbit can advance.
+export function advanceToArrival(point,goal,arrival,speed,seconds){
+  const dx=goal.x-point.x,dy=goal.y-point.y,d=Math.hypot(dx,dy);
+  const remaining=Math.max(0,d-arrival),step=Math.min(remaining,speed*seconds);
+  if(d>0){point.x+=dx/d*step;point.y+=dy/d*step;}
+  return remaining<=step+.2;
 }

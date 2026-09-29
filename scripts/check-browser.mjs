@@ -55,6 +55,18 @@ try{
   await page.locator('#systemFit').click();
   assert.equal(await page.evaluate(()=>window.__game.state.camera.x),0);
   assert.equal(await page.evaluate(()=>window.__game.state.camera.y),0);
+  await page.evaluate(async()=>{
+    const g=window.__game,s=g.state,{systemFitZoom}=await import('/navigation.js');
+    const from=s.centerZoom.from,to=systemFitZoom(s.system,s.width,s.height,s.save.days);
+    if(s.zoom!==from||s.centerZoom.duration!==2600)throw new Error('Fit zoom must animate slowly');
+    g.update(1300,0);if(!(s.zoom<from&&s.zoom>to)||s.camera.x!==0||s.camera.y!==0)throw new Error('No intermediate system fit');
+    g.update(1300,0);if(Math.abs(s.zoom-to)>1e-12||s.centerZoom)throw new Error('System fit incomplete');
+    g.backdrop(1000);g.drawSystem(1000);
+    document.getElementById('systemFit').click();g.zoom(.5);if(s.centerZoom)throw new Error('Fit animation did not cancel');
+    g.settings.reducedMotion=true;document.getElementById('systemFit').click();
+    if(s.zoom!==to||s.centerZoom)throw new Error('Reduced-motion fit must be immediate');g.settings.reducedMotion=false;
+  });
+  await page.screenshot({path:`.qa/${engine}-system-fit.png`});
   await page.evaluate(()=>{const g=window.__game;g.state.panUntil=0;g.state.zoom=.95;g.state.camera={...g.state.save.ship};});
   const controls=await page.evaluate(()=>{
     const alpha=id=>getComputedStyle(document.getElementById(id)).backgroundColor;
@@ -116,6 +128,41 @@ try{
   await page.locator('#systemChartToggle').click();
   await page.screenshot({path:`.qa/${engine}-surface-info.png`});
   await page.locator('#systemChartToggle').click();
+  await page.evaluate(async()=>{
+    const g=window.__game,s=g.state;g.launch();
+    const {bodyPosition,visualRadius,makeSystem}=await import('/model.js');
+    const {SYSTEM_UNIT}=await import('/scale.js');
+    // Chase a receding planet: the old integrator reached the boundary but could
+    // never acknowledge arrival after the next clock tick moved that boundary.
+    g.settings.paused=false;g.settings.timeMode='accelerated';
+    for(const seed of ['sol','arrival-regression'])for(const dt of [16,33,100]){
+      s.system=makeSystem(seed);s.save.currentSystem=seed;
+      const body=s.system.planets[0],p=bodyPosition(body,s.save.days,s.system),next=bodyPosition(body,s.save.days+dt/1440000,s.system);
+      const dx=next.x-p.x,dy=next.y-p.y,d=Math.hypot(dx,dy),r=visualRadius(body.diameter)+100;
+      s.followBody=null;s.save.ship={x:p.x-dx/d*r,y:p.y-dy/d*r};g.select(body);g.primary();
+      if(!s.autopilot)throw new Error('Chase did not start');
+      g.update(dt,dt);
+      if(s.autopilot||s.followBody?.id!==body.id||s.shipMotion.thrust!==0)throw new Error('Receding planet never entered orbit');
+      g.update(dt,dt);
+      const parked=bodyPosition(body,s.save.days,s.system);
+      if(Math.abs(Math.hypot(s.save.ship.x-parked.x,s.save.ship.y-parked.y)-(visualRadius(body.diameter)+38))>1e-5)throw new Error('Orbit did not hold');
+    }
+    s.system=makeSystem('sol');s.save.currentSystem='sol';
+    const earth=s.system.planets.find(p=>p.name==='Earth'),moon=earth.moons[0],pos=bodyPosition(earth,s.save.days,s.system);
+    s.save.ship={x:pos.x+visualRadius(earth.diameter)+44,y:pos.y};s.followBody={id:earth.id,x:visualRadius(earth.diameter)+44,y:0};
+    g.select(moon);g.primary();
+    if(s.autopilot?.drive!=='orbit'||document.getElementById('primaryAction').textContent!=='ORBIT DRIVE'||!document.getElementById('targetDistance').textContent.includes('0.1 ls/s'))throw new Error('Local transfer has wrong drive');
+    const before={...s.save.ship};g.update(16,16);
+    if(Math.abs(Math.hypot(s.save.ship.x-before.x,s.save.ship.y-before.y)/SYSTEM_UNIT-.1*.016)>1e-7)throw new Error('Orbit Drive speed wrong');
+    g.zoom(.5);const manualZoom=s.zoom;g.update(16,16);
+    if(s.zoom!==manualZoom)throw new Error('Travel overrides manual zoom');
+    for(let i=0;i<4000&&s.autopilot;i++)g.update(16,16);
+    if(s.autopilot||s.followBody?.id!==moon.id)throw new Error('Moon transfer never arrived');
+    g.select(earth);g.primary();if(s.autopilot?.drive!=='orbit')throw new Error('Moon return must use Orbit Drive');g.cancelTravel();
+    g.settings.paused=true;s.selected=earth;g.enterSurface(earth);
+    s.camera={x:700,y:0};g.backdrop(1000);g.drawGround(1000);g.updateUI();
+  });
+  await page.screenshot({path:`.qa/${engine}-surface-ship-arrow.png`});
   await page.evaluate(async()=>{
     const g=window.__game,s=g.state;g.launch();
     const {visualRadius}=await import('/model.js'),r=visualRadius(s.system.star.diameter);

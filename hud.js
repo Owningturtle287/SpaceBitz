@@ -17,8 +17,15 @@ export function locatorPoint(x,y,width,height){
   const ratio=off?Math.min((cx-margin)/Math.max(.001,Math.abs(dx)),(cy-margin)/Math.max(.001,Math.abs(dy))):1;
   return {x:off?cx+dx*ratio:x,y:off?cy+dy*ratio:y,angle:Math.atan2(dy,dx),off};
 }
-export function paintLocator(ctx,x,y,size,width,height){
-  const p=locatorPoint(x,y,width,height);if(!p.off)return;
+export function paintLocator(ctx,x,y,size,width,height,showTiny=false){
+  const p=locatorPoint(x,y,width,height);
+  if(!p.off){
+    if(!showTiny||size>=12)return;
+    ctx.save();ctx.translate(Math.round(x),Math.round(y));
+    ctx.strokeStyle='#9cddff';ctx.lineWidth=1.5;ctx.strokeRect(-6,-6,12,12);
+    ctx.fillStyle='#d5f5ff';ctx.fillRect(-1,-1,2,2);
+    ctx.font="9px 'SpaceBitz Pixel',monospace";ctx.textAlign='center';ctx.fillText('SHIP',0,-10);ctx.restore();return;
+  }
   ctx.save();ctx.translate(Math.round(p.x),Math.round(p.y));ctx.rotate(p.angle);
   ctx.fillStyle='#9cddff';ctx.strokeStyle='#17384d';ctx.lineWidth=1.5;
   ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(-6,-6);ctx.lineTo(-3,0);ctx.lineTo(-6,6);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();

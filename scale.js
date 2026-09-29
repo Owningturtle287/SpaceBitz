@@ -5,7 +5,8 @@ export const SUN_DIAMETER_KM=1391400;
 // v1.7: enlarge all system geometry tenfold; physical data and ship art stay unchanged.
 export const SYSTEM_VISUAL_SCALE=10;
 export const SYSTEM_MIN_ZOOM=1e-8;
-export const HYPERDRIVE_AU_PER_SECOND=.25;
+export const HYPERDRIVE_AU_PER_SECOND=.5;
+export const ORBIT_DRIVE_LS_PER_SECOND=.1;
 export const SOL_RADIUS=SYSTEM_VISUAL_SCALE*3*12*Math.pow(1392700/12742,.85);
 export const SYSTEM_PX_PER_KM=SOL_RADIUS/(SUN_DIAMETER_KM/2);
 export const SYSTEM_UNIT=AU_KM/LIGHT_SECONDS_PER_AU*SYSTEM_PX_PER_KM;

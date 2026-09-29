@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.7.1 — 2026-09-29
+
+- Hyperdrive now travels at a fixed 0.5 AU per second between planets and to stars. Local transfers between a planet and its moons, or sibling moons, use Orbit Drive at 0.1 light-seconds per second; the drive stays fixed for the journey.
+- Fixed endless engine firing on arrival at a receding planet: arrival and station keeping now engage on the same movement step, before the orbit advances again.
+- Manual zoom now overrides the travel camera for the rest of that journey. Panning and System Fit remain usable during travel.
+- Restored the tiny onscreen ship marker in system view. Light-blue offscreen arrows now locate the ship in system and interstellar views and the lander on surfaces, replacing the old surface locator label.
+- System Fit now eases to the full orbital view over 2.6 seconds, supports interruption, and changes instantly with reduced motion.
+
 ## 1.7.0 — 2026-09-28
 
 - Replaced the dropdown Fit System text button with a small orbital-centering icon beside the system chart; its accessible label remains available to assistive technology.

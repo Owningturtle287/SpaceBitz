@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {AU_KM,SYSTEM_VISUAL_SCALE,SUN_DIAMETER_KM,SOL_RADIUS,SYSTEM_PX_PER_KM,SYSTEM_UNIT,SURFACE_UNIT,CHART_UNIT,ASTRONAUT_SCALE,ASTRONAUT_PIXEL_HEIGHT,LANDER_SIZE,SHIP_PIXEL_HEIGHT,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter} from '../scale.js';
 import {makeSystem,visualRadius,orbitRadius,orbitalElements,orbitPoint,bodyPosition,TAU} from '../model.js';
-import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt,starApproachPoint} from '../navigation.js';
+import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt,starApproachPoint,systemDrive,advanceToArrival} from '../navigation.js';
 import {navigationTarget} from '../motion.js';
 import {stellarActivity} from '../stellar.js';
 const close=(a,b,tol=1e-8)=>assert.ok(Math.abs(a-b)<tol,`${a} != ${b}`);
@@ -127,7 +127,28 @@ test('tenfold visual migration preserves numerical system positions exactly once
   assert.deepEqual(save.route,['sol']);assert.equal(save.homePlanet,'sol:Earth');
   const once=JSON.stringify(save);migrateLayout(save,makeSystem('sol'));assert.equal(JSON.stringify(save),once);
 });
-test('hyperdrive is a constant quarter AU per second at short and long distances',()=>{
-  for(const distance of [1,SYSTEM_UNIT,orbitRadius(1),orbitRadius(30)])close(travelSpeed('system',distance)/orbitRadius(1),.25);
-  close(orbitRadius(1)/travelSpeed('system',orbitRadius(1)),4);
+test('hyperdrive is a constant half AU per second at short and long distances',()=>{
+  for(const distance of [1,SYSTEM_UNIT,orbitRadius(1),orbitRadius(30)])close(travelSpeed('system',distance)/orbitRadius(1),.5);
+  close(orbitRadius(1)/travelSpeed('system',orbitRadius(1)),2);
+});
+
+test('local planet/moon transfers use orbit drive, interplanetary and star trips use hyperdrive',()=>{
+  const sol=makeSystem('sol'),earth=sol.planets.find(p=>p.name==='Earth'),moon=earth.moons[0],mars=sol.planets.find(p=>p.name==='Mars');
+  const p=bodyPosition(earth,0,sol);
+  assert.equal(systemDrive(p,moon,sol,0,earth.id),'orbit');
+  assert.equal(systemDrive(bodyPosition(moon,0,sol),earth,sol,0,moon.id),'orbit');
+  assert.equal(systemDrive(p,moon,sol),'orbit');
+  assert.equal(systemDrive(p,mars,sol,0,earth.id),'hyper');
+  assert.equal(systemDrive(p,sol.star,sol,0,earth.id),'hyper');
+  assert.equal(systemDrive(bodyPosition(mars,0,sol),moon,sol,0,mars.id),'hyper');
+  const jupiter=sol.planets.find(p=>p.name==='Jupiter');
+  assert.equal(systemDrive(bodyPosition(jupiter.moons[0],0,sol),jupiter.moons[1],sol,0,jupiter.moons[0].id),'orbit');
+  for(const distance of [1,SYSTEM_UNIT,orbitRadius(1)])close(travelSpeed('system',distance,'orbit')/SYSTEM_UNIT,.1);
+});
+test('arrival completes on the integrating frame even when the destination moves away each tick',()=>{
+  const p={x:0,y:0},goal={x:100,y:0};let arrived=false;
+  for(let i=0;i<10&&!arrived;i++){goal.x+=2;arrived=advanceToArrival(p,goal,10,100,.2);}
+  assert.equal(arrived,true);close(goal.x-p.x,10);
+  const near={x:1,y:2};assert.equal(advanceToArrival(near,{x:1,y:2},0,100,.1),true);
+  const far={x:0,y:0};assert.equal(advanceToArrival(far,{x:100,y:0},10,10,1),false);close(far.x,10);
 });

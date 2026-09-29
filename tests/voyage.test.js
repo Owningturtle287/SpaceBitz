@@ -65,3 +65,12 @@ test('system entry chooses the outermost orbit even if the planet list is reorde
   sol.planets.reverse();assert.equal(outermostPlanet(sol,200).name,'Neptune');
   for(let i=0;i<40;i++){const sys=makeSystem('entry-'+i),outer=outermostPlanet(sys,200);assert.equal(outer.au,Math.max(...sys.planets.map(p=>p.au)));}
 });
+
+test('system locator restores the tiny onscreen ship marker while edge arrows remain offscreen only',()=>{
+  const calls=[],ctx=new Proxy({}, {get:(_,key)=>(...args)=>calls.push([key,...args]),set:()=>true});
+  paintLocator(ctx,400,200,.01,800,400,true);
+  assert.ok(calls.some(c=>c[0]==='strokeRect'));assert.ok(calls.some(c=>c[0]==='fillText'&&c[1]==='SHIP'));
+  assert.ok(!calls.some(c=>c[0]==='rotate'));calls.length=0;
+  paintLocator(ctx,900,200,40,800,400,true);
+  assert.ok(calls.some(c=>c[0]==='rotate'));assert.ok(!calls.some(c=>c[0]==='fillText'));
+});
