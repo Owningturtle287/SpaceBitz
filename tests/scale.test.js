@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {AU_KM,SUN_DIAMETER_KM,SOL_RADIUS,SYSTEM_PX_PER_KM,SYSTEM_UNIT,SURFACE_UNIT,CHART_UNIT,ASTRONAUT_SCALE,ASTRONAUT_PIXEL_HEIGHT,LANDER_SIZE,SHIP_PIXEL_HEIGHT,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter} from '../scale.js';
+import {AU_KM,SYSTEM_VISUAL_SCALE,SUN_DIAMETER_KM,SOL_RADIUS,SYSTEM_PX_PER_KM,SYSTEM_UNIT,SURFACE_UNIT,CHART_UNIT,ASTRONAUT_SCALE,ASTRONAUT_PIXEL_HEIGHT,LANDER_SIZE,SHIP_PIXEL_HEIGHT,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter} from '../scale.js';
 import {makeSystem,visualRadius,orbitRadius,orbitalElements,orbitPoint,bodyPosition,TAU} from '../model.js';
 import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt,starApproachPoint} from '../navigation.js';
 import {navigationTarget} from '../motion.js';
@@ -30,14 +30,14 @@ test('distance boundaries and axes use immutable scene units, including tiny moo
 test('all celestial sizes and orbital distances share one linear physical scale',()=>{
   const sol=makeSystem('sol');assert.equal(sol.star.diameter,SUN_DIAMETER_KM);
   close(visualRadius(sol.star.diameter),SOL_RADIUS);
-  close(SOL_RADIUS,3*12*Math.pow(1392700/12742,.85));
+  close(SOL_RADIUS,10*3*12*Math.pow(1392700/12742,.85));
   for(const p of sol.planets){
     close(visualRadius(p.diameter)/SOL_RADIUS,p.diameter/SUN_DIAMETER_KM);
     close(orbitRadius(p.au)/SYSTEM_PX_PER_KM,p.au*AU_KM,1e-5);
     for(const m of p.moons)close(m.orbitPx,m.orbitKm*SYSTEM_PX_PER_KM);
   }
   close(sol.planets[2].moons[0].orbitKm,384400);
-  assert.ok(visualRadius(12)<.1); // no inflated physical disk for tiny moons
+  assert.ok(visualRadius(12)<1); // no inflated physical disk for tiny moons
 });
 test('orbital tracks use the same ellipse and projection as the body positions',()=>{
   const sol=makeSystem('sol');
@@ -53,7 +53,7 @@ test('orbital tracks use the same ellipse and projection as the body positions',
 test('old layout migration is idempotent and preserves exploration progress',()=>{
   const sol=makeSystem('sol'),save={layoutVersion:2,days:200,ship:{x:1800,y:300},surface:{x:81,y:-95},chart:{x:420,y:90},discoveries:['sol:Earth'],log:[{name:'Earth'}],scene:'surface'};
   const retained=JSON.stringify([save.surface,save.chart,save.discoveries,save.log]);migrateLayout(save,sol);
-  assert.equal(save.layoutVersion,3);assert.equal(JSON.stringify([save.surface,save.chart,save.discoveries,save.log]),retained);
+  assert.equal(save.layoutVersion,4);assert.equal(JSON.stringify([save.surface,save.chart,save.discoveries,save.log]),retained);
   assert.ok(Math.hypot(save.ship.x,save.ship.y)>SOL_RADIUS);
   const once=JSON.stringify(save);migrateLayout(save,sol);assert.equal(JSON.stringify(save),once);
 });
@@ -116,4 +116,18 @@ test('stellar approach stays on the near side and outside the avoidance envelope
     }
     assert.ok(Math.hypot(ship.x-goal.x,ship.y-goal.y)<=.2);
   }
+});
+
+test('tenfold visual migration preserves numerical system positions exactly once',()=>{
+  const oldUnit=SYSTEM_UNIT/SYSTEM_VISUAL_SCALE;
+  const save={layoutVersion:3,ship:{x:oldUnit*120,y:-oldUnit*44},surface:{x:12,y:34},chart:{x:90,y:20},route:['sol'],homePlanet:'sol:Earth'};
+  migrateLayout(save,makeSystem('sol'));
+  assert.equal(formatCoordinates(save.ship,'system'),'X 120 ls · Y -44 ls');
+  assert.deepEqual(save.surface,{x:12,y:34});assert.deepEqual(save.chart,{x:90,y:20});
+  assert.deepEqual(save.route,['sol']);assert.equal(save.homePlanet,'sol:Earth');
+  const once=JSON.stringify(save);migrateLayout(save,makeSystem('sol'));assert.equal(JSON.stringify(save),once);
+});
+test('hyperdrive is a constant quarter AU per second at short and long distances',()=>{
+  for(const distance of [1,SYSTEM_UNIT,orbitRadius(1),orbitRadius(30)])close(travelSpeed('system',distance)/orbitRadius(1),.25);
+  close(orbitRadius(1)/travelSpeed('system',orbitRadius(1)),4);
 });

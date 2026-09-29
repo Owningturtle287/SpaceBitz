@@ -7,8 +7,8 @@ import {updateMotion,navigationTarget} from './motion.js';
 import {celestialSprite} from './celestial.js';
 import {paintStellarSurface,chartBrightness} from './stellar.js';
 import {canvasContextOptions,clearFrame,backgroundPosition,strokeEllipse,circleGeometry,fillAnnulus,fillDisk,drawImageInView,lineInView} from './rendering.js';
-import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter} from './scale.js';
-import {migrateLayout,systemFitZoom,travelSpeed,centerZoomAt,starApproachPoint,manualSpeed} from './navigation.js';
+import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM} from './scale.js';
+import {migrateLayout,systemFitZoom,travelSpeed,centerZoomAt,starApproachPoint,manualSpeed,outermostPlanet} from './navigation.js';
 
 import {importVoyage} from './saves.js';
 import {placeControls,paintLocator} from './hud.js';
@@ -68,6 +68,15 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.7.0',items:[
+    "Replaced the dropdown Fit System text button with a small orbital-centering icon beside the system chart; its accessible label remains available to assistive technology.",
+    "Made in-game Settings opaque and positioned the compact interaction panel in the bottom-right corner in both orientations.",
+    "Replaced ship locators with a light-blue edge arrow shown only when the ship is offscreen; removed the onscreen marker and text.",
+    "Surface Center now animates to the full 2.4\u00d7 maximum zoom, retaining the 1.3-second duration and reduced-motion behavior.",
+    "Increased star, planet, moon and orbital geometry by 10\u00d7 while preserving listed diameters, numerical distances, physical proportions, surface metre scale and ship sprite sizes. Existing system ship positions migrate once to keep the same coordinates.",
+    "Renamed system travel Hyperdrive and set its velocity to 0.25 AU per second, with arrival clamping and stellar avoidance. Manual maneuver speed retains its pre-update physical rate.",
+    "Entering a system now places the ship in station keeping beside the planet with the outermost orbit, including Neptune in Sol. New games still begin on their home planet."
+  ]},
   {version:'1.6.0',items:[
     "New voyages begin landed beside the ship on their home planet, recorded in the logbook and retained in saves. Sol begins on Earth.",
     "Modern save imports restore the current system, scene, all positions, home planet, discoveries, log and route as a separate voyage. Malformed locations are rejected; legacy imports retain migration support.",
@@ -252,7 +261,7 @@ function applyCenterButtonLayout(){
         top=mode==='above'?r.top-bh-8:r.top+(r.height-bh)/2;
       }else{left=12;top=window.innerHeight-bh-12;}
     }
-    const obstacles=['joystick','targetCard','systemChart','flightReadout','settingsOpen','journalButton','systemChartContent'].map(id=>$(id)).filter(el=>el&&!el.hidden).map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:r.left,y:r.top,width:r.width,height:r.height}));
+    const obstacles=['joystick','targetCard','systemChart','systemFit','flightReadout','settingsOpen','journalButton','systemChartContent'].map(id=>$(id)).filter(el=>el&&!el.hidden).map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:r.left,y:r.top,width:r.width,height:r.height}));
     const placed=placeControls({x:left,y:top},{width,height:bh},{width:window.innerWidth,height:window.innerHeight},obstacles);
     group.style.left=placed.x+'px';group.style.top=placed.y+'px';
   });
@@ -387,7 +396,7 @@ function create(sol=false) {
   const startDays=currentDays(),h=bodyPosition(home,startDays,system);
   const save={id:crypto.randomUUID?.()||String(Date.now()),name,seed,homeSeed,currentSystem:homeSeed,
     scene:'surface',ship:{x:h.x+visualRadius(home.diameter)+70,y:h.y},chart:{x:0,y:0},
-    surface:{x:50,y:35},landed:home.id,homePlanet:home.id,days:startDays,discoveries:[home.id],log:[{name:home.name,action:'Home planet · voyage started',days:startDays}],layoutVersion:3,updated:Date.now()};
+    surface:{x:50,y:35},landed:home.id,homePlanet:home.id,days:startDays,discoveries:[home.id],log:[{name:home.name,action:'Home planet · voyage started',days:startDays}],layoutVersion:4,updated:Date.now()};
   start(save);toast(`${home.name} · your home planet`);
 }
 function renderSaves() {
@@ -447,7 +456,7 @@ function keepStationNearShip(){
   if(state.scene!=='system')return;
   const ship=state.save.ship;
   const near=allBodies().map(body=>{const p=bodyPosition(body,state.save.days,state.system);return {body,p,d:Math.hypot(ship.x-p.x,ship.y-p.y)};})
-    .filter(v=>v.d<visualRadius(v.body.diameter)+100).sort((a,b)=>a.d-b.d)[0];
+    .filter(v=>v.d<visualRadius(v.body.diameter)+100*SYSTEM_VISUAL_SCALE).sort((a,b)=>a.d-b.d)[0];
   if(near)state.followBody={id:near.body.id,x:ship.x-near.p.x,y:ship.y-near.p.y};
 }
 function markDiscovery(body) {
@@ -468,13 +477,15 @@ function enterSystem(star) {
   state.followBody=null;state.shipMotion.thrust=0;
   state.system=makeSystem(star.seed);state.save.currentSystem=star.seed;
   state.scene='system';state.save.scene='system';state.selected=null;
-  const first=state.system.planets[0],pos=bodyPosition(first,state.save.days,state.system);
-  state.save.ship={x:pos.x+visualRadius(first.diameter)+60,y:pos.y+40};state.camera={...state.save.ship};
+  const outer=outermostPlanet(state.system,state.save.days),pos=bodyPosition(outer,state.save.days,state.system);
+  const offset=visualRadius(outer.diameter)+60;
+  state.save.ship={x:pos.x+offset,y:pos.y};state.camera={...state.save.ship};
+  state.selected=outer;state.followBody={id:outer.id,x:offset,y:0};
   state.zoom=.85;state.autopilot=null;state.save.chart={x:star.x,y:star.y};
   state.save.log.unshift({name:state.system.name,action:'Entered system',days:state.save.days});
   if(state.save.route.at(-1)!==star.seed)state.save.route.push(star.seed);
   state.save.route=state.save.route.slice(-40);
-  keepStationNearShip();toast(`Entering the ${state.system.name} system`);persist();updateUI();
+  toast(`${state.system.name} · arriving at ${outer.name}`);persist();updateUI();
 }
 function enterSurface(body) {
   state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.panUntil=0;
@@ -516,7 +527,7 @@ function primary() {
   if(state.waypoint){
     state.panUntil=0;state.followBody=null;
     state.autopilot={type:'waypoint',x:state.waypoint.x,y:state.waypoint.y};
-    toast('Course set · '+formatCoordinates(state.waypoint,state.scene));updateUI();return;
+    toast((state.scene==='system'?'Hyperdrive · ':'Course set · ')+formatCoordinates(state.waypoint,state.scene));updateUI();return;
   }
   if(state.scene==='surface'){
     const sample=nearestSample();const d=sample?Math.hypot(sample.x-state.save.surface.x,sample.y-state.save.surface.y):Infinity;
@@ -531,13 +542,13 @@ function primary() {
       const radius=visualRadius(state.selected.diameter),goal=starApproachPoint(state.save.ship,radius);
       state.panUntil=0;state.focusBody=null;state.followBody=null;
       state.autopilot={type:'stellar',...goal,arrivalZoom:Math.min(1,Math.min(state.width,state.height)*.32/(radius+150))};
-      toast(`Course set for ${state.selected.name}`);updateUI();return;
+      toast(`Hyperdrive to ${state.selected.name}`);updateUI();return;
     }
     const body=state.selected,pos=bodyPosition(body,state.save.days,state.system);
     const dist=Math.hypot(pos.x-state.save.ship.x,pos.y-state.save.ship.y);
     if(dist<visualRadius(body.diameter,body.kind)+48){enterSurface(body);return;}
     state.panUntil=0;state.followBody=null;
-    state.autopilot={type:'body',id:body.id,arrivalZoom:Math.min(1,100/(visualRadius(body.diameter)+20))};toast(`Course set for ${body.name}`);updateUI();return;
+    state.autopilot={type:'body',id:body.id,arrivalZoom:Math.min(1,100/(visualRadius(body.diameter)+20))};toast(`Hyperdrive to ${body.name}`);updateUI();return;
   }
   const star=state.selected;
   if(!star){select(currentStar());return;}
@@ -568,7 +579,7 @@ $('homeButton').onclick=()=>{
   if(centerSuppressClick){centerSuppressClick=false;return;}
   state.panUntil=0;state.autopilot=null;state.focusBody=null;state.centerZoom=null;
   if(state.scene==='system'||state.scene==='surface'){
-    const to=Math.max(state.zoom,1.3);
+    const to=state.scene==='surface'?2.4:Math.max(state.zoom,1.3);
     if(settings.reducedMotion)state.zoom=to;
     else if(to>state.zoom)state.centerZoom={from:state.zoom,to,elapsed:0,duration:1300};
   }
@@ -602,7 +613,7 @@ $('systemChartToggle').onclick=()=>{
   panel.classList.toggle('open',open);content.hidden=!open;
   $('systemChartToggle').setAttribute('aria-expanded',String(open));
 };
-function zoom(factor){state.centerZoom=null;state.zoom=clamp(state.zoom*factor,state.scene==='system'?.000001:state.scene==='surface'?.65:.34,state.scene==='system'?128:2.4);}
+function zoom(factor){state.centerZoom=null;state.zoom=clamp(state.zoom*factor,state.scene==='system'?SYSTEM_MIN_ZOOM:state.scene==='surface'?.65:.34,state.scene==='system'?128:2.4);}
 
 function addMetric(parent,label,value) {
   const div=document.createElement('div');div.className='metric';
@@ -669,19 +680,20 @@ function updateUI() {
     const p=bodyPosition(sel,state.save.days,sys),distance=Math.hypot(p.x-state.save.ship.x,p.y-state.save.ship.y);
     action=distance<visualRadius(sel.diameter,sel.kind)+48?(sel.solid?'LAND':'NO SOLID SURFACE'):'TRAVEL';
   }
+  if(scene==='system'&&action==='TRAVEL')action='HYPERDRIVE';
   const pos=scene==='surface'?state.save.surface:scene==='chart'?state.save.chart:state.save.ship;
   let destination=scene==='surface'?{x:0,y:0}:scene==='chart'?sel:sel?.kind==='star'?{x:0,y:0}:sel?bodyPosition(sel,state.save.days,sys):null;
   if(state.waypoint){title=scene==='surface'?'SURFACE SITE':'COORDINATE';action=state.autopilot?.type==='waypoint'?'MOVING…':'GO HERE';details=true;destination=state.waypoint;}
   const traveling=Boolean(state.autopilot||state.warpUntil);
   if(state.autopilot){
-    action='TRAVELING';destination=targetPoint();details=Boolean(sel)&&!state.waypoint;
+    action=scene==='system'?'HYPERDRIVE':'TRAVELING';destination=targetPoint();details=Boolean(sel)&&!state.waypoint;
     if(state.autopilot.type==='surface')title='LANDER';
   }
   if(state.warpUntil){title='WARP DRIVE';action='ENGAGING';destination=null;}
   $('cancelTravel').hidden=!traveling;
   $('targetCard').hidden=scene!=='surface'&&!sel&&!state.waypoint&&!traveling;
   $('targetName').textContent=title||'Target';
-  $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&!state.waypoint?' TO LANDER':' AWAY'):'';
+  $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&!state.waypoint?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?' · 0.25 AU/s':''):'';
   $('primaryAction').textContent=action;
   $('secondaryAction').hidden=!details;$('secondaryAction').textContent=state.waypoint?'CLEAR':'INFO';
   $('primaryAction').disabled=traveling||action==='NO SOLID SURFACE'||action==='HOLDING';
@@ -752,7 +764,7 @@ function showDetails(body) {
   box.append(note);
   if(state.scene==='system'){
     const focus=document.createElement('button');focus.className='button subtle';focus.textContent='FOCUS VIEW';
-    focus.onclick=()=>{closeModal();state.centerZoom=null;state.focusBody=body.id;state.camera=body.kind==='star'?{x:0,y:0}:bodyPosition(body,state.save.days,state.system);state.zoom=clamp(Math.min(state.width,state.height)*.25/visualRadius(body.diameter),.000001,128);state.panUntil=Infinity;};box.append(focus);
+    focus.onclick=()=>{closeModal();state.centerZoom=null;state.focusBody=body.id;state.camera=body.kind==='star'?{x:0,y:0}:bodyPosition(body,state.save.days,state.system);state.zoom=clamp(Math.min(state.width,state.height)*.25/visualRadius(body.diameter),SYSTEM_MIN_ZOOM,128);state.panUntil=Infinity;};box.append(focus);
   }
   if(settings.cheats && (state.scene==='chart'||body.kind!=='star')){const jump=document.createElement('button');jump.className='button subtle';jump.textContent='INSTANT TRAVEL';
     jump.onclick=()=>{closeModal();if(state.scene==='chart')enterSystem(body);else if(body.kind!=='star'){
@@ -846,7 +858,7 @@ function openSettings(){
     exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};box.append(exportButton);
   }
-  setModal('FLIGHT OPTIONS','Settings',box);
+  setModal('FLIGHT OPTIONS','Settings',box,Boolean(state.save));
 }
 $('settingsOpen').onclick=openSettings;$('menuSettings').onclick=openSettings;
 

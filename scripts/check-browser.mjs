@@ -50,6 +50,12 @@ try{
   assert.ok(initial.shipPixels>200,`Ship missing from the viewport centre on startup: ${JSON.stringify(initial)}`);
   await page.screenshot({path:`.qa/${engine}-sol.png`});
   assert.equal(await page.locator('#gridToggle').count(),0);
+  assert.equal(await page.locator('#systemChartContent #systemFit').count(),0);
+  assert.equal((await page.locator('#systemFit').innerText()).trim(),'');
+  await page.locator('#systemFit').click();
+  assert.equal(await page.evaluate(()=>window.__game.state.camera.x),0);
+  assert.equal(await page.evaluate(()=>window.__game.state.camera.y),0);
+  await page.evaluate(()=>{const g=window.__game;g.state.panUntil=0;g.state.zoom=.95;g.state.camera={...g.state.save.ship};});
   const controls=await page.evaluate(()=>{
     const alpha=id=>getComputedStyle(document.getElementById(id)).backgroundColor;
     const rect=id=>{const r=document.getElementById(id).getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,width:r.width,height:r.height};};
@@ -61,7 +67,9 @@ try{
   assert.equal(controls.warp.width,controls.center.width);assert.equal(controls.warp.height,controls.center.height);
   assert.ok(Math.abs(controls.warp.left-controls.center.right-6)<1);
   assert.ok(844-controls.target.right<=7&&390-controls.target.bottom<=7&&controls.target.width<=160);
-  await page.locator('#settingsOpen').click();assert.equal(await page.locator('#setting-showGrid').isChecked(),false);
+  await page.locator('#settingsOpen').click();
+  assert.equal(await page.locator('.modal-card').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(16, 30, 50)');
+  assert.equal(await page.locator('#setting-showGrid').isChecked(),false);
   await page.locator('#setting-showGrid').check();
   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('spacebitz:field:settings')).showGrid),true);
   await page.locator('#setting-showGrid').uncheck();await page.evaluate(()=>window.__game.closeModal());
@@ -94,8 +102,8 @@ try{
     for(const fact of ['12,742 km','365.26 days','MOONS','ROTATION'])if(!info.textContent.includes(fact))throw new Error('Missing surface fact '+fact);
     s.zoom=.65;s.camera={x:999,y:999};document.getElementById('homeButton').click();
     if(s.camera.x!==s.save.surface.x||s.centerZoom.duration!==1300)throw new Error('Surface center did not snap/start');
-    g.update(650,0);if(!(s.zoom>.65&&s.zoom<1.3))throw new Error('Surface zoom has no intermediate frame');
-    g.update(650,0);if(Math.abs(s.zoom-1.3)>1e-9||s.centerZoom)throw new Error('Surface zoom failed');
+    g.update(650,0);if(!(s.zoom>.65&&s.zoom<2.4))throw new Error('Surface zoom has no intermediate frame');
+    g.update(650,0);if(Math.abs(s.zoom-2.4)>1e-9||s.centerZoom)throw new Error('Surface zoom failed');
     if(/\d+\.\d+/.test(document.getElementById('coordsReadout').textContent))throw new Error('Fractional coordinates');
     const c=document.getElementById('sky'),ctx=c.getContext('2d');
     g.backdrop(1000);g.drawGround(1000);g.drawCoordinateGrid();const off=c.toDataURL();
@@ -128,7 +136,7 @@ try{
     const raw=JSON.parse(JSON.stringify(s.save)),copy=importVoyage(raw,'import-qa');g.start(copy);
     for(const key of ['currentSystem','scene','ship','surface','chart','route','homePlanet','discoveries'])if(JSON.stringify(copy[key])!==JSON.stringify(raw[key]))throw new Error('Import changed '+key);
     const far=s.system.planets.at(-1);g.select(far);g.primary();
-    if(document.getElementById('primaryAction').textContent!=='TRAVELING'||document.getElementById('cancelTravel').hidden)throw new Error('Travel controls missing');
+    if(document.getElementById('primaryAction').textContent!=='HYPERDRIVE'||document.getElementById('cancelTravel').hidden)throw new Error('Travel controls missing');
     document.getElementById('cancelTravel').click();if(s.autopilot)throw new Error('Cancel failed');
     const movements=[];
     for(const zoom of [.01,1,20]){s.followBody=null;s.zoom=zoom;const x=s.save.ship.x;s.keys.add('d');g.update(100,0);s.keys.clear();movements.push(s.save.ship.x-x);}
@@ -195,12 +203,18 @@ try{
   await page.locator('#mapButton').click();
   await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(16,0);});
   assert.equal(await page.locator('#mapButton').evaluate(e=>e.classList.contains('latched')),false);
+  assert.equal(await page.evaluate(()=>window.__game.state.selected.name),'Neptune');
+  assert.equal(await page.evaluate(()=>window.__game.state.followBody.id),'sol:Neptune');
   await page.evaluate(()=>{window.__game.state.warpUntil=0;window.__game.create(false);window.__game.frame(performance.now());});
   assert.equal(await page.evaluate(()=>window.__game.state.scene),'surface');
   await page.reload();await page.locator('#startGame').click();await page.locator('.load-save').first().click();
   await page.waitForFunction(()=>window.__game?.state.scene==='surface'&&window.__game.state.lastUI>0);
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
   await page.screenshot({path:`.qa/${engine}-portrait.png`});
+  const portraitPanel=await page.locator('#targetCard').boundingBox();
+  assert.ok(844-portraitPanel.y-portraitPanel.height<=7&&390-portraitPanel.x-portraitPanel.width<=7);
+  await page.evaluate(()=>{window.__game.launch();window.__game.frame(performance.now());});
+  await page.screenshot({path:`.qa/${engine}-portrait-system.png`});
   await page.evaluate(()=>{window.__qaPause=true;});
   const soak=await page.evaluate(async()=>{
     const g=window.__game,s=g.state,{makeSystem,bodyPosition}=await import('/model.js');

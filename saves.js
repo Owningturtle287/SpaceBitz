@@ -18,7 +18,7 @@ export function importVoyage(raw,id,now=Date.now()){
   // Field-format saves restore every location and exploration field. Import as a
   // separate voyage so a backup never silently replaces the existing original.
   if(raw.layoutVersion!==undefined){
-    if(![1,2,3].includes(raw.layoutVersion))throw Error('This save uses an unsupported layout version.');
+    if(![1,2,3,4].includes(raw.layoutVersion))throw Error('This save uses an unsupported layout version.');
     const currentSystem=seedValue(raw.currentSystem||homeSeed,'current system'),system=makeSystem(currentSystem);
     if(!['system','surface','chart'].includes(raw.scene))throw Error('Invalid saved scene.');
     const bodies=system.planets.flatMap(p=>[p,...p.moons]);
@@ -30,5 +30,5 @@ export function importVoyage(raw,id,now=Date.now()){
   }
   const system=makeSystem(homeSeed),body=system.planets[0],p=bodyPosition(body,common.days,system);
   return {...common,currentSystem:homeSeed,scene:'system',ship:{x:p.x+visualRadius(body.diameter)+70,y:p.y},
-    chart:{x:0,y:0},surface:{x:0,y:0},landed:null,homePlanet:null,route:[],layoutVersion:3};
+    chart:{x:0,y:0},surface:{x:0,y:0},landed:null,homePlanet:null,route:[],layoutVersion:4};
 }

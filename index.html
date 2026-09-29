@@ -17,6 +17,7 @@
   <div class="vignette" aria-hidden="true"></div>
   <div id="app" hidden>
     <header class="topbar">
+      <div class="mission-tools">
       <aside class="mission glass mission-dropdown top-system-chart" id="systemChart" aria-live="polite">
         <button id="systemChartToggle" class="mission-toggle" type="button" aria-expanded="false" aria-controls="systemChartContent">
           <span class="mission-toggle-copy"><span class="eyebrow" id="modeLabel">ORBITAL / SYSTEM</span><strong id="placeLabel">Sol</strong></span>
@@ -27,9 +28,16 @@
           <div id="zoneLegend" class="legend"><i></i> TEMPERATE ZONE <button id="zoneToggle" type="button" class="text-button" aria-pressed="true">ON</button></div>
           <div id="surfaceInfo" class="surface-info" hidden></div>
           <div id="bodyList" class="body-list" aria-label="Celestial bodies"></div>
-          <button id="systemFit" class="text-button" type="button">FIT SYSTEM</button>
         </div>
       </aside>
+      <button id="systemFit" class="icon-button system-center" type="button" aria-label="Center on system" title="Center on system" hidden>
+        <svg viewBox="0 0 28 28" width="26" height="26" aria-hidden="true">
+          <path fill="none" stroke="#8edaff" stroke-width="1.5" d="M2 9V3h6m12 0h6v6M2 19v6h6m12 0h6v-6"/>
+          <ellipse cx="14" cy="14" rx="10" ry="5" transform="rotate(-30 14 14)" fill="none" stroke="#93b7d0" stroke-width="1.5"/>
+          <path fill="#ffda85" d="M12 10h4v2h2v4h-2v2h-4v-2h-2v-4h2z"/><path fill="#c4f5ff" d="M21 8h3v3h-3z"/>
+        </svg>
+      </button>
+      </div>
       <div class="top-actions">
         <div id="flightReadout" class="flight-readout glass">
           <span id="clock">01 JAN 2026</span>
@@ -85,7 +93,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.6.0</span>
+        <span class="version-chip main-menu-version">v1.7.0</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>

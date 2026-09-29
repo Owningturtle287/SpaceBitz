@@ -1,5 +1,5 @@
 import {TAU,bodyPosition,orbitalElements,visualRadius} from './model.js';
-import {SURFACE_UNIT,CHART_UNIT,SYSTEM_UNIT} from './scale.js';
+import {SURFACE_UNIT,CHART_UNIT,SYSTEM_UNIT,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM,HYPERDRIVE_AU_PER_SECOND,LIGHT_SECONDS_PER_AU} from './scale.js';
 
 export function centerZoomAt(from,to,progress){
   const t=Math.max(0,Math.min(1,progress)),ease=t*t*(3-2*t);
@@ -8,16 +8,21 @@ export function centerZoomAt(from,to,progress){
 
 export function systemFitZoom(system,width,height,days=0){
   const reach=Math.max(...system.planets.map(p=>{const o=orbitalElements(p,days);return o.a*(1+o.e)*1.1;}));
-  return Math.max(.000001,Math.min(width,height)*.42/reach);
+  return Math.max(SYSTEM_MIN_ZOOM,Math.min(width,height)*.42/reach);
 }
 export function travelSpeed(scene,distance){
   if(scene==='surface')return SURFACE_UNIT*2.2;
   if(scene==='chart')return CHART_UNIT*9;
-  // Cruise across true-scale systems in seconds, then brake for arrival.
-  return Math.max(320,Math.min(SYSTEM_UNIT*1500,distance*1.5));
+  // Constant world-space hyperdrive velocity. The final integration step clamps
+  // to the arrival boundary, so nearby destinations cannot be overshot.
+  return SYSTEM_UNIT*LIGHT_SECONDS_PER_AU*HYPERDRIVE_AU_PER_SECOND;
 }
 export function migrateLayout(save,system){
-  if(save.layoutVersion===3)return save;
+  if(save.layoutVersion===4)return save;
+  if(save.layoutVersion===3){
+    save.ship={x:save.ship.x*SYSTEM_VISUAL_SCALE,y:save.ship.y*SYSTEM_VISUAL_SCALE};
+    save.layoutVersion=4;return save;
+  }
   // Preserve progress and local surface/chart locations. Rehome an old compressed
   // ship position beside its nearest legacy planet, never inside the larger star.
   const oldRadius=km=>Math.max(3,12*Math.pow(km/12742,.85));
@@ -33,7 +38,7 @@ export function migrateLayout(save,system){
   }).sort((a,b)=>a.d-b.d)[0].body;
   const p=bodyPosition(nearest,days,system);
   save.ship={x:p.x+visualRadius(nearest.diameter)+60,y:p.y};
-  save.layoutVersion=3;return save;
+  save.layoutVersion=4;return save;
 }
 
 // Stop on the ship-facing side, clear of the stellar avoidance envelope.
@@ -44,5 +49,9 @@ export function starApproachPoint(ship,radius){
 
 // Manual control is a world-space speed; camera zoom never changes it.
 export function manualSpeed(scene,mode='maneuver'){
-  return scene==='surface'?SURFACE_UNIT*2.2:scene==='chart'?CHART_UNIT*4.5:mode==='cruise'?SYSTEM_UNIT*20:260;
+  return scene==='surface'?SURFACE_UNIT*2.2:scene==='chart'?CHART_UNIT*4.5:mode==='cruise'?SYSTEM_UNIT*20:260*SYSTEM_VISUAL_SCALE;
+}
+
+export function outermostPlanet(system,days=0){
+  return system.planets.reduce((outer,body)=>!outer||orbitalElements(body,days).a>orbitalElements(outer,days).a?body:outer,null);
 }

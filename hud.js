@@ -12,16 +12,14 @@ export function placeControls(desired,size,viewport,obstacles){
   })[0];
 }
 export function locatorPoint(x,y,width,height){
-  const margin=24,cx=width/2,cy=height/2,dx=x-cx,dy=y-cy;
-  const off=x<margin||x>width-margin||y<margin||y>height-margin;
+  const margin=16,cx=width/2,cy=height/2,dx=x-cx,dy=y-cy;
+  const off=x<0||x>width||y<0||y>height;
   const ratio=off?Math.min((cx-margin)/Math.max(.001,Math.abs(dx)),(cy-margin)/Math.max(.001,Math.abs(dy))):1;
   return {x:off?cx+dx*ratio:x,y:off?cy+dy*ratio:y,angle:Math.atan2(dy,dx),off};
 }
 export function paintLocator(ctx,x,y,size,width,height){
-  const p=locatorPoint(x,y,width,height);if(!p.off&&size>=8)return;
-  ctx.save();ctx.translate(Math.round(p.x),Math.round(p.y));ctx.strokeStyle='#adffe9';ctx.lineWidth=1.5;
-  ctx.fillStyle='#071522cc';ctx.fillRect(-9,-9,18,18);
-  if(p.off){ctx.rotate(p.angle);ctx.beginPath();ctx.moveTo(-4,-5);ctx.lineTo(5,0);ctx.lineTo(-4,5);ctx.stroke();ctx.rotate(-p.angle);}
-  else{ctx.strokeRect(-6,-6,12,12);ctx.fillStyle='#dffff1';ctx.fillRect(-1,-1,2,2);}
-  ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.fillStyle='#bdffe9';ctx.fillText('SHIP',0,19);ctx.restore();
+  const p=locatorPoint(x,y,width,height);if(!p.off)return;
+  ctx.save();ctx.translate(Math.round(p.x),Math.round(p.y));ctx.rotate(p.angle);
+  ctx.fillStyle='#9cddff';ctx.strokeStyle='#17384d';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(-6,-6);ctx.lineTo(-3,0);ctx.lineTo(-6,6);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
 }

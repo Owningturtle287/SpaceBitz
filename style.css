@@ -1,4 +1,4 @@
-/* SpaceBitz 1.6.0 — compact translucent 16-bit console skin. */
+/* SpaceBitz 1.7.0 — compact translucent 16-bit console skin. */
 @font-face{font-family:SpaceBitz Pixel;src:url('./assets/spacebitz-pixel.woff') format('woff');font-display:swap}
 :root{
   color-scheme:dark;
@@ -308,3 +308,19 @@ body[data-scene=surface] .mission-content{width:260px;max-width:calc(100vw - 32p
 #speedReadout{color:#b8dafa;font-size:9px}
 .toast{top:auto;bottom:calc(92px + env(safe-area-inset-bottom));max-width:min(300px,calc(100vw - 32px));padding:6px 10px;font:11px/1.4 var(--mono);border-width:1px}
 @media(orientation:landscape){.toast{bottom:calc(10px + env(safe-area-inset-bottom));max-width:min(260px,32vw);font-size:10px}}
+/* The orbital reticle sits beside the chart, outside its dropdown. */
+.mission-tools{display:flex;align-items:flex-start;gap:6px;min-width:0;flex:none}
+#systemFit.system-center{display:grid;place-items:center;width:38px;height:38px;min-width:38px;min-height:38px;padding:4px;margin:0;border:2px solid #6c8da3;background:var(--panel)}
+#targetCard{top:auto;bottom:calc(6px + env(safe-area-inset-bottom));right:max(6px,env(safe-area-inset-right));width:156px;max-height:calc(100dvh - 130px);overflow:auto;padding:8px}
+#targetCard h2{font-size:10px;margin-bottom:6px}
+#targetCard .target-distance{font-size:9px;margin-bottom:6px}
+#targetCard .target-actions{gap:5px}
+#targetCard .button{font-size:7px;padding:5px;min-height:40px}
+@media(max-width:600px){
+  .mission-tools{flex:0 1 162px}
+  .mission-tools .top-system-chart{width:116px;min-width:0;flex:1}
+  .mission-toggle strong{font-size:10px}
+  .mission-toggle .eyebrow{font-size:6px;letter-spacing:0}
+  .flight-readout{max-width:145px}
+}
+@media(max-width:360px){.mission-tools{flex-basis:136px}.flight-readout{max-width:120px}#clock,#telemetry{font-size:8px}}

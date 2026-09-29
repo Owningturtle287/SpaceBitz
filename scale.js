@@ -2,8 +2,11 @@
 export const AU_KM=149597870.7;
 export const LIGHT_SECONDS_PER_AU=500; // Intentional SpaceBitz convention.
 export const SUN_DIAMETER_KM=1391400;
-// Three times the v1.4 Sol radius; all celestial dimensions use this ONE scale.
-export const SOL_RADIUS=3*12*Math.pow(1392700/12742,.85);
+// v1.7: enlarge all system geometry tenfold; physical data and ship art stay unchanged.
+export const SYSTEM_VISUAL_SCALE=10;
+export const SYSTEM_MIN_ZOOM=1e-8;
+export const HYPERDRIVE_AU_PER_SECOND=.25;
+export const SOL_RADIUS=SYSTEM_VISUAL_SCALE*3*12*Math.pow(1392700/12742,.85);
 export const SYSTEM_PX_PER_KM=SOL_RADIUS/(SUN_DIAMETER_KM/2);
 export const SYSTEM_UNIT=AU_KM/LIGHT_SECONDS_PER_AU*SYSTEM_PX_PER_KM;
 export const CHART_UNIT=40; // one light-year on the procedural star chart

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.7.0 — 2026-09-28
+
+- Replaced the dropdown Fit System text button with a small orbital-centering icon beside the system chart; its accessible label remains available to assistive technology.
+- Made in-game Settings opaque and positioned the compact interaction panel in the bottom-right corner in both orientations.
+- Replaced ship locators with a light-blue edge arrow shown only when the ship is offscreen; removed the onscreen marker and text.
+- Surface Center now animates to the full 2.4× maximum zoom, retaining the 1.3-second duration and reduced-motion behavior.
+- Increased star, planet, moon and orbital geometry by 10× while preserving listed diameters, numerical distances, physical proportions, surface metre scale and ship sprite sizes. Existing system ship positions migrate once to keep the same coordinates.
+- Renamed system travel Hyperdrive and set its velocity to 0.25 AU per second, with arrival clamping and stellar avoidance. Manual maneuver speed retains its pre-update physical rate.
+- Entering a system now places the ship in station keeping beside the planet with the outermost orbit, including Neptune in Sol. New games still begin on their home planet.
+
 ## 1.6.0 — 2026-09-28
 
 - New voyages begin landed beside the ship on their home planet, recorded in the logbook and retained in saves. Sol begins on Earth.
