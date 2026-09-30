@@ -157,7 +157,7 @@ try{
     if(Math.abs(Math.hypot(s.save.ship.x-before.x,s.save.ship.y-before.y)/SYSTEM_UNIT-.1*.016)>1e-7)throw new Error('Orbit Drive speed wrong');
     g.zoom(.5);const manualZoom=s.zoom;g.update(16,16);
     if(s.zoom!==manualZoom)throw new Error('Travel overrides manual zoom');
-    for(let i=0;i<4000&&s.autopilot;i++)g.update(16,16);
+    for(let i=0;i<4000&&s.autopilot;i++){g.update(16,16);if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('Orbit Drive camera lost ship');}
     if(s.autopilot||s.followBody?.id!==moon.id)throw new Error('Moon transfer never arrived');
     if(!s.centerZoom||s.centerZoom.to<1.3)throw new Error('Manual travel zoom prevented arrival close-up');
     g.update(1300,1300);
@@ -187,6 +187,29 @@ try{
     g.backdrop(1000);g.drawSystem(1000);
   });
   await page.screenshot({path:`.qa/${engine}-star-arrival.png`});
+  await page.evaluate(async()=>{
+    const g=window.__game,s=g.state,{bodyPosition,visualRadius}=await import('/model.js');
+    const mercury=s.system.planets.find(p=>p.name==='Mercury'),neptune=s.system.planets.find(p=>p.name==='Neptune');
+    for(const [from,to,dt]of [[mercury,neptune,16],[neptune,mercury,100]]){
+      const pos=bodyPosition(from,s.save.days,s.system);s.followBody=null;s.save.ship={x:pos.x+visualRadius(from.diameter)+60,y:pos.y};
+      s.camera={x:0,y:0};s.zoom=.95;g.select(to);g.primary();
+      if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('Travel did not center on departure');
+      let steps=0;
+      while(s.autopilot&&steps++<7000){
+        g.update(dt,dt);
+        if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('Far-travel camera lagged behind ship');
+      }
+      if(s.autopilot||s.followBody?.id!==to.id)throw new Error('Long travel did not arrive');
+      for(let i=0;i<82;i++){
+        g.update(16,16);
+        if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('Arrival zoom let ship leave center');
+      }
+      if(s.centerZoom||s.zoom<1.3)throw new Error('Arrival close-up did not finish');
+    }
+    g.backdrop(1000);g.drawSystem(1000);g.updateUI();
+  });
+  await page.screenshot({path:`.qa/${engine}-long-travel-arrival.png`});
+
   await page.evaluate(()=>{
     const g=window.__game,s=g.state,saved={landed:s.save.landed,selected:s.selected,scene:s.scene,zoom:s.zoom,camera:{...s.camera},followBody:s.followBody,ship:{...s.save.ship},surface:{...s.save.surface},chart:{...s.save.chart}};
     for(const scene of ['system','surface','chart'])for(const reduced of [false,true]){

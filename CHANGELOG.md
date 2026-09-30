@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.1 — 2026-09-30
+
+- Made the tiny system ship locator a narrow isosceles triangle with a longer forward tip, still aligned with the ship heading and shown only below four pixels.
+- System travel now centers the camera on the ship at departure and tracks its integrated position every frame, preventing distant Hyperdrive approaches from leaving the viewport as zoom increases.
+- System arrival zoom now stays centered on the ship throughout the close-up instead of panning from a lagging camera position.
+
 ## 1.8.0 — 2026-09-29
 
 - The tiny system ship triangle now rotates with the ship’s heading while its label stays upright, and appears only below a four-pixel ship size.

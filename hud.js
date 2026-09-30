@@ -24,9 +24,9 @@ export function paintLocator(ctx,x,y,size,width,height,showTiny=false,heading=0)
     ctx.save();ctx.translate(Math.round(x),Math.round(y));
     ctx.save();ctx.rotate(heading+Math.PI/2);
     ctx.strokeStyle='#9cddff';ctx.lineWidth=1.5;
-    ctx.beginPath();ctx.moveTo(0,-7);ctx.lineTo(7,6);ctx.lineTo(-7,6);ctx.closePath();ctx.stroke();ctx.restore();
+    ctx.beginPath();ctx.moveTo(0,-10);ctx.lineTo(5,6);ctx.lineTo(-5,6);ctx.closePath();ctx.stroke();ctx.restore();
     ctx.fillStyle='#d5f5ff';ctx.fillRect(-1,-1,2,2);
-    ctx.font="9px 'SpaceBitz Pixel',monospace";ctx.textAlign='center';ctx.fillText('SHIP',0,-10);ctx.restore();return;
+    ctx.font="9px 'SpaceBitz Pixel',monospace";ctx.textAlign='center';ctx.fillText('SHIP',0,-13);ctx.restore();return;
   }
   ctx.save();ctx.translate(Math.round(p.x),Math.round(p.y));ctx.rotate(p.angle);
   ctx.fillStyle='#9cddff';ctx.strokeStyle='#17384d';ctx.lineWidth=1.5;

@@ -68,6 +68,11 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.8.1',items:[
+    "Made the tiny system ship locator a narrow isosceles triangle with a longer forward tip, still aligned with the ship heading and shown only below four pixels.",
+    "System travel now centers the camera on the ship at departure and tracks its integrated position every frame, preventing distant Hyperdrive approaches from leaving the viewport as zoom increases.",
+    "System arrival zoom now stays centered on the ship throughout the close-up instead of panning from a lagging camera position."
+]},
   {version:'1.8.0',items:[
     "The tiny system ship triangle now rotates with the ship\u2019s heading while its label stays upright, and appears only below a four-pixel ship size.",
     "Rebuilt system stars as animated pixel surfaces with stronger circulating convection, evolving bright granules and dark channels, and irregular sunspot groups that emerge, grow and fade.",
@@ -542,6 +547,7 @@ function nearestSample() {
 function primary() {
   if(!state.save||state.autopilot||state.warpUntil)return;
   state.centerZoom=null;state.panUntil=0;state.focusBody=null;
+  if(state.scene==='system')state.camera={...state.save.ship};
   if(state.waypoint){
     state.panUntil=0;state.followBody=null;
     state.autopilot={type:'waypoint',x:state.waypoint.x,y:state.waypoint.y};
@@ -929,7 +935,7 @@ function update(dt,clockDt=dt) {
         state.panUntil=0;state.focusBody=null;
         const to=state.scene==='surface'?2.4:Math.max(state.zoom,1.3);
         if(settings.reducedMotion){state.centerZoom=null;state.zoom=to;state.camera={...p};}
-        else state.centerZoom={from:state.zoom,to,fromCamera:{...state.camera},elapsed:0,duration:1300};
+        else state.centerZoom={from:state.zoom,to,...(state.scene==='system'?{}:{fromCamera:{...state.camera}}),elapsed:0,duration:1300};
         updateUI();toast(isStellar?'Holding position near star':isWaypoint?'Coordinate reached':state.scene==='chart'?'Star reached · enter the system':state.scene==='surface'?'Lander reached':'Orbit achieved · station keeping active');
       }
     }else state.autopilot=null;
@@ -952,6 +958,10 @@ function update(dt,clockDt=dt) {
       state.zoom=view.zoom;state.camera=view.camera;
     }else {state.zoom=centerZoomAt(animation.from,animation.to,progress);state.camera={...targetCamera};}
     if(progress>=1)state.centerZoom=null;
+  }else if(state.scene==='system'&&state.autopilot){
+    // Hyperdrive can move farther than a viewport between frames. Tracking
+    // the integrated ship position avoids lag that grows during approach zoom.
+    state.camera={...p};
   }else if(state.scene==='system'&&state.focusBody&&state.panUntil===Infinity){
     const body=findBody(state.focusBody);
     if(body)state.camera=bodyPosition(body,state.save.days,state.system);
