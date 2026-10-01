@@ -19,7 +19,9 @@ For local development, serve this directory with `python3 -m http.server 8000` a
 
 ## Giant worlds and the extended Sol system
 
-Version **1.9.0** rebuilds the gas/ice giants with pixel cloud belts, curled storms and distinct reflected-light palettes. Rings have radial detail, major gaps, planetary shadows and physical radii; Jupiter’s dust rings are faint. Generated colors follow temperature/cloud models with documented artistic rarity weights.
+Version **1.10.0** animates gas/ice-giant winds with opposing cloud jets, swirling vortices and storms that grow and fade. Jupiter has a persistent Great Red Spot, Oval BA and pale ovals; Saturn has white-storm outbreaks, Uranus bright cloud outbreaks and Neptune transient dark vortices with companion clouds. Generated worlds get independently seeded wind and storm traits. Weather uses accelerated visual timing, independent of the simulation clock; **Reduce motion** freezes it.
+
+The v1.9 artwork rebuilds the gas/ice giants with pixel cloud belts, curled storms and distinct reflected-light palettes. Rings have radial detail, major gaps, planetary shadows and physical radii; Jupiter’s dust rings are faint. Generated colors follow temperature/cloud models with documented artistic rarity weights.
 
 Saturn now includes **Tethys, Dione, Rhea and Iapetus** alongside Enceladus and Titan. Uranus includes **Ariel, Umbriel, Titania and Oberon**. **Pluto and Charon** are landable, with their own artwork, an inclined eccentric heliocentric orbit and shared barycentric motion. The chart counts Pluto as a dwarf planet. System Fit includes it; entering Sol still arrives beside Neptune.
 

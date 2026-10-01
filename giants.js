@@ -44,9 +44,50 @@ export function giantProfile(body,star={luminosity:1}){
   const count=sol&&body.name==='Uranus'?3:sol&&body.name==='Saturn'?7:14;
   for(let i=0;i<count;i++)storms.push({lon:r()*TAU,lat:(r()-.5)*2.15,sx:.045+r()*.08,sy:.022+r()*.036,
     color:colors[r()<.68?3:0],strength:(.30+r()*.40)*(sol&&body.name==='Uranus'?.35:1),spin:r()<.5?-1:1});
-  if(sol&&body.name==='Jupiter')storms.push({lon:.64,lat:.38,sx:.12,sy:.067,color:rgb('#bc6b4c'),strength:.95,spin:-1,redSpot:true});
-  if(sol&&body.name==='Neptune')storms.push({lon:.75,lat:.38,sx:.13,sy:.064,color:rgb('#486f83'),strength:.80,spin:-1});
-  return {family,label,temperature,colors,contrast,tilt,storms,seed:hash(body.id),polarHexagon:sol&&body.name==='Saturn',polarHaze:sol&&body.name==='Uranus'};
+  const w=rng('weather:'+body.id),methane=family==='methane';
+  const rotationHours=Math.abs(body.rotationDays||.5)*24;
+  const wind={jets:Math.max(4,Math.min(16,Math.round((methane?5:11)+(12-rotationHours)*.3+(w()-.5)*4))),
+    speed:.026+w()*.026,equator:methane?-1:1,wave:.008+w()*.012,phase:w()*TAU,
+    label:methane?'Broad jets · high cloud streaks':'Alternating jets · turbulent belts'};
+  const configure=s=>({phase:w(),cycle:70+w()*140,active:.56+w()*.25,
+    drift:(w()-.5)*.006,turn:.30+w()*.28,aspect:.03+w()*.10,persistent:false,...s});
+  let weatherStorms=storms.map(configure);
+  if(!sol){
+    // Coriolis organizes vortices by hemisphere; cloud composition controls
+    // contrast. Rossby/Rhines ideas motivate jet widths, not a weather forecast.
+    const count=4+Math.floor(w()*12),big=w()<.32;
+    weatherStorms=Array.from({length:count},(_,i)=>{
+      const lat=(w()<.5?-1:1)*(.20+w()*.88),anticyclone=w()<.72;
+      const sx=i===0&&big?.15+w()*.10:.035+w()*.08;
+      return configure({lon:w()*TAU,lat,sx,sy:sx/(1.6+w()*1.5),color:colors[w()<.65?3:0],
+        strength:.38+w()*.46,spin:Math.sign(lat)*(anticyclone?-1:1),persistent:i===0&&big,
+        ...(i===0&&big&&family==='ammonia'&&w()<.25?{color:rgb('#bb7858')}:{}),
+        companion:methane&&i===0&&big},i);
+    });
+  }
+  let features=[];
+  if(sol&&body.name==='Jupiter'){
+    wind.jets=12;wind.speed=.041;wind.equator=1;
+    weatherStorms.push(configure({name:'Oval BA',lon:.21,lat:.58,sx:.085,sy:.050,color:rgb('#d6b99b'),strength:.88,spin:-1,persistent:true},90));
+    for(let i=0;i<5;i++)weatherStorms.push(configure({lon:1.15+i*.78,lat:.68,sx:.045,sy:.025,color:rgb('#f4e5ce'),strength:.84,spin:-1,persistent:true},100+i));
+    weatherStorms.push(configure({name:'Great Red Spot',lon:.64,lat:.384,sx:.125,sy:.075,color:rgb('#ce5540'),strength:1,spin:-1,redSpot:true,persistent:true,drift:-.0012,turn:.42,aspect:.065},99));
+    features=['Great Red Spot','Oval BA','White ovals'];
+  }else if(sol&&body.name==='Saturn'){
+    wind.jets=11;wind.speed=.049;wind.equator=1;
+    weatherStorms.push(configure({name:'White storm outbreak',lon:.55,lat:-.65,sx:.20,sy:.065,color:rgb('#faf1d9'),strength:.94,spin:1,
+      cycle:210,active:.43,phase:.17,tail:true},90));
+    features=['North-pole hexagon','Polar vortices','White storm outbreaks'];
+  }else if(sol&&body.name==='Neptune'){
+    wind.jets=5;wind.speed=.068;wind.equator=-1;
+    weatherStorms.push(configure({name:'Dark vortex',lon:.75,lat:.38,sx:.14,sy:.075,color:rgb('#365f76'),strength:.93,spin:-1,
+      cycle:160,phase:.25,companion:true},90));
+    features=['Transient dark vortices','Bright companion clouds'];
+  }else if(sol&&body.name==='Uranus'){
+    wind.jets=5;wind.speed=.028;wind.equator=-1;
+    weatherStorms.push(configure({name:'Bright cloud outbreak',lon:.70,lat:-.52,sx:.11,sy:.042,color:rgb('#e0f1e8'),strength:.67,spin:1,cycle:180,phase:.26},90));
+    features=['Polar haze','Bright cloud outbreaks'];
+  }
+  return {family,label,temperature,colors,contrast,tilt,storms:weatherStorms,wind,features,seed:hash(body.id),polarHexagon:sol&&body.name==='Saturn',polarHaze:sol&&body.name==='Uranus'};
 }
 
 export function giantColor(profile,lon,lat){
@@ -74,8 +115,11 @@ export function giantColor(profile,lon,lat){
   }
   if(profile.polarHaze)color=mix(color,colors[3],smooth(.76,1.46,Math.abs(lat))*.48);
   if(profile.polarHexagon){
-    const boundary=1.20+.018*Math.cos(lon*6);
-    color=mix(color,colors[0],smooth(boundary,boundary+.05,Math.abs(lat))*.32);
+    // Latitude increases down the disk: negative is the north pole. The
+    // northern six-sided wave must not be duplicated at the south pole.
+    const north=1.25+.020*Math.cos(lon*6),south=1.22+.012*Math.cos(lon*10);
+    color=mix(color,colors[0],smooth(north,north+.05,-lat)*.36);
+    color=mix(color,colors[0],smooth(south,south+.04,lat)*.18);
   }
   return color.map(v=>Math.max(0,Math.min(255,v)));
 }

@@ -6,6 +6,7 @@ import {paintShip,paintAstronaut} from './sprites.js';
 import {updateMotion,navigationTarget} from './motion.js';
 import {celestialSprite} from './celestial.js';
 import {ringSprites,paintRings} from './giants.js';
+import {paintGiantAtmosphere} from './weather.js';
 import {paintStellarSurface,chartBrightness} from './stellar.js';
 import {canvasContextOptions,clearFrame,backgroundPosition,strokeEllipse,circleGeometry,fillAnnulus,fillDisk,drawImageInView,lineInView} from './rendering.js';
 import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM} from './scale.js';
@@ -69,6 +70,13 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.10.0',items:[
+    "Gas and ice giants now have animated winds: cloud belts flow in opposing directions, filaments shift and local vortices swirl independently of planetary rotation.",
+    "Jupiter has a persistent red-orange Great Red Spot with a darker heart and breathing oval shape, alongside Oval BA and a string of pale ovals.",
+    "Saturn has northern white-storm outbreaks with cloud tails and a corrected north-pole hexagon. Uranus gets bright cloud outbreaks; Neptune has evolving dark vortices and bright companion clouds.",
+    "Generated giants receive deterministic jet widths, wind directions, storm populations, hemisphere-aware vortex spin and occasional long-lived giant storms. Scientific inspirations and artistic probabilities are documented.",
+    "Weather renews smoothly to prevent stretched cloud textures, uses bounded low-resolution interpolated frames, respects Reduce motion and is included in offline caching. Weather timing is accelerated for visibility; physical sizes, orbits and existing voyage identities stay unchanged."
+]},
   {version:'1.9.0',items:[
     "Rebuilt giant planets with pixel cloud belts, turbulent whirls, feathered oval storms and improved palettes. Jupiter's rectangular mark is gone; Uranus and Neptune use researched blue-green colors.",
     "Replaced broad placeholder rings with layered pixel bands, gaps, front/back occlusion and shadows, using measured Sol ring radii. Jupiter now has faint dust rings; Saturn retains its broad icy rings, with narrow Uranus/Neptune rings.",
@@ -780,6 +788,8 @@ function appendWorldFacts(grid,body){
   if(body.ephemeris)detailTile(grid,'ORBIT INCLINATION',(orbitalElements(body,state.save.days).inclination*180/Math.PI).toFixed(2)+'° · ecliptic');
   if(body.equatorialInclination!==undefined)detailTile(grid,'ORBIT INCLINATION',body.equatorialInclination.toFixed(2)+'° · equator');
   if(body.atmosphere)detailTile(grid,'CLOUDS',body.atmosphere.label);
+  if(body.atmosphere)detailTile(grid,'WEATHER',body.atmosphere.wind.label);
+  if(body.atmosphere?.features.length)detailTile(grid,'WEATHER FEATURES',body.atmosphere.features.join(' · '));
   if(body.rings)detailTile(grid,'VISIBLE RING EXTENT',diameterText(body.rings.outerKm)+' from center');
   detailTile(grid,'SURFACE',body.solid?'Solid · landable':'No solid surface');
 }
@@ -1146,7 +1156,9 @@ function drawPlanet(body,p,now,worldPos) {
   }
   ctx.restore();
   ctx.save();ctx.imageSmoothingEnabled=false;
-  drawImageInView(ctx,celestialSprite(body,state.save.days,worldPos),p.x-r,p.y-r,2*r,2*r,state.width,state.height);ctx.restore();
+  if(body.atmosphere)paintGiantAtmosphere(ctx,body,p.x,p.y,r,state.stellarSeconds,state.save.days,worldPos,settings.reducedMotion,state.width,state.height);
+  else drawImageInView(ctx,celestialSprite(body,state.save.days,worldPos),p.x-r,p.y-r,2*r,2*r,state.width,state.height);
+  ctx.restore();
   ctx.strokeStyle='#d9f8fb42';ctx.lineWidth=1;strokeEllipse(ctx,circleGeometry(p.x,p.y,r),state.width,state.height);
   paintRings(ctx,rings,'front',p.x,p.y,r,state.width,state.height);
   if(selected){drawSelection(p.x,p.y,r,now);label(body.name,p.x,p.y-r-25,true);}

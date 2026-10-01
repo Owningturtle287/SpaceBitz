@@ -291,7 +291,7 @@ try{
   await page.screenshot({path:`.qa/${engine}-star.png`});
   const giants=await page.evaluate(async()=>{
     const {makeSystem,bodyPosition,TAU}=await import('/model.js'),{celestialSprite}=await import('/celestial.js');
-    const {ringSprites,paintRings}=await import('/giants.js');
+    const {ringSprites,paintRings}=await import('/giants.js'),{paintGiantAtmosphere}=await import('/weather.js');
     const sol=makeSystem('sol'),all=sol.planets.flatMap(p=>[p,...p.moons]);
     const preview=document.createElement('canvas');preview.width=1560;preview.height=960;
     const ctx=preview.getContext('2d');ctx.fillStyle='#040d14';ctx.fillRect(0,0,1560,960);ctx.imageSmoothingEnabled=false;
@@ -299,7 +299,9 @@ try{
       const body=all.find(b=>b.name===name),x=i%3*520+260,y=Math.floor(i/3)*480+205,r=name==='Saturn'?100:name==='Uranus'?96:140;
       const rotation=name==='Jupiter'?.64:name==='Pluto'?.75:.5,days=(rotation-body.phase)/TAU*body.rotationDays,pos={x:-1,y:-1};
       const rings=ringSprites(body,pos);paintRings(ctx,rings,'back',x,y,r,1560,960);
-      ctx.drawImage(celestialSprite(body,days,pos),x-r,y-r,r*2,r*2);paintRings(ctx,rings,'front',x,y,r,1560,960);
+      if(body.atmosphere)paintGiantAtmosphere(ctx,body,x,y,r,12,days,pos,false,1560,960);
+      else ctx.drawImage(celestialSprite(body,days,pos),x-r,y-r,r*2,r*2);
+      paintRings(ctx,rings,'front',x,y,r,1560,960);
       ctx.font='18px SpaceBitzPixel, monospace';ctx.textAlign='center';ctx.fillStyle='#a3e6df';ctx.fillText(name.toUpperCase(),x,y+210);
     });
     const g=window.__game,s=g.state,visited=[];
@@ -362,9 +364,51 @@ try{
     render(peak);return {changingFraction:changing/core,spots,outside,peak,image:c.toDataURL()};
   });
   await writeFile(`.qa/${engine}-stellar-overhaul.png`,Buffer.from(stellar.image.split(',')[1],'base64'));delete stellar.image;
+  const weather=await page.evaluate(async()=>{
+    const {makeSystem,TAU}=await import('/model.js'),{paintGiantAtmosphere,giantWeatherCacheStats}=await import('/weather.js');
+    const sol=makeSystem('sol'),c=document.createElement('canvas');c.width=c.height=320;const ctx=c.getContext('2d');
+    const montage=document.createElement('canvas');montage.width=1280;montage.height=1280;const m=montage.getContext('2d');
+    m.fillStyle='#040d14';m.fillRect(0,0,1280,1280);m.imageSmoothingEnabled=false;
+    const delta=(a,b)=>{
+      let sum=0,changing=0,count=0;
+      for(let y=0;y<320;y++)for(let x=0;x<320;x++)if(Math.hypot(x-160,y-160)<118){
+        const p=(y*320+x)*4,d=Math.abs(a[p]-b[p])+Math.abs(a[p+1]-b[p+1])+Math.abs(a[p+2]-b[p+2]);
+        sum+=d;changing+=d>6;count++;
+      }
+      return {mean:sum/count/3,fraction:changing/count};
+    };
+    const reports=[];
+    for(const [row,name] of ['Jupiter','Saturn','Uranus','Neptune'].entries()){
+      const body=sol.planets.find(b=>b.name===name),days=(.64-body.phase)/TAU*body.rotationDays;
+      const render=(t,reduced=false,d=days)=>{
+        ctx.clearRect(0,0,320,320);paintGiantAtmosphere(ctx,body,160,160,130,t,d,{x:-1,y:-1},reduced,320,320);
+        return ctx.getImageData(0,0,320,320).data;
+      };
+      const activity=delta(render(0),render(8));
+      if(activity.mean<.6||activity.fraction<.08)throw new Error('Giant winds are too static '+name+' '+JSON.stringify(activity));
+      let continuity=0;
+      for(const t of [8,18,36,72])continuity=Math.max(continuity,delta(render(t-.002),render(t+.002)).mean);
+      if(continuity>1)throw new Error('Giant clouds snap at keyframe/material reset '+name);
+      const still=render(0,true),later=render(180,true,days+3);
+      if(!still.every((v,i)=>v===later[i]))throw new Error('Reduced-motion giant changes '+name);
+      if(still[3]||still[(160*320+160)*4+3]<254)throw new Error('Giant disk opacity/clipping failed '+name);
+      for(const [col,t] of [0,8,20,40].entries()){
+        render(t);m.drawImage(c,col*320,row*320);m.font='16px SpaceBitzPixel, monospace';m.textAlign='center';m.fillStyle='#a3e6df';
+        m.fillText(name.toUpperCase()+' / '+t+'s',col*320+160,row*320+310);
+      }
+      reports.push({name,activity,continuity});
+    }
+    // Exercise both raster levels and eviction across more than six worlds.
+    for(let seed=0;seed<16;seed++)for(const body of makeSystem('weather-cache-'+seed).planets.filter(p=>p.atmosphere)){
+      for(const r of [25,130]){ctx.clearRect(0,0,320,320);paintGiantAtmosphere(ctx,body,160,160,r,45,123,{x:-1,y:-1});}
+    }
+    const caches=giantWeatherCacheStats();if(Object.values(caches).some(n=>n>6))throw new Error('Giant weather cache grew '+JSON.stringify(caches));
+    return {reports,caches,image:montage.toDataURL()};
+  });
+  await writeFile(`.qa/${engine}-giant-weather.png`,Buffer.from(weather.image.split(',')[1],'base64'));delete weather.image;
   const soak=await page.evaluate(async()=>{
     const g=window.__game,s=g.state,{makeSystem,bodyPosition}=await import('/model.js');
-    const {stellarCacheStats}=await import('/stellar.js'),{celestialCacheStats}=await import('/celestial.js'),{ringCacheStats}=await import('/giants.js');
+    const {stellarCacheStats}=await import('/stellar.js'),{celestialCacheStats}=await import('/celestial.js'),{ringCacheStats}=await import('/giants.js'),{giantWeatherCacheStats}=await import('/weather.js');
     const ctx=document.getElementById('sky').getContext('2d'),times=[],started=performance.now();
     for(let i=0;i<1200;i++){
       if(i%60===0){s.system=makeSystem('soak-'+i/60);s.save.currentSystem=s.system.seed;s.scene='system';s.selected=null;s.followBody=null;s.autopilot=null;}
@@ -376,9 +420,9 @@ try{
       if(i%10===0)await new Promise(r=>requestAnimationFrame(r));
     }
     times.sort((a,b)=>a-b);
-    const stats={frames:1200,elapsedMs:performance.now()-started,p95Ms:times[1140],maxMs:times.at(-1),stellar:stellarCacheStats(),celestial:celestialCacheStats(),rings:ringCacheStats()};
-    if(stats.p95Ms>250||stats.stellar.frames>4||stats.celestial.frames>160||stats.celestial.maps>48||stats.rings.frames>24)throw new Error('Soak exceeded render/cache bounds '+JSON.stringify(stats));
+    const stats={frames:1200,elapsedMs:performance.now()-started,p95Ms:times[1140],maxMs:times.at(-1),stellar:stellarCacheStats(),celestial:celestialCacheStats(),rings:ringCacheStats(),weather:giantWeatherCacheStats()};
+    if(stats.p95Ms>250||stats.stellar.frames>4||stats.celestial.frames>160||stats.celestial.maps>48||stats.rings.frames>24||Object.values(stats.weather).some(n=>n>6))throw new Error('Soak exceeded render/cache bounds '+JSON.stringify(stats));
     return stats;
   });
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results,giants,stellar,soak},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results,giants,stellar,weather,soak},null,2));
 }finally{await browser.close();server.close();}
