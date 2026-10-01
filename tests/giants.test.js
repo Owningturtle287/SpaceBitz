@@ -42,7 +42,10 @@ test('Pluto and Charon share a physical barycentre, elliptical inclined orbit an
 test('giant artwork changes do not alter pre-update generated world/save geometry',()=>{
   const shape=s=>({star:[s.star.id,s.star.mass,s.star.diameter,s.star.rotationDays],planets:s.planets.map(p=>[p.id,p.kind,p.type,p.au,p.diameter,p.period,p.phase,p.rotationDays,p.solid,p.moons.map(m=>[m.id,m.diameter,m.orbitKm,m.period,m.phase,m.rotationDays,m.solid])])});
   const fixtures=Array.from({length:80},(_,i)=>shape(makeSystem('save-fixture-'+i)));
-  assert.equal(createHash('sha256').update(JSON.stringify(fixtures)).digest('hex'),'7d36b7790c9f5501bdaca5c675297883b11923ef1323b2609cc25a6be141b485');
+  // V8/libm versions differ in the final bits of powers/square roots. Preserve
+  // eleven significant digits (sub-metre orbital precision), not those bits.
+  const canonical=JSON.stringify(fixtures,(key,value)=>typeof value==='number'?Number(value.toPrecision(11)):value);
+  assert.equal(createHash('sha256').update(canonical).digest('hex'),'78e7e96a4044b1b004cff88d2cfc8abff6bcfb5b4ab266850ec92f2c2e6addd7');
 });
 
 test('Sol rings use measured radial dimensions, Saturn divisions and faint Jupiter dust',()=>{
