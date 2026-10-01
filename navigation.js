@@ -64,7 +64,7 @@ export function manualSpeed(scene,mode='maneuver'){
 }
 
 export function outermostPlanet(system,days=0){
-  return system.planets.reduce((outer,body)=>!outer||orbitalElements(body,days).a>orbitalElements(outer,days).a?body:outer,null);
+  return system.planets.filter(body=>body.kind==='planet').reduce((outer,body)=>!outer||orbitalElements(body,days).a>orbitalElements(outer,days).a?body:outer,null);
 }
 
 // A local transfer stays in the same planet/moon family. Freeze the choice at

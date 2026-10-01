@@ -1,11 +1,12 @@
 import {hash,TAU,rotationAngle} from './model.js';
 import {noise} from './terrain.js';
+import {giantColor} from './giants.js';
 
 const maps=new Map(),frames=new Map();
 const cap=(n,a,b)=>Math.max(a,Math.min(b,n));
 function surfaceMap(body){
   if(maps.has(body.id))return maps.get(body.id);
-  const width=192,height=96,pixels=new Uint8ClampedArray(width*height*3),seed=hash(body.id);
+  const width=body.atmosphere?320:192,height=width/2,pixels=new Uint8ClampedArray(width*height*3),seed=hash(body.id);
   const base=body.color.match(/\w\w/g).map(h=>parseInt(h,16));
   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
     const latitude=(y/height-.5)*Math.PI,longitude=x/width*TAU;
@@ -16,9 +17,7 @@ function surfaceMap(body){
     if(body.kind==='star'){
       color=base.map((v,i)=>cap(v*(.85+fine*.28)+(i===0?14:0),0,255));
     }else if(['gas','ice-giant'].includes(body.type)){
-      const bands=.82+.13*Math.sin(latitude*42+n*2)+fine*.11;
-      color=base.map(v=>v*bands);
-      if(body.name==='Jupiter' && nx>.60 && ny>.15 && nz>-.32 && nz<-.13)color=[173,108,76];
+      color=giantColor(body.atmosphere,longitude,latitude);
     }else if(body.type==='temperate'){
       color=n>.47?(n>.71?[142,139,99]:[57+n*38,106+n*52,72+fine*30]):[33+fine*16,77+n*58,130+n*66];
       if(Math.abs(nz)>.92)color=[208,226,218];
@@ -26,6 +25,15 @@ function surfaceMap(body){
     }else{
       const brightness=.64+n*.48+fine*.18;color=base.map(v=>v*brightness);
       if(body.type==='ice')color=color.map(v=>v*.55+215*.45);
+      if(body.id==='sol:Pluto'){
+        color=n>.54?[174+fine*30,128+fine*32,108+fine*28]:[207+n*26,190+n*26,171+n*27];
+        // Two joined lobes and a taper suggest Tombaugh Regio in pixel relief.
+        const dx=Math.atan2(Math.sin(longitude-.75),Math.cos(longitude-.75)),dy=latitude-.08;
+        const heart=Math.min(Math.hypot((dx-.13)/.27,(dy+.10)/.23),Math.hypot((dx+.13)/.27,(dy+.10)/.23));
+        if(heart<1||dy>0&&dy<.35&&Math.abs(dx)<(.35-dy)*1.2)color=[225+fine*18,218+fine*17,205+fine*16];
+      }
+      if(body.id==='sol:Pluto:Charon'&&latitude<-.90)color=[127+fine*20,88+fine*14,79+fine*14];
+      if(body.name==='Iapetus')color=base.map(v=>v*(Math.cos(longitude)<0?.48:1.22)*( .85+fine*.20));
     }
     const i=(y*width+x)*3;for(let k=0;k<3;k++)pixels[i+k]=Math.round(color[k]/4)*4;
   }
@@ -39,13 +47,15 @@ export function celestialSprite(body,days,worldPosition={x:0,y:0}) {
   const frame=Math.floor(rotation/TAU*96),light=Math.round(lightAngle/TAU*48);
   const key=`${body.id}:${frame}:${light}`;
   if(frames.has(key))return frames.get(key);
-  const map=surfaceMap(body),size=body.kind==='star'?144:80;
+  const map=surfaceMap(body),size=body.kind==='star'?144:body.atmosphere?128:80;
   const c=document.createElement('canvas');c.width=c.height=size;const g=c.getContext('2d'),img=g.createImageData(size,size);
   const lx=Math.cos(lightAngle)*.88,ly=Math.sin(lightAngle)*.88,lz=.47;
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
     const nx=(x+.5-size/2)/(size/2),ny=(y+.5-size/2)/(size/2),r2=nx*nx+ny*ny;
     if(r2>1)continue;const nz=Math.sqrt(1-r2);
-    const lon=Math.atan2(nx,nz)+rotation,lat=Math.asin(ny);
+    const tilt=body.atmosphere?.tilt||0,ct=Math.cos(tilt),st=Math.sin(tilt);
+    const tx=nx*ct+ny*st,ty=-nx*st+ny*ct;
+    const lon=Math.atan2(tx,nz)+rotation,lat=Math.asin(ty);
     const u=Math.floor(((lon/TAU+1)%1)*map.width),v=cap(Math.floor((lat/Math.PI+.5)*map.height),0,map.height-1);
     const source=(v*map.width+u)*3,index=(y*size+x)*4;
     const shade=body.kind==='star'?.77+nz*.23:.19+Math.max(0,nx*lx+ny*ly+nz*lz)*.85;

@@ -257,7 +257,7 @@ try{
     g.backdrop(1000);const after=pixels();
     if(!before.every((value,i)=>value===after[i]))throw new Error('Background changed with ship/camera or left stale pixels');
     const sol=makeSystem('sol'),cases=[];
-    for(const name of ['Earth','Jupiter','Saturn'])for(const zoom of [.85,12,128]){
+    for(const name of ['Earth','Jupiter','Saturn','Uranus','Neptune','Pluto'])for(const zoom of [.85,12,128]){
       const body=sol.planets.find(p=>p.name===name),p=bodyPosition(body,state.save.days,sol);
       cases.push({name:`${name}-${zoom}`,system:sol,camera:p,zoom,selected:body});
     }
@@ -289,6 +289,35 @@ try{
     return reports;
   });
   await page.screenshot({path:`.qa/${engine}-star.png`});
+  const giants=await page.evaluate(async()=>{
+    const {makeSystem,bodyPosition,TAU}=await import('/model.js'),{celestialSprite}=await import('/celestial.js');
+    const {ringSprites,paintRings}=await import('/giants.js');
+    const sol=makeSystem('sol'),all=sol.planets.flatMap(p=>[p,...p.moons]);
+    const preview=document.createElement('canvas');preview.width=1560;preview.height=960;
+    const ctx=preview.getContext('2d');ctx.fillStyle='#040d14';ctx.fillRect(0,0,1560,960);ctx.imageSmoothingEnabled=false;
+    ['Jupiter','Saturn','Uranus','Neptune','Pluto','Charon'].forEach((name,i)=>{
+      const body=all.find(b=>b.name===name),x=i%3*520+260,y=Math.floor(i/3)*480+205,r=name==='Saturn'?100:name==='Uranus'?96:140;
+      const rotation=name==='Jupiter'?.64:name==='Pluto'?.75:.5,days=(rotation-body.phase)/TAU*body.rotationDays,pos={x:-1,y:-1};
+      const rings=ringSprites(body,pos);paintRings(ctx,rings,'back',x,y,r,1560,960);
+      ctx.drawImage(celestialSprite(body,days,pos),x-r,y-r,r*2,r*2);paintRings(ctx,rings,'front',x,y,r,1560,960);
+      ctx.font='18px SpaceBitzPixel, monospace';ctx.textAlign='center';ctx.fillStyle='#a3e6df';ctx.fillText(name.toUpperCase(),x,y+210);
+    });
+    const g=window.__game,s=g.state,visited=[];
+    s.system=sol;s.save.currentSystem='sol';
+    for(const name of ['Tethys','Dione','Rhea','Iapetus','Ariel','Umbriel','Titania','Oberon','Pluto','Charon']){
+      const body=all.find(b=>b.name===name);g.select(body);g.showDetails(body);
+      if(!document.getElementById('modalContent').textContent.includes(Math.round(body.diameter).toLocaleString('en-US')))throw new Error('Missing factual diameter for '+name);
+      g.closeModal();g.enterSurface(body);if(s.save.landed!==body.id)throw new Error('Cannot land on '+name);
+      g.backdrop(1000);g.drawGround(1000);g.launch();
+      if(s.scene!=='system'||s.selected.id!==body.id||s.followBody.id!==body.id)throw new Error('Cannot launch beside '+name);
+      const p=bodyPosition(body,s.save.days,sol);if(!Number.isFinite(p.x+p.y))throw new Error('Invalid orbit for '+name);
+      visited.push(name);
+    }
+    s.scene='system';s.save.scene='system';s.save.landed=null;s.selected=sol.star;s.camera={x:0,y:0};s.zoom=.1;s.followBody=null;s.centerZoom=null;
+    s.save.ship={x:sol.star.diameter*.02,y:0};g.updateUI();
+    return {image:preview.toDataURL(),visited};
+  });
+  await writeFile(`.qa/${engine}-giant-planets.png`,Buffer.from(giants.image.split(',')[1],'base64'));delete giants.image;
   await page.locator('#mapButton').screenshot({path:`.qa/${engine}-lever-idle.png`});
   await page.locator('#mapButton').click();
   await page.waitForTimeout(350);
@@ -335,20 +364,21 @@ try{
   await writeFile(`.qa/${engine}-stellar-overhaul.png`,Buffer.from(stellar.image.split(',')[1],'base64'));delete stellar.image;
   const soak=await page.evaluate(async()=>{
     const g=window.__game,s=g.state,{makeSystem,bodyPosition}=await import('/model.js');
-    const {stellarCacheStats}=await import('/stellar.js'),{celestialCacheStats}=await import('/celestial.js');
+    const {stellarCacheStats}=await import('/stellar.js'),{celestialCacheStats}=await import('/celestial.js'),{ringCacheStats}=await import('/giants.js');
     const ctx=document.getElementById('sky').getContext('2d'),times=[],started=performance.now();
     for(let i=0;i<1200;i++){
       if(i%60===0){s.system=makeSystem('soak-'+i/60);s.save.currentSystem=s.system.seed;s.scene='system';s.selected=null;s.followBody=null;s.autopilot=null;}
       const nearStar=i%120<60;s.zoom=nearStar?.08:12;
-      s.camera=nearStar?{x:0,y:0}:bodyPosition(s.system.planets[0],s.save.days,s.system);
+      const giant=s.system.planets.find(p=>p.atmosphere)||s.system.planets[0];
+      s.camera=nearStar?{x:0,y:0}:bodyPosition(giant,s.save.days,s.system);
       s.stellarSeconds=i/30;s.save.ship={x:s.camera.x+300,y:s.camera.y};
       const start=performance.now();g.backdrop(i*33);g.drawSystem(i*33);ctx.getImageData(0,0,1,1);times.push(performance.now()-start);
       if(i%10===0)await new Promise(r=>requestAnimationFrame(r));
     }
     times.sort((a,b)=>a-b);
-    const stats={frames:1200,elapsedMs:performance.now()-started,p95Ms:times[1140],maxMs:times.at(-1),stellar:stellarCacheStats(),celestial:celestialCacheStats()};
-    if(stats.p95Ms>250||stats.stellar.frames>4||stats.celestial.frames>160||stats.celestial.maps>48)throw new Error('Soak exceeded render/cache bounds '+JSON.stringify(stats));
+    const stats={frames:1200,elapsedMs:performance.now()-started,p95Ms:times[1140],maxMs:times.at(-1),stellar:stellarCacheStats(),celestial:celestialCacheStats(),rings:ringCacheStats()};
+    if(stats.p95Ms>250||stats.stellar.frames>4||stats.celestial.frames>160||stats.celestial.maps>48||stats.rings.frames>24)throw new Error('Soak exceeded render/cache bounds '+JSON.stringify(stats));
     return stats;
   });
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results,stellar,soak},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results,giants,stellar,soak},null,2));
 }finally{await browser.close();server.close();}

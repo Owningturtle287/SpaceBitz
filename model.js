@@ -1,6 +1,7 @@
 // Pure, deterministic orbital model. Distances are AU, diameters are km and
 // simulation time is days. Celestial sizes and orbit distances share one linear scale.
 import {AU_KM,SYSTEM_PX_PER_KM,SUN_DIAMETER_KM} from './scale.js';
+import {giantProfile,ringProfile} from './giants.js';
 export const TAU = Math.PI * 2;
 export const DAY_MS = 86400000;
 export const EPOCH = Date.UTC(2026, 0, 1);
@@ -45,7 +46,7 @@ export function orbitalElements(body,days=0){
       inclination:value('I')*DEG,node:value('node')*DEG,M:(value('L')-value('p'))*DEG};
   }
   return {a:body.kind==='moon'?body.orbitKm*SYSTEM_PX_PER_KM:orbitRadius(body.au),
-    e:body.eccentricity||0,peri:body.periapsis||0,inclination:0,node:0,
+    e:body.eccentricity||0,peri:body.periapsis||0,inclination:(body.orbitalInclination||0)*DEG,node:(body.orbitalNode||0)*DEG,
     M:body.phase+(body.orbitDirection||1)*TAU*days/body.period};
 }
 export function orbitPoint(body,days,eccentricAnomaly){
@@ -62,9 +63,15 @@ export function position(body,days){
 }
 export function bodyPosition(body, days, system) {
   const p = position(body, days, system.star.mass, system.star);
-  if (body.kind !== 'moon') return p;
+  if (body.kind !== 'moon') {
+    if(body.barycentricMoon){
+      const companion=body.moons.find(m=>m.id===body.barycentricMoon.id),relative=position(companion,days);
+      return {x:p.x-relative.x*body.barycentricMoon.massFraction,y:p.y-relative.y*body.barycentricMoon.massFraction};
+    }
+    return p;
+  }
   const host = system.planets.find(planet => planet.id === body.parent);
-  const h = position(host, days, system.star.mass, system.star);
+  const h = bodyPosition(host, days, system);
   return { x: h.x + p.x, y: h.y + p.y };
 }
 const SOL = [
@@ -75,10 +82,11 @@ const SOL = [
   ['Jupiter', 5.20260, 139820, '#dcb994', 'gas'],
   ['Saturn', 9.55491, 116460, '#e1cb98', 'gas'],
   ['Uranus', 19.2184, 50724, '#9be1e4', 'ice-giant'],
-  ['Neptune', 30.1104, 49244, '#648bdf', 'ice-giant']
+  ['Neptune', 30.1104, 49244, '#82bac5', 'ice-giant'],
+  ['Pluto', 39.48168677, 2376.6, '#c4a99c', 'ice']
 ];
 const SOL_PERIODS={Mercury:87.9691,Venus:224.701,Earth:365.25636,Mars:686.980,
-  Jupiter:4332.589,Saturn:10759.22,Uranus:30685.4,Neptune:60189};
+  Jupiter:4332.589,Saturn:10759.22,Uranus:30685.4,Neptune:60189,Pluto:90560};
 const SOL_EPHEMERIS={
   Mercury:{I:[7.00497902, -0.00594749],node:[48.33076593, -0.12534081],a:[.38709927,.00000037],e:[.20563593,.00001906],L:[252.25032350,149472.67411175],p:[77.45779628,.16047689]},
   Venus:{I:[3.39467605, -0.0007889],node:[76.67984255, -0.27769418],a:[.72333566,.00000390],e:[.00677672,-.00004107],L:[181.97909950,58517.81538729],p:[131.60246718,.00268329]},
@@ -87,7 +95,10 @@ const SOL_EPHEMERIS={
   Jupiter:{I:[1.30439695, -0.00183714],node:[100.47390909, 0.20469106],a:[5.20288700,-.00011607],e:[.04838624,-.00013253],L:[34.39644051,3034.74612775],p:[14.72847983,.21252668]},
   Saturn:{I:[2.48599187, 0.00193609],node:[113.66242448, -0.28867794],a:[9.53667594,-.00125060],e:[.05386179,-.00050991],L:[49.95424423,1222.49362201],p:[92.59887831,-.41897216]},
   Uranus:{I:[0.77263783, -0.00242939],node:[74.01692503, 0.04240589],a:[19.18916464,-.00196176],e:[.04725744,-.00004397],L:[313.23810451,428.48202785],p:[170.95427630,.40805281]},
-  Neptune:{I:[1.77004347, 0.00035372],node:[131.78422574, -0.00508664],a:[30.06992276,.00026291],e:[.00859048,.00005105],L:[-55.12002969,218.45945325],p:[44.96476227,-.32241464]}
+  Neptune:{I:[1.77004347, 0.00035372],node:[131.78422574, -0.00508664],a:[30.06992276,.00026291],e:[.00859048,.00005105],L:[-55.12002969,218.45945325],p:[44.96476227,-.32241464]},
+  // NASA J2000 mean elements, advanced at the quoted mean period. This is a
+  // two-body Pluto approximation, not JPL's 1800–2050 planet element table.
+  Pluto:{I:[17.14175,0],node:[110.30347,0],a:[39.48168677,0],e:[.24880766,0],L:[238.92881,360*36525/90560],p:[224.06676,0]}
 };
 // Mean satellite distances (km) and eccentricities; phases are illustrative,
 // not a Horizons ephemeris. JPL satellite mean elements and NASA Moon facts.
@@ -96,9 +107,28 @@ const SOL_MOONS = {
   Mars: [['Phobos',23,.31891023,9375,.0151],['Deimos',12,1.26244,23457,.00033]],
   Jupiter: [['Io',3643,1.769138,421800,.004],['Europa',3122,3.551181,671100,.009],
     ['Ganymede',5268,7.154553,1070400,.001],['Callisto',4821,16.689018,1882700,.007]],
-  Saturn: [['Enceladus',504,1.370218,238400,.005],['Titan',5150,15.945448,1221900,.029]],
-  Neptune: [['Triton',2707,5.876854,354800,0]]
+  // Append rather than insert: existing Enceladus/Titan phases stay unchanged.
+  Saturn: [['Enceladus',504,1.370218,238400,.005],['Titan',5150,15.945448,1221900,.029],
+    ['Tethys',1062,1.887802,294660,0,1.86],['Dione',1123,2.736915,377400,.0022,.02],
+    ['Rhea',1528,4.517500,527040,.001,.35],['Iapetus',1469,79.330183,3560850,.0283,14.72]],
+  Uranus: [['Ariel',1158,2.520379,190900,.0012,.04],['Umbriel',1169.4,4.144176,266000,.0039,.13],
+    ['Titania',1577.8,8.705867,436300,.0011,.08],['Oberon',1522.8,13.463234,583500,.0014,.07]],
+  Neptune: [['Triton',2707,5.876854,354800,0]],
+  Pluto: [['Charon',1212,6.3872,19596,0,.00005]]
 };
+// JPL mean reference-plane poles in ICRF (RA/Dec), plus local inclination/node.
+// Convert the pole to the ecliptic used by the map. Phases remain illustrative;
+// nodal/apsidal precession and three-body perturbations are not integrated.
+function moonPlane(ra,dec,inclination=0,node=0){
+  ra*=DEG;dec*=DEG;inclination*=DEG;node*=DEG;
+  const n=[Math.cos(dec)*Math.cos(ra),Math.cos(dec)*Math.sin(ra),Math.sin(dec)];
+  const a=[-Math.sin(ra),Math.cos(ra),0],b=[-Math.sin(dec)*Math.cos(ra),-Math.sin(dec)*Math.sin(ra),Math.cos(dec)];
+  const pole=n.map((v,i)=>v*Math.cos(inclination)+(a[i]*Math.sin(node)-b[i]*Math.cos(node))*Math.sin(inclination));
+  const obliquity=23.43928*DEG,y=pole[1]*Math.cos(obliquity)+pole[2]*Math.sin(obliquity),z=-pole[1]*Math.sin(obliquity)+pole[2]*Math.cos(obliquity);
+  return {orbitalInclination:Math.acos(clamp(z,-1,1))/DEG,orbitalNode:Math.atan2(pole[0],-y)/DEG};
+}
+const SOL_MOON_PLANES={Tethys:moonPlane(40.6,83.5,1.1,273),Dione:moonPlane(40.6,83.5),Rhea:moonPlane(40.6,83.5,.3,133.7),Iapetus:moonPlane(288.7,78.9,7.6,86.5),
+  Ariel:moonPlane(77.3,15.2),Umbriel:moonPlane(77.3,15.2,.1,174.8),Titania:moonPlane(77.3,15.2,.1,29.5),Oberon:moonPlane(77.3,15.2,.1,76.8),Charon:moonPlane(132.99,-6.16)};
 const STELLAR_CLASSES=[
   {max:.50,type:'M',mass:.32,color:'#ff5c54'},
   {max:.70,type:'K',mass:.73,color:'#ff9845'},
@@ -120,13 +150,14 @@ export function starAppearance(seed){
 export function makeSystem(seed) {
   if (seed === 'sol') {
     const planets = SOL.map(([name, au, diameter, color, type], i) => ({
-      id: `sol:${name}`, name, kind: 'planet', type, au, diameter, color,
+      id: `sol:${name}`, name, kind: name==='Pluto'?'dwarf-planet':'planet', type, au, diameter, color,
       phase: i * 2.39996 + .3, period: SOL_PERIODS[name], ephemeris:SOL_EPHEMERIS[name],
-      moons: (SOL_MOONS[name] || []).map(([moon, d, period, orbitKm, eccentricity], j) => ({
+      moons: (SOL_MOONS[name] || []).map(([moon, d, period, orbitKm, eccentricity, equatorialInclination], j) => ({
         id: `sol:${name}:${moon}`, parent: `sol:${name}`, name: moon, kind: 'moon',
-        type: 'rock', diameter: d, color: '#b8bec5', orbitKm, eccentricity,
-        period, phase: j * 2.4 + .5
-      }))
+        type: 'rock', diameter: d, color: {Tethys:'#dddcd1',Dione:'#c8c8c4',Rhea:'#c4c3bd',Iapetus:'#b0a293',Ariel:'#c7c9ca',Umbriel:'#777a80',Titania:'#b7b4b1',Oberon:'#9d9694',Charon:'#a5a5ac'}[moon]||'#b8bec5', orbitKm, eccentricity,
+        period, phase: j * 2.4 + .5,equatorialInclination,
+        ...SOL_MOON_PLANES[moon]
+      })).sort((a,b)=>a.orbitKm-b.orbitKm)
     }));
     return completeSystem({ seed, name: 'Sol', star: { id:'sol:star', name:'Sol', kind:'star', mass:1, luminosity:1, diameter:SUN_DIAMETER_KM, color:'#ffd75a', type:'G2V' }, planets });
   }
@@ -161,13 +192,16 @@ export function makeSystem(seed) {
 function completeSystem(system) {
   // Approximate sidereal rotation periods in Earth days.
   const spins = {Mercury:58.646,Venus:-243.025,Earth:.99726968,Mars:1.025957,
-    Jupiter:.41354,Saturn:.444,Uranus:-.71833,Neptune:.67125};
+    Jupiter:.41354,Saturn:.444,Uranus:-.71833,Neptune:.67125,Pluto:-6.3872};
   system.star.rotationDays = system.seed === 'sol' ? 25.05 : 10 + rng('spin:'+system.seed)()*30;
   for (const p of system.planets) {
     const r=rng('rotation:'+p.id);
     p.rotationDays=system.seed==='sol'?spins[p.name]:p.type==='gas'?.3+r()*.4:.65+r()*2;
     if(system.seed==='sol'&&p.name==='Earth')p.rotationPhase=100.66085856687278*DEG;
     p.solid=!['gas','ice-giant'].includes(p.type);
+    if(p.id==='sol:Pluto')p.barycentricMoon={id:'sol:Pluto:Charon',massFraction:1.586/(13.03+1.586)};
+    p.atmosphere=giantProfile(p,system.star);p.rings=ringProfile(p);
+    if(p.atmosphere)p.color='#'+p.atmosphere.colors[2].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
     p.moons=p.moons.filter((m,index)=>{
       m.orbitDirection=m.name==='Triton'?-1:1;
       if(system.seed!=='sol'){
@@ -181,7 +215,7 @@ function completeSystem(system) {
         m.period=TAU*Math.sqrt(m.orbitKm**3/(398600.44*massEarth))/86400;
       }
       m.orbitPx=m.orbitKm*SYSTEM_PX_PER_KM;
-      m.rotationDays=m.period*m.orbitDirection; // tidally locked moons
+      m.rotationDays=m.period*m.orbitDirection*(['Uranus','Pluto'].includes(p.name)?-1:1); // synchronous; retrograde equatorial systems
       m.solid=true;
       return true;
     });

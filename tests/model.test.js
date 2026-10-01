@@ -4,7 +4,7 @@ import {makeSystem,starAppearance,habitableZone,periodDays,bodyPosition,visualRa
 
 test('Sol preserves orbital order, factual diameters and approximate year',()=>{
   const sol=makeSystem('sol');
-  assert.deepEqual(sol.planets.map(p=>p.name),['Mercury','Venus','Earth','Mars','Jupiter','Saturn','Uranus','Neptune']);
+  assert.deepEqual(sol.planets.map(p=>p.name),['Mercury','Venus','Earth','Mars','Jupiter','Saturn','Uranus','Neptune','Pluto']);
   const earth=sol.planets[2];
   assert.equal(earth.diameter,12742);
   assert.equal(earth.moons[0].diameter,3475);

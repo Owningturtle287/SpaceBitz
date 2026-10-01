@@ -5,6 +5,7 @@ import {TerrainRenderer} from './terrain.js';
 import {paintShip,paintAstronaut} from './sprites.js';
 import {updateMotion,navigationTarget} from './motion.js';
 import {celestialSprite} from './celestial.js';
+import {ringSprites,paintRings} from './giants.js';
 import {paintStellarSurface,chartBrightness} from './stellar.js';
 import {canvasContextOptions,clearFrame,backgroundPosition,strokeEllipse,circleGeometry,fillAnnulus,fillDisk,drawImageInView,lineInView} from './rendering.js';
 import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM} from './scale.js';
@@ -68,6 +69,14 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.9.0',items:[
+    "Rebuilt giant planets with pixel cloud belts, turbulent whirls, feathered oval storms and improved palettes. Jupiter's rectangular mark is gone; Uranus and Neptune use researched blue-green colors.",
+    "Replaced broad placeholder rings with layered pixel bands, gaps, front/back occlusion and shadows, using measured Sol ring radii. Jupiter now has faint dust rings; Saturn retains its broad icy rings, with narrow Uranus/Neptune rings.",
+    "Generated giants now use deterministic temperature/cloud-based appearances, including Sol-like clouds, pale water clouds and methane haze. Appearance and ring rarity weights are documented game choices; world identities and orbital geometry remain save-compatible.",
+    "Added Tethys, Dione, Rhea and Iapetus to Saturn, and Ariel, Umbriel, Titania and Oberon to Uranus, with sourced diameters, orbital distances/periods and projected mean orbital planes.",
+    "Added landable dwarf planet Pluto and Charon, with an inclined eccentric mean orbit, synchronous retrograde spins and motion around their shared barycenter. System Fit includes Pluto; entering Sol still arrives beside Neptune.",
+    "World information now includes cloud families, ring extent, eccentricity and inclination, and distinguishes explorable moons and dwarf planets. Bounded textures/caches and browser stress coverage protect extreme-zoom rendering."
+]},
   {version:'1.8.1',items:[
     "Made the tiny system ship locator a narrow isosceles triangle with a longer forward tip, still aligned with the ship heading and shown only below four pixels.",
     "System travel now centers the camera on the ship at departure and tracks its integrated position every frame, preventing distant Hyperdrive approaches from leaving the viewport as zoom increases.",
@@ -668,7 +677,8 @@ function updateUI() {
   $('modeLabel').hidden=scene==='surface';
   $('modeLabel').textContent=scene==='chart'?'SECTOR / STAR CHART':'ORBITAL / SYSTEM';
   $('placeLabel').textContent=scene==='chart'?'The Reach':scene==='surface'?findBody(state.save.landed)?.name||'Surface':sys.name;
-  $('hint').textContent=scene==='chart'?'Select a star, then set a jump course.':scene==='surface'?'Tap a 1 m square, then GO HERE. Collect samples and return to your lander.':`${sys.star.type} STAR · ${sys.planets.length} PLANETS`;
+  const planetCount=sys.planets.filter(p=>p.kind==='planet').length,dwarfCount=sys.planets.length-planetCount;
+  $('hint').textContent=scene==='chart'?'Select a star, then set a jump course.':scene==='surface'?'Tap a 1 m square, then GO HERE. Collect samples and return to your lander.':`${sys.star.type} STAR · ${planetCount} PLANETS${dwarfCount?` · ${dwarfCount} DWARF PLANET`:''}`;
   $('zoneLegend').hidden=scene!=='system';$('zoneToggle').textContent=settings.zone?'ON':'OFF';$('zoneToggle').setAttribute('aria-pressed',String(settings.zone));
   const list=$('bodyList'),listKey=`${scene}:${sys.seed}:${sel?.id||''}`;
   if(state.listKey!==listKey){
@@ -759,20 +769,26 @@ $('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal
 function detailTile(grid,key,value){const tile=document.createElement('div');tile.className='detail-tile';const a=document.createElement('small'),b=document.createElement('strong');a.textContent=key;b.textContent=value;tile.append(a,b);grid.append(tile);}
 function appendWorldFacts(grid,body){
   if(body.id===state.save.homePlanet)detailTile(grid,'VOYAGE','Home planet');
-  detailTile(grid,'TYPE',body.type.toUpperCase());
+  detailTile(grid,'TYPE',(body.kind==='dwarf-planet'?'Dwarf planet · ':'')+body.type.toUpperCase());
   detailTile(grid,'DIAMETER',diameterText(body.diameter));
   detailTile(grid,'ORBIT PERIOD',body.period.toFixed(2)+' days');
   if(body.kind==='moon')detailTile(grid,'HOST',findBody(body.parent)?.name||'Planet');
   detailTile(grid,'ORBIT SEMIMAJOR AXIS',body.kind==='moon'?formatSystemKm(body.orbitKm):formatDistance(orbitalElements(body,state.save.days).a,'system'));
   if(body.rotationDays)detailTile(grid,'ROTATION',(Math.abs(body.rotationDays)*24).toFixed(1)+' h'+(body.rotationDays<0?' · retrograde':''));
-  if(body.moons)detailTile(grid,'MOONS',String(body.moons.length));
+  if(body.moons)detailTile(grid,'EXPLORABLE MOONS',String(body.moons.length));
+  detailTile(grid,'ORBIT ECCENTRICITY',orbitalElements(body,state.save.days).e.toFixed(4));
+  if(body.ephemeris)detailTile(grid,'ORBIT INCLINATION',(orbitalElements(body,state.save.days).inclination*180/Math.PI).toFixed(2)+'° · ecliptic');
+  if(body.equatorialInclination!==undefined)detailTile(grid,'ORBIT INCLINATION',body.equatorialInclination.toFixed(2)+'° · equator');
+  if(body.atmosphere)detailTile(grid,'CLOUDS',body.atmosphere.label);
+  if(body.rings)detailTile(grid,'VISIBLE RING EXTENT',diameterText(body.rings.outerKm)+' from center');
   detailTile(grid,'SURFACE',body.solid?'Solid · landable':'No solid surface');
 }
 function showDetails(body) {
   if(!body)return;const box=document.createElement('div');const grid=document.createElement('div');grid.className='detail-grid';
   if(state.scene==='chart'){
     const sys=makeSystem(body.seed);detailTile(grid,'SPECTRAL CLASS',sys.star.type);detailTile(grid,'SOLAR MASS',sys.star.mass.toFixed(2)+' M☉');
-    detailTile(grid,'LUMINOSITY',sys.star.luminosity.toFixed(2)+' L☉');detailTile(grid,'PLANETS',String(sys.planets.length));
+    detailTile(grid,'LUMINOSITY',sys.star.luminosity.toFixed(2)+' L☉');detailTile(grid,'PLANETS',String(sys.planets.filter(p=>p.kind==='planet').length));
+    const dwarfs=sys.planets.filter(p=>p.kind==='dwarf-planet').length;if(dwarfs)detailTile(grid,'DWARF PLANETS',String(dwarfs));
     detailTile(grid,'DISTANCE',formatDistance(Math.hypot(body.x-state.save.chart.x,body.y-state.save.chart.y),'chart'));
   }else if(body.kind==='star'){
     detailTile(grid,'SPECTRAL CLASS',body.type);detailTile(grid,'DIAMETER',diameterText(body.diameter));
@@ -788,7 +804,7 @@ function showDetails(body) {
   if(body.kind==='star'&&body.rotationDays)detailTile(grid,'ROTATION',(Math.abs(body.rotationDays)*24).toFixed(1)+' h'+(body.rotationDays<0?' · retrograde':''));
   box.append(grid);
   const note=document.createElement('p');note.textContent=state.scene==='chart'?'Chart coordinates and distances are always light-years. Origin: your home system. Stars and routes here are a procedural map.':
-    'System origin: the star. One coordinate unit is one light-second; 500 ls = 1 AU. Bodies and orbits share a linear physical scale. Hollow beacons locate bodies too small to see. Sol planets use approximate JPL elements; moon phases and generated systems are illustrative.';
+    'System origin: the star. One coordinate unit is one light-second; 500 ls = 1 AU. Bodies and orbits share a linear physical scale. Hollow beacons locate tiny bodies. Sol uses approximate mean orbits; moon planes/phases and generated systems are illustrative. Ring brightness is enhanced for visibility; generated cloud colors are theoretical.';
   box.append(note);
   if(state.scene==='system'){
     const focus=document.createElement('button');focus.className='button subtle';focus.textContent='FOCUS VIEW';
@@ -1110,18 +1126,16 @@ function drawStar(x,y,r,color,now,body=null) {
 }
 function drawPlanet(body,p,now,worldPos) {
   const sr=visualRadius(body.diameter,body.kind)*state.zoom;
-  if(p.x<-sr-100||p.x>state.width+sr+100||p.y<-sr-100||p.y>state.height+sr+100)return;
+  const extent=sr*(body.rings?body.rings.outerKm/(body.diameter/2):1);
+  if(p.x<-extent-100||p.x>state.width+extent+100||p.y<-extent-100||p.y>state.height+extent+100)return;
   const r=sr;const selected=state.selected?.id===body.id;
   if(r<1.5){
     // Hollow navigation beacon, not a larger physical disk.
     ctx.strokeStyle=body.color;ctx.lineWidth=1;ctx.strokeRect(Math.round(p.x)-2,Math.round(p.y)-2,4,4);
     if(selected){drawSelection(p.x,p.y,4,now);label(body.name,p.x,p.y-23,true);}return;
   }
-  if(body.name==='Saturn' || (body.type==='gas'&&hash(body.id)%3===0)){
-    ctx.save();ctx.strokeStyle='#d6cbad88';ctx.lineWidth=Math.min(64,Math.max(2,r*.16));
-    const c=Math.cos(-.31),s=Math.sin(-.31);
-    strokeEllipse(ctx,{x:p.x,y:p.y,ux:r*1.85*c,uy:r*1.85*s,vx:-r*.48*s,vy:r*.48*c},state.width,state.height);ctx.restore();
-  }
+  const rings=ringSprites(body,worldPos);
+  paintRings(ctx,rings,'back',p.x,p.y,r,state.width,state.height);
   ctx.save();
   if(r<86){
     ctx.shadowColor=body.color;ctx.shadowBlur=Math.min(26,r*.62);
@@ -1134,6 +1148,7 @@ function drawPlanet(body,p,now,worldPos) {
   ctx.save();ctx.imageSmoothingEnabled=false;
   drawImageInView(ctx,celestialSprite(body,state.save.days,worldPos),p.x-r,p.y-r,2*r,2*r,state.width,state.height);ctx.restore();
   ctx.strokeStyle='#d9f8fb42';ctx.lineWidth=1;strokeEllipse(ctx,circleGeometry(p.x,p.y,r),state.width,state.height);
+  paintRings(ctx,rings,'front',p.x,p.y,r,state.width,state.height);
   if(selected){drawSelection(p.x,p.y,r,now);label(body.name,p.x,p.y-r-25,true);}
 }
 function drawSystem(now) {

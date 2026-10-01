@@ -45,6 +45,11 @@ test('orbital tracks use the same ellipse and projection as the body positions',
     const days=300,o=orbitalElements(body,days),M=((o.M%TAU)+TAU)%TAU;let E=M;
     for(let i=0;i<8;i++)E-=(E-o.e*Math.sin(E)-M)/(1-o.e*Math.cos(E));
     const p=orbitPoint(body,days,E),actual=bodyPosition(body,days,sol);
+    if(body.barycentricMoon){
+      const companion=bodyPosition(body.moons[0],days,sol);
+      p.x-=(companion.x-actual.x)*body.barycentricMoon.massFraction;
+      p.y-=(companion.y-actual.y)*body.barycentricMoon.massFraction;
+    }
     const host=body.kind==='moon'?bodyPosition(sol.planets.find(p=>p.id===body.parent),days,sol):{x:0,y:0};
     close(p.x+host.x,actual.x);close(p.y+host.y,actual.y);
   }
