@@ -349,7 +349,9 @@ try{
   assert.equal(await page.locator('#mapButton').evaluate(e=>e.classList.contains('latched')),false);
   assert.equal(await page.evaluate(()=>window.__game.state.selected.name),'Neptune');
   assert.equal(await page.evaluate(()=>window.__game.state.followBody.id),'sol:Neptune');
-  await page.evaluate(()=>{window.__game.state.warpUntil=0;window.__game.create(false);window.__game.frame(performance.now());});
+  // This save/portrait fixture needs a landable home. Random new universes can
+  // legitimately be barren; that startup/entry path has separate coverage below.
+  await page.evaluate(()=>{document.getElementById('universeSeed').value='browser-start-1';window.__game.state.warpUntil=0;window.__game.create(false);window.__game.frame(performance.now());});
   assert.equal(await page.evaluate(()=>window.__game.state.scene),'surface');
   await page.reload();await page.locator('#startGame').click();await page.locator('.load-save').first().click();
   await page.waitForFunction(()=>window.__game?.state.scene==='surface'&&window.__game.state.lastUI>0);
