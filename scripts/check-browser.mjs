@@ -372,7 +372,11 @@ try{
       const system=makeSystem('browser-v2-'+type,config);s.system=system;s.save.generation=config;s.save.currentSystem=system.seed;s.scene='system';s.followBody=null;s.autopilot=null;s.centerZoom=null;s.focusBody=null;s.selected=system.star;s.panUntil=Infinity;
       const position=bodyPosition(system.star,s.save.days,system);s.camera={...position};s.save.ship={x:position.x+visualRadius(system.star.diameter)*1.2+150,y:position.y};s.zoom=100/visualRadius(system.star.diameter);
       g.updateUI();s.stellarSeconds=24;g.backdrop(1000);g.drawSystem(1000);
-      const c=document.getElementById('sky');out.drawImage(c,Math.round(c.width/2)-230,Math.round(c.height/2)-230,460,460,index%4*250,Math.floor(index/4)*250,250,250);out.fillStyle='#8ee9d4';out.font='12px monospace';out.fillText(system.star.familyLabel.slice(0,31),index%4*250+8,Math.floor(index/4)*250+238);
+      // Freeze each frame's pixels before the source canvas is repainted.
+      // WebKit can defer canvas-to-canvas copies until the montage is exported.
+      const c=document.getElementById('sky'),tile=document.createElement('canvas');tile.width=tile.height=460;
+      tile.getContext('2d').putImageData(c.getContext('2d').getImageData(Math.round(c.width/2)-230,Math.round(c.height/2)-230,460,460),0,0);
+      out.drawImage(tile,0,0,460,460,index%4*250,Math.floor(index/4)*250,250,250);out.fillStyle='#8ee9d4';out.font='12px monospace';out.fillText(system.star.familyLabel.slice(0,31),index%4*250+8,Math.floor(index/4)*250+238);
       g.showDetails(system.star);const panel=document.querySelector('.modal-card');
       if(getComputedStyle(panel).backgroundColor!=='rgb(16, 30, 50)')throw Error('Star panel not opaque');
       if(!document.getElementById('modalEyebrow').hidden||panel.textContent.includes('System origin:'))throw Error('Old atlas boilerplate remains');
