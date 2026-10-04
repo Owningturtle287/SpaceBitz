@@ -2,6 +2,7 @@
 // simulation time is days. Celestial sizes and orbit distances share one linear scale.
 import {AU_KM,SYSTEM_PX_PER_KM,SUN_DIAMETER_KM} from './scale.js';
 import {giantProfile,ringProfile} from './giants.js';
+import {makeArchitecture,solFacts,randomFor,GENERATION_VERSION} from './universe.js';
 export const TAU = Math.PI * 2;
 export const DAY_MS = 86400000;
 export const EPOCH = Date.UTC(2026, 0, 1);
@@ -62,18 +63,34 @@ export function position(body,days){
   return orbitPoint(body,days,E);
 }
 export function bodyPosition(body, days, system) {
+  if(body.kind==='star')return stellarPositions(system,days)[body.id]||{x:0,y:0};
   const p = position(body, days, system.star.mass, system.star);
   if (body.kind !== 'moon') {
     if(body.barycentricMoon){
       const companion=body.moons.find(m=>m.id===body.barycentricMoon.id),relative=position(companion,days);
       return {x:p.x-relative.x*body.barycentricMoon.massFraction,y:p.y-relative.y*body.barycentricMoon.massFraction};
     }
-    return p;
+    const center=body.orbitHost?stellarPositions(system,days)[body.orbitHost]:null;
+    return center?{x:p.x+center.x,y:p.y+center.y}:p;
   }
   const host = system.planets.find(planet => planet.id === body.parent);
   const h = bodyPosition(host, days, system);
   return { x: h.x + p.x, y: h.y + p.y };
 }
+// Recursive Keplerian hierarchy: stars and pair barycenters move coherently.
+// Detached coplanar approximation, not a full N-body gravitational integration.
+export function stellarPositions(system,days=0){
+  if(!system.binaries?.length)return Object.fromEntries((system.stars||[system.star]).map(s=>[s.id,{x:0,y:0}]));
+  const result={},nodes=new Map([...system.stars,...system.binaries].map(n=>[n.id,n]));
+  function visit(id,center){
+    result[id]=center;const node=nodes.get(id);if(node.kind!=='binary')return;
+    const relative=position(node,days),left=nodes.get(node.left),right=nodes.get(node.right);
+    visit(left.id,{x:center.x-relative.x*right.mass/node.mass,y:center.y-relative.y*right.mass/node.mass});
+    visit(right.id,{x:center.x+relative.x*left.mass/node.mass,y:center.y+relative.y*left.mass/node.mass});
+  }
+  visit(system.rootId,{x:0,y:0});return result;
+}
+export function orbitCenter(body,days,system){return body.orbitHost?stellarPositions(system,days)[body.orbitHost]||{x:0,y:0}:{x:0,y:0};}
 const SOL = [
   ['Mercury', .387098, 4879, '#aeb3b9', 'rock'],
   ['Venus', .723332, 12104, '#dfbc82', 'desert'],
@@ -143,11 +160,16 @@ function proceduralStar(seed,r){
   return {id:seed+':star',name:starName(seed),kind:'star',mass,luminosity,
     diameter:Math.round(SUN_DIAMETER_KM*mass**.8),color:spectral.color,type:spectral.type+'V'};
 }
-export function starAppearance(seed){
+export function starAppearance(seed,generation=null){
+  if(generation?.version===GENERATION_VERSION){
+    if(seed==='sol')return solFacts({id:'sol:star',name:'Sol',kind:'star',type:'G2V',diameter:SUN_DIAMETER_KM});
+    return makeArchitecture(seed,starName(seed),generation).star;
+  }
   if(seed==='sol')return {color:'#ffd75a',type:'G2V',mass:1,luminosity:1,diameter:SUN_DIAMETER_KM};
   return proceduralStar(seed,rng('system:'+seed));
 }
-export function makeSystem(seed) {
+export function makeSystem(seed,generation=null) {
+  if(seed!=='sol'&&generation?.version===GENERATION_VERSION)return makeModernSystem(seed,generation);
   if (seed === 'sol') {
     const planets = SOL.map(([name, au, diameter, color, type], i) => ({
       id: `sol:${name}`, name, kind: name==='Pluto'?'dwarf-planet':'planet', type, au, diameter, color,
@@ -159,7 +181,9 @@ export function makeSystem(seed) {
         ...SOL_MOON_PLANES[moon]
       })).sort((a,b)=>a.orbitKm-b.orbitKm)
     }));
-    return completeSystem({ seed, name: 'Sol', star: { id:'sol:star', name:'Sol', kind:'star', mass:1, luminosity:1, diameter:SUN_DIAMETER_KM, color:'#ffd75a', type:'G2V' }, planets });
+    const system=completeSystem({ seed, name: 'Sol', star: { id:'sol:star', name:'Sol', kind:'star', mass:1, luminosity:1, diameter:SUN_DIAMETER_KM, color:'#ffd75a', type:'G2V' }, planets });
+    if(generation?.version===GENERATION_VERSION){system.star=solFacts(system.star);system.stars=[system.star];system.binaries=[];system.rootId=system.star.id;system.multiplicity='Single';system.architecture='Single-star orbits';system.hostId=system.star.id;system.hostLuminosity=1;system.hostMass=1;system.generation=generation;}
+    return system;
   }
   const r = rng('system:' + seed);
   const star=proceduralStar(seed,r),mass=star.mass,luminosity=star.luminosity;
@@ -189,24 +213,48 @@ export function makeSystem(seed) {
   }
   return completeSystem({seed,name:star.name,star,planets});
 }
+function makeModernSystem(seed,generation){
+  const r=randomFor('planets:v2:'+seed),system={seed,name:starName(seed),...makeArchitecture(seed,starName(seed),generation),planets:[]};
+  const {star,hostLuminosity,hostMass}=system,zone=habitableZone(hostLuminosity);
+  // Preserve existing planet art until the dedicated planet/moon release.
+  // Evolved survivors begin outside a conservative former stellar envelope.
+  const remnant=['wd','ns','magnetar','quark','boson','blackDwarf'].includes(star.family);
+  const evolved=['giant','agb','postagb','supergiant','lbv','wr','tzo'].includes(star.family);
+  let au=Math.max(system.minAU,.15*Math.sqrt(hostLuminosity)+.025,remnant?2:0,evolved?star.initialMass*.8:0);
+  const giantChance=clamp(.22*10**(star.metallicity*.8)*(star.mass<.6?.5:1),.03,.65);
+  const count=remnant?(r()<.35?1+Math.floor(r()*3):0):star.family==='protostar'?Math.floor(r()*3):2+Math.floor(r()*6);
+  for(let i=0;i<count;i++){
+    au*=1.55+r()*.4;if(au>system.maxAU)break;
+    const type=au>zone.outer*1.4&&r()<giantChance?'gas':au<zone.inner*.75?(r()<.6?'rock':'desert'):au<=zone.outer&&r()<.64?'temperate':r()<.45?'ice':'rock';
+    const diameter=Math.round(type==='gas'?45000+r()*95000:3200+r()*16000),id=`${seed}:p${i}`;
+    const palette={gas:'#d7b38d',temperate:'#5aa8bd',desert:'#d38d67',ice:'#c3cde6',rock:'#a7a7b7'};
+    const p={id,name:`${system.name} ${roman(i+1)}`,kind:'planet',type,au,period:periodDays(au,hostMass),diameter,phase:r()*TAU,color:palette[type],eccentricity:r()*.08,orbitalInclination:r()*3,orbitalNode:r()*360,periapsis:r()*TAU,orbitHost:system.hostId,hostMass,moons:[]};
+    // Account for eccentric apocenter/pericenter as well as semimajor axis.
+    if(au*(1-p.eccentricity)<system.minAU||au*(1+p.eccentricity)>system.maxAU)continue;
+    const n=type==='gas'?2+Math.floor(r()*2):r()<.42?1:0;
+    for(let j=0;j<n;j++)p.moons.push({id:`${id}:m${j}`,parent:id,name:`${p.name}-${String.fromCharCode(97+j)}`,kind:'moon',type:'rock',diameter:Math.min(Math.round(diameter*.4),Math.round(480+r()*3500)),period:2+j*3,phase:r()*TAU,color:'#aebac9'});
+    system.planets.push(p);
+  }
+  return completeSystem(system);
+}
 function completeSystem(system) {
   // Approximate sidereal rotation periods in Earth days.
   const spins = {Mercury:58.646,Venus:-243.025,Earth:.99726968,Mars:1.025957,
     Jupiter:.41354,Saturn:.444,Uranus:-.71833,Neptune:.67125,Pluto:-6.3872};
-  system.star.rotationDays = system.seed === 'sol' ? 25.05 : 10 + rng('spin:'+system.seed)()*30;
+  system.star.rotationDays ??= system.seed === 'sol' ? 25.05 : 10 + rng('spin:'+system.seed)()*30;
   for (const p of system.planets) {
     const r=rng('rotation:'+p.id);
     p.rotationDays=system.seed==='sol'?spins[p.name]:p.type==='gas'?.3+r()*.4:.65+r()*2;
     if(system.seed==='sol'&&p.name==='Earth')p.rotationPhase=100.66085856687278*DEG;
     p.solid=!['gas','ice-giant'].includes(p.type);
     if(p.id==='sol:Pluto')p.barycentricMoon={id:'sol:Pluto:Charon',massFraction:1.586/(13.03+1.586)};
-    p.atmosphere=giantProfile(p,system.star);p.rings=ringProfile(p);
+    p.atmosphere=giantProfile(p,system.hostLuminosity?{...system.star,luminosity:system.hostLuminosity}:system.star);p.rings=ringProfile(p);
     if(p.atmosphere)p.color='#'+p.atmosphere.colors[2].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
     p.moons=p.moons.filter((m,index)=>{
       m.orbitDirection=m.name==='Triton'?-1:1;
       if(system.seed!=='sol'){
         const massEarth=(p.diameter/12742)**3*(p.type==='gas'?.24:.95);
-        const hillKm=p.au*149597870.7*Math.cbrt(massEarth*3.003e-6/(3*system.star.mass));
+        const hillKm=p.au*149597870.7*Math.cbrt(massEarth*3.003e-6/(3*(p.hostMass||system.star.mass)));
         const minimum=p.diameter*1.8,maximum=hillKm*.35;
         if(maximum<minimum)return false;
         const desired=p.diameter*(9+index*20+r()*12);

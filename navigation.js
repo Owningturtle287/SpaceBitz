@@ -1,4 +1,4 @@
-import {TAU,bodyPosition,orbitalElements,visualRadius} from './model.js';
+import {TAU,bodyPosition,orbitalElements,visualRadius,orbitRadius} from './model.js';
 import {SURFACE_UNIT,CHART_UNIT,SYSTEM_UNIT,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM,HYPERDRIVE_AU_PER_SECOND,ORBIT_DRIVE_LS_PER_SECOND,LIGHT_SECONDS_PER_AU} from './scale.js';
 
 export function centerZoomAt(from,to,progress){
@@ -18,7 +18,8 @@ export function cameraViewAt(fromCamera,toCamera,fromZoom,toZoom,progress){
 }
 
 export function systemFitZoom(system,width,height,days=0){
-  const reach=Math.max(...system.planets.map(p=>{const o=orbitalElements(p,days);return o.a*(1+o.e)*1.1;}));
+  const stellarReach=(system.binaries||[]).reduce((n,b)=>n+orbitRadius(b.au)*(1+b.eccentricity),0);
+  const reach=Math.max(visualRadius(system.star.diameter)*1.5,stellarReach,...system.planets.map(p=>{const o=orbitalElements(p,days);return o.a*(1+o.e)*1.1+stellarReach;}));
   return Math.max(SYSTEM_MIN_ZOOM,Math.min(width,height)*.42/reach);
 }
 export function travelSpeed(scene,distance,drive='hyper'){
