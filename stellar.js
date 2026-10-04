@@ -19,6 +19,7 @@ function sphere(size){
   const result=new Float32Array(points);spheres.set(size,result);return result;
 }
 export function stellarActivity(body,seconds){
+  if(body.visual?.spots===0)return [];
   return Array.from({length:9},(_,i)=>{
     const seed=body.id+':activity:'+i,cycle=60+unit(seed)*55;
     const age=((seconds/cycle+unit(seed+':phase'))%1+1)%1;
@@ -27,17 +28,18 @@ export function stellarActivity(body,seconds){
     const flareAge=((seconds+unit(seed+':offset')*flareCycle)%flareCycle+flareCycle)%flareCycle;
     const duration=7+unit(seed+':duration')*4;
     return {longitude:unit(seed+':lon')*TAU,latitude:(unit(seed+':lat')-.5)*1.15,
-      diameterKm:(7000+unit(seed+':size')*21000)*envelope,
+      diameterKm:(body.visual?body.diameter*(.006+unit(seed+':size')*.017)*body.visual.spots:7000+unit(seed+':size')*21000)*envelope,
       life:envelope,flare:flareAge<duration?Math.sin(Math.PI*flareAge/duration)**2:0};
   });
 }
 // A few sustained eruptions at a time, with quiet intervals per active region.
 // Their reach is an art scale, separate from every physical diameter in the UI.
 export function stellarProminences(body,seconds){
+  if(body.visual?.prominences===0)return [];
   return Array.from({length:6},(_,i)=>{
     const seed=body.id+':prominence:'+i,cycle=32+unit(seed)*28,duration=9+unit(seed+':duration')*6;
     const age=((seconds+unit(seed+':phase')*cycle)%cycle+cycle)%cycle;
-    const life=age<duration?Math.sin(Math.PI*age/duration)**2:0;
+    const life=(age<duration?Math.sin(Math.PI*age/duration)**2:0)*Math.min(1,body.visual?.prominences??1);
     return {angle:unit(seed+':angle')*TAU+Math.sin(seconds*.07+i)*.035,
       life,height:(.2+unit(seed+':height')*.14)*life,width:.10+unit(seed+':width')*.09,
       bend:(unit(seed+':bend')-.5)*.55,phase:unit(seed+':grain')*TAU};
@@ -47,11 +49,13 @@ function makeFrame(body,seconds,rotation,SIZE){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=SIZE;
   const g=canvas.getContext('2d'),image=g.createImageData(SIZE,SIZE),data=image.data,seed=hash(body.id);
   const base=body.color.match(/\w\w/g).map(h=>parseInt(h,16));
+  const compact=body.visual?.granulation===0,scale=body.visual?.granulation||1,pulse=1+(body.visual?.pulsation||0)*Math.sin(seconds*.8+seed%11);
   const points=sphere(SIZE),angle=rotation+seconds*.025,ca=Math.cos(angle),sa=Math.sin(angle),drift=seconds*.26;
   const plumes=stellarProminences(body,seconds).filter(p=>p.life>.005);
   for(let i=0;i<points.length;i+=6){
     const p=points[i],nx=points[i+1],ny=points[i+2],nz=points[i+3],rho=points[i+4],a=points[i+5];
     if(rho>1){
+      if(compact)continue;
       const h=rho-1,rim=.012+.018*noise(Math.cos(a)*27+seconds*.4,Math.sin(a)*27,seed+31);
       let energy=h<rim?.55*(1-h/rim):0;
       for(const plume of plumes){
@@ -70,15 +74,21 @@ function makeFrame(body,seconds,rotation,SIZE){
       for(let k=0;k<3;k++)data[p+k]=Math.round(clamp(base[k]*(.65+energy*.45)+hot*65,0,255)/4)*4;
       data[p+3]=Math.round(255*clamp(energy*3));continue;
     }
+    if(compact){
+      const shade=(.72+.28*nz)*(body.family==='wd'?.96:1),hot=(.4+.6*nz)*22;
+      for(let k=0;k<3;k++)data[p+k]=Math.round(clamp(base[k]*shade+hot,0,255)/4)*4;
+      data[p+3]=255;continue;
+    }
     const sx=nx*ca+nz*sa,sz=nz*ca-nx*sa;
     const warp=noise(sx*7+drift*.25,ny*7+sz*3-drift*.12,seed)-.5;
-    const flow=noise(sx*21+sz*11+warp*2+drift,ny*21-drift*.48,seed+3);
-    const eddy=noise(ny*29+sz*9+drift*.6,sz*23+sx*7-drift*.7,seed+7);
+    const flow=noise((sx*21+sz*11)/scale+warp*2+drift,ny*21/scale-drift*.48,seed+3);
+    const eddy=noise((ny*29+sz*9)/scale+drift*.6,(sz*23+sx*7)/scale-drift*.7,seed+7);
     const fine=noise(sx*61+sz*19-drift,ny*61+sz*13+drift*.8,seed+11);
     const cell=flow*.64+eddy*.36,channels=clamp((.47-cell)*2.6);
     const shade=(.68+cell*.5+fine*.16-channels*.24)*(.73+.27*nz);
-    const heat=clamp((cell-.52)*3)*85;
-    for(let k=0;k<3;k++)data[p+k]=Math.round(clamp(base[k]*shade+heat+(k===0?12:0),0,255)/4)*4;
+    const heat=clamp((cell-.52)*3)*85*(body.family==='brown'?Math.min(1,(body.temperature/2200)**4):body.family==='blackDwarf'||body.family==='boson'?0:1);
+    const contrast=body.temperature>8000?.45:1;
+    for(let k=0;k<3;k++)data[p+k]=Math.round(clamp((base[k]*(1+(shade-1)*contrast)+heat*contrast+(k===0?12*contrast:0))*pulse,0,255)/4)*4;
     data[p+3]=255;
   }
   // Pixel-rasterized active groups: irregular penumbra, dark umbra and small
@@ -108,7 +118,7 @@ export function paintStellarSurface(ctx,body,x,y,r,seconds,days,reducedMotion=fa
   const extent=r*PAD;
   if(r<1||x+extent<0||x-extent>width||y+extent<0||y-extent>height)return;
   const t=reducedMotion?0:seconds,rotation=reducedMotion?0:rotationAngle(body,days);
-  const size=r<80?96:192,tick=Math.floor(t*FPS),key=`${body.id}:${size}:${reducedMotion}`;
+  const size=r<80?96:192,tick=Math.floor(t*FPS),key=`${body.id}:${body.color}:${body.family||'legacy'}:${size}:${reducedMotion}`;
   let pair=cache.get(key);
   if(!pair||pair.tick!==tick){
     const current=pair?.tick===tick-1?pair.next:makeFrame(body,tick/FPS,rotation,size);

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.11.0 — 2026-10-04
+
+- Added deterministic, physically linked stellar families from main sequence through giants and compact remnants; black holes and quasars remain excluded.
+- Added default Scientific Mode and a new-universe percentage-text editor. Each independent table must total exactly 100%; invalid inputs cannot be applied. Speculative candidates are custom-only and explicitly labeled.
+- Added moving detached binary/triple/quadruple hierarchies, companion selection/travel, S-type and P-type planetary placement with conservative stability/envelope margins, and safe entry into barren systems.
+- Added temperature-based star colors, family-specific pixel surfaces/activity, wind envelopes, pulsation and compact-remnant motifs; interstellar color/brightness/multiplicity cues match.
+- Made info/log panels opaque; removed atlas/origin boilerplate; added header Focus View/telemetry, centered stellar family, expandable facts and Sol comparisons, temperature, gravity, age, uncertain stellar-end estimates, metallicity, radiation, winds and habitable-zone radii/diameters.
+- Stored generation settings per voyage and validated them on import. Legacy voyages retain original generated geography. Planet/moon artwork and detailed environmental adaptations are planned for a later release.
+- Documented science sources, agreed encounter weights, approximate models and scientific limitations in `docs/stars.md`.
+
 ## 1.10.0 — 2026-10-01
 
 - Gas and ice giants now have animated winds: cloud belts flow in opposing directions, filaments shift and local vortices swirl independently of planetary rotation.

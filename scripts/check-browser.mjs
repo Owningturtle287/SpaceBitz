@@ -3,7 +3,10 @@ import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
-import {chromium,webkit} from 'playwright';
+import {createRequire} from 'node:module';
+const require=createRequire(import.meta.url);
+let playwright;try{playwright=require('playwright');}catch{playwright=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright');}
+const {chromium,webkit}=playwright;
 const root=resolve(new URL('..',import.meta.url).pathname),engine=process.env.BROWSER||'chromium';
 const mime={'.html':'text/html','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.woff':'font/woff','.json':'application/json','.webmanifest':'application/manifest+json','.png':'image/png'};
 const server=createServer(async(req,res)=>{
@@ -14,7 +17,7 @@ const server=createServer(async(req,res)=>{
   }catch{res.statusCode=404;res.end();}
 });
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-const browser=await ({chromium,webkit}[engine]).launch({headless:true});
+const browser=await ({chromium,webkit}[engine]).launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH&&engine==='chromium'?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--no-zygote','--single-process','--disable-gpu']}: {})});
 try{
   const page=await browser.newPage({viewport:{width:844,height:390},deviceScaleFactor:2,hasTouch:true,serviceWorkers:'block'});
   page.setDefaultTimeout(15000);
@@ -24,10 +27,21 @@ try{
     const response=await route.fetch();let source=await response.text();
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
-    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,update,updateUI,create,start,select,showDetails,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel};';
+    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel};';
     await route.fulfill({response,body:source});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
+  assert.equal(await page.locator('#scientificMode').isChecked(),true);
+  assert.equal(await page.locator('#generationOptions').isVisible(),false);
+  await page.locator('#scientificMode').uncheck();await page.locator('#generationOptions').click();
+  const m=page.locator('input[data-pool="spectral"][data-type="M"]'),k=page.locator('input[data-pool="spectral"][data-type="K"]');
+  await m.fill('73.999999');assert.equal(await page.locator('#applyGeneration').isDisabled(),true);
+  await k.fill('14.000001');assert.equal(await page.locator('#applyGeneration').isDisabled(),false);
+  await k.fill('NaN');assert.equal(await page.locator('#applyGeneration').isDisabled(),true);
+  await k.fill('14.000001');await page.screenshot({path:`.qa/${engine}-generation-editor.png`}).catch(()=>{});
+  await page.locator('#applyGeneration').click();
+  await page.reload();assert.equal(await page.locator('#scientificMode').isChecked(),false);
+  await page.locator('#scientificMode').check();
   await page.locator('#startGame').click();
   const started=Date.now();await page.locator('#solGame').click();
   await page.waitForFunction(()=>window.__game?.state.scene==='surface'&&window.__game.state.lastUI>0);
@@ -346,6 +360,45 @@ try{
   await page.evaluate(()=>{window.__game.launch();window.__game.frame(performance.now());});
   await page.screenshot({path:`.qa/${engine}-portrait-system.png`});
   await page.evaluate(()=>{window.__qaPause=true;});
+  const starsV2=await page.evaluate(async()=>{
+    const g=window.__game,s=g.state,{defaults}=await import('/universe.js'),{makeSystem,bodyPosition,visualRadius}=await import('/model.js');
+    const reports=[],montage=document.createElement('canvas');montage.width=1000;montage.height=750;const out=montage.getContext('2d');
+    const types=['main','subgiant','giant','agb','supergiant','lbv','wr','wd','ns','magnetar','postagb','brown'];
+    for(const [index,type]of types.entries()){
+      const config=defaults(false);for(const k of Object.keys(config.pools.family))config.pools.family[k]=k===type?100:0;for(const k of Object.keys(config.pools.speculative))config.pools.speculative[k]=k==='ordinary'?100:0;
+      for(const k of Object.keys(config.pools.multiplicity))config.pools.multiplicity[k]=k==='triple'?100:0;
+      const system=makeSystem('browser-v2-'+type,config);s.system=system;s.save.generation=config;s.save.currentSystem=system.seed;s.scene='system';s.followBody=null;s.autopilot=null;s.centerZoom=null;s.focusBody=null;s.selected=system.star;s.panUntil=Infinity;
+      const position=bodyPosition(system.star,s.save.days,system);s.camera={...position};s.save.ship={x:position.x+visualRadius(system.star.diameter)*1.2+150,y:position.y};s.zoom=100/visualRadius(system.star.diameter);
+      g.updateUI();s.stellarSeconds=24;g.backdrop(1000);g.drawSystem(1000);
+      const c=document.getElementById('sky');out.drawImage(c,Math.round(c.width/2)-230,Math.round(c.height/2)-230,460,460,index%4*250,Math.floor(index/4)*250,250,250);out.fillStyle='#8ee9d4';out.font='12px monospace';out.fillText(system.star.familyLabel.slice(0,31),index%4*250+8,Math.floor(index/4)*250+238);
+      g.showDetails(system.star);const panel=document.querySelector('.modal-card');
+      if(getComputedStyle(panel).backgroundColor!=='rgb(16, 30, 50)')throw Error('Star panel not opaque');
+      if(!document.getElementById('modalEyebrow').hidden||panel.textContent.includes('System origin:'))throw Error('Old atlas boilerplate remains');
+      if(!document.querySelector('#modalTitleActions .focus-object')||!document.getElementById('modalTelemetry').textContent.includes('DISTANCE FROM SHIP'))throw Error('Missing star header telemetry/focus');
+      if(document.querySelector('.stellar-family').textContent.indexOf(system.star.familyLabel)<0)throw Error('Missing family');
+      const facts=[...document.querySelectorAll('#modalContent details')];if(facts.length<17||facts.some(f=>!f.textContent.includes('SOL REFERENCE')))throw Error('Missing expandable references');
+      g.closeModal();g.select(system.stars[1]);g.primary();for(let i=0;i<5000&&s.autopilot;i++)g.update(100,0);if(s.autopilot)throw Error('Companion travel never arrives: '+type);
+      const parked=bodyPosition(system.stars[1],s.save.days,system);if(Math.hypot(s.save.ship.x-parked.x,s.save.ship.y-parked.y)<visualRadius(system.stars[1].diameter))throw Error('Companion arrival inside star');
+      reports.push({family:type,temperature:system.star.temperature,diameter:system.star.diameter,stars:system.stars.length,planets:system.planets.length});
+    }
+    return {reports,image:montage.toDataURL()};
+  });
+  await writeFile(`.qa/${engine}-stellar-catalogue.png`,Buffer.from(starsV2.image.split(',')[1],'base64'));delete starsV2.image;
+  await page.evaluate(()=>window.__game.showDetails(window.__game.state.system.star));
+  await page.screenshot({path:`.qa/${engine}-stellar-info-portrait.png`});
+  const overflow=await page.locator('.modal-card').evaluate(e=>e.scrollWidth>e.clientWidth);assert.equal(overflow,false);
+  await page.evaluate(()=>window.__game.closeModal());await page.locator('#journalButton').click();
+  assert.equal(await page.locator('.modal-card').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(16, 30, 50)');await page.evaluate(()=>window.__game.closeModal());
+  const v2Soak=await page.evaluate(async()=>{
+    const g=window.__game,s=g.state,{defaults}=await import('/universe.js'),{makeSystem,bodyPosition,visualRadius}=await import('/model.js'),{stellarCacheStats}=await import('/stellar.js');
+    const times=[];for(let i=0;i<360;i++){
+      if(i%60===0){const c=defaults(false),family=['main','giant','agb','wr','wd','magnetar'][i/60];for(const k of Object.keys(c.pools.family))c.pools.family[k]=k===family?100:0;for(const k of Object.keys(c.pools.multiplicity))c.pools.multiplicity[k]=k==='quad'?100:0;s.system=makeSystem('v2-soak-'+i,c);s.save.generation=c;s.save.currentSystem=s.system.seed;s.selected=null;s.scene='system';}
+      const p=bodyPosition(s.system.star,s.save.days,s.system);s.camera=p;s.zoom=100/visualRadius(s.system.star.diameter);s.stellarSeconds=i/30;const begin=performance.now();g.backdrop(i*33);g.drawSystem(i*33);times.push(performance.now()-begin);if(i%12===0)await new Promise(r=>requestAnimationFrame(r));
+    }
+    g.enterChart();for(let i=0;i<30;i++){s.camera={x:i*300,y:i*200};g.backdrop(1000);g.drawChart(1000);}
+    g.showDetails(s.selected);g.closeModal();
+    times.sort((a,b)=>a-b);const stats={frames:times.length,p95Ms:times[Math.floor(times.length*.95)],cache:stellarCacheStats()};if(stats.cache.frames>4||stats.p95Ms>250)throw Error('v2 stellar performance limit exceeded '+JSON.stringify(stats));return stats;
+  });
   const stellar=await page.evaluate(async()=>{
     const {paintStellarSurface,stellarProminences}=await import('/stellar.js'),{makeSystem}=await import('/model.js');
     const body=makeSystem('sol').star,c=document.createElement('canvas');c.width=c.height=512;const ctx=c.getContext('2d');
@@ -424,5 +477,10 @@ try{
     if(stats.p95Ms>250||stats.stellar.frames>4||stats.celestial.frames>160||stats.celestial.maps>48||stats.rings.frames>24||Object.values(stats.weather).some(n=>n>6))throw new Error('Soak exceeded render/cache bounds '+JSON.stringify(stats));
     return stats;
   });
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results,giants,stellar,weather,soak},null,2));
+  const barren=await page.evaluate(async()=>{
+    const g=window.__game,{defaults}=await import('/universe.js'),{makeSystem}=await import('/model.js'),generation=defaults(false);for(const k of Object.keys(generation.pools.family))generation.pools.family[k]=k==='wd'?100:0;for(const k of Object.keys(generation.pools.multiplicity))generation.pools.multiplicity[k]=k==='single'?100:0;
+    let seed,system;for(let i=0;i<50;i++){seed='barren-'+i;system=makeSystem(seed,generation);if(!system.planets.length)break;}if(system.planets.length)throw Error('No barren fixture');
+    const save={...g.state.save,generation,currentSystem:seed,scene:'system',landed:null,homePlanet:null};g.start(save);g.enterSystem({seed,x:0,y:0});g.drawSystem(0);g.showDetails(system.star);g.closeModal();if(g.state.save.ship.x!==g.state.camera.x)throw Error('Barren entry not centered');return {seed,scene:g.state.scene};
+  });
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

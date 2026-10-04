@@ -1,4 +1,5 @@
 import {makeSystem,bodyPosition,visualRadius,currentDays} from './model.js';
+import {checkedGeneration} from './universe.js';
 const seedValue=(value,label)=>{
   if(typeof value!=='string'||!value.length||value.length>180)throw Error(`Invalid ${label}.`);
   return value;
@@ -15,11 +16,12 @@ export function importVoyage(raw,id,now=Date.now()){
     days:Number.isFinite(raw.days)?raw.days:currentDays(now),updated:now,
     discoveries:Array.isArray(raw.discoveries)?raw.discoveries.filter(x=>typeof x==='string'):[],
     log:Array.isArray(raw.log)?raw.log.filter(x=>x&&typeof x.name==='string').map(x=>({...x})):[]};
+  if(raw.generation!==undefined)common.generation=checkedGeneration(raw.generation);
   // Field-format saves restore every location and exploration field. Import as a
   // separate voyage so a backup never silently replaces the existing original.
   if(raw.layoutVersion!==undefined){
     if(![1,2,3,4].includes(raw.layoutVersion))throw Error('This save uses an unsupported layout version.');
-    const currentSystem=seedValue(raw.currentSystem||homeSeed,'current system'),system=makeSystem(currentSystem);
+    const currentSystem=seedValue(raw.currentSystem||homeSeed,'current system'),system=makeSystem(currentSystem,common.generation);
     if(!['system','surface','chart'].includes(raw.scene))throw Error('Invalid saved scene.');
     const bodies=system.planets.flatMap(p=>[p,...p.moons]);
     if(raw.scene==='surface'&&!bodies.find(b=>b.id===raw.landed)?.solid)throw Error('The saved landing world is not available.');

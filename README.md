@@ -19,7 +19,7 @@ For local development, serve this directory with `python3 -m http.server 8000` a
 
 ## Giant worlds and the extended Sol system
 
-Version **1.10.0** animates gas/ice-giant winds with opposing cloud jets, swirling vortices and storms that grow and fade. Jupiter has a persistent Great Red Spot, Oval BA and pale ovals; Saturn has white-storm outbreaks, Uranus bright cloud outbreaks and Neptune transient dark vortices with companion clouds. Generated worlds get independently seeded wind and storm traits. Weather uses accelerated visual timing, independent of the simulation clock; **Reduce motion** freezes it.
+Version **1.11.0** adds diverse stellar families, physically linked properties, moving detached multiple-star systems, themed stellar visuals, and redesigned opaque info/log panels with expandable facts and Sol comparisons. Scientific Mode is enabled by default; disable it to edit exact 100% generation tables using text inputs. New voyages retain their own distribution, while legacy voyages preserve their original geography. See [stellar science and model limits](docs/stars.md). Planet/moon texture and environmental upgrades will follow in a later release. The existing animated giant weather remains supported.
 
 The v1.9 artwork rebuilds the gas/ice giants with pixel cloud belts, curled storms and distinct reflected-light palettes. Rings have radial detail, major gaps, planetary shadows and physical radii; Jupiter’s dust rings are faint. Generated colors follow temperature/cloud models with documented artistic rarity weights.
 
@@ -102,4 +102,3 @@ Interstellar star brightness changes gently and independently, respecting Twinkl
 The browser gate exercises 1,200 rendered frames across 20 generated systems, checking render time and cache bounds in Chromium and WebKit, in addition to startup, surface launch, save restoration, travel cancellation and extreme zoom checks. This is a repeatable desktop-browser stress check, not evidence of physical-phone thermal or battery performance.
 
 For physical-device validation: play for 15 minutes on iPhone Safari and Android Chrome with FPS enabled, rotate several times, visit multiple worlds, approach a star and zoom through the full range. Compare frame rate at the beginning and end, check device heat and responsiveness, and verify that backgrounding/resuming preserves the voyage. Export a backup before clearing site data.
-
