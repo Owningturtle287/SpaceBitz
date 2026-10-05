@@ -162,7 +162,7 @@ function proceduralStar(seed,r){
 }
 export function starAppearance(seed,generation=null){
   if(generation?.version>=2){
-    if(seed==='sol')return solFacts({id:'sol:star',name:'Sol',kind:'star',type:'G2V',diameter:SUN_DIAMETER_KM});
+    if(seed==='sol')return solFacts({id:'sol:star',name:'Sol',kind:'star',type:'G2V',diameter:SUN_DIAMETER_KM},generation.version);
     return makeArchitecture(seed,starName(seed),generation).star;
   }
   if(seed==='sol')return {color:'#ffd75a',type:'G2V',mass:1,luminosity:1,diameter:SUN_DIAMETER_KM};
@@ -182,7 +182,7 @@ export function makeSystem(seed,generation=null) {
       })).sort((a,b)=>a.orbitKm-b.orbitKm)
     }));
     const system=completeSystem({ seed, name: 'Sol', star: { id:'sol:star', name:'Sol', kind:'star', mass:1, luminosity:1, diameter:SUN_DIAMETER_KM, color:'#ffd75a', type:'G2V' }, planets });
-    if(generation?.version>=2){system.star=solFacts(system.star);system.stars=[system.star];system.binaries=[];system.rootId=system.star.id;system.multiplicity='Single';system.architecture='Single-star orbits';system.hostId=system.star.id;system.hostLuminosity=1;system.hostMass=1;system.generation=generation;}
+    if(generation?.version>=2){system.star=solFacts(system.star,generation.version);system.stars=[system.star];system.binaries=[];system.rootId=system.star.id;system.multiplicity='Single';system.architecture='Single-star orbits';system.hostId=system.star.id;system.hostLuminosity=1;system.hostMass=1;system.generation=generation;}
     return system;
   }
   const r = rng('system:' + seed);

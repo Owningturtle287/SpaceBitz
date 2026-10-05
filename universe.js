@@ -184,7 +184,7 @@ export function makeStar(seed,name,family='main',spectral='G',options={}){
   if(options.metallicity===undefined&&!['popIII','dark'].includes(family))s.metallicity=clamp(s.metallicity-.025*(s.ageYears/1e9-4.57),-1.5,.5);
   return completeStar(s,r);
 }
-export function solFacts(star){return {...star,...SOL_REFERENCE,family:'main',familyLabel:'Yellow dwarf',spectral:'G',initialMass:1,remainingYears:5e9,uncertaintyYears:1e9,endEvent:'Core hydrogen exhaustion',magnetic:'Moderate dynamo · 11-year activity cycle',activity:1,uvFraction:blackbodyFraction(SUN_T,100,400),xrayFraction:1e-6,visual:{granulation:1,spots:.75,prominences:1,pulsation:0},provenance:'Sol reference observations'};}
+export function solFacts(star,version=3){if(version===2)return legacy.solFacts(star);return {...star,...SOL_REFERENCE,color:temperatureColor(SUN_T),family:'main',familyLabel:'Yellow dwarf',spectral:'G',initialMass:1,remainingYears:5e9,uncertaintyYears:1e9,endEvent:'Core hydrogen exhaustion',magnetic:'Moderate dynamo · 11-year activity cycle',activity:1,uvFraction:blackbodyFraction(SUN_T,100,400),xrayFraction:1e-6,visual:{granulation:1,spots:.75,prominences:1,pulsation:0},provenance:'Sol reference observations'};}
 export function stabilityLimit(a,e,mu,circumbinary=false){
   // Holman & Wiegert (1999), coplanar test-particle fits within their fitted e range.
   return a*(circumbinary?1.6+5.1*e-2.22*e*e+4.12*mu-4.27*e*mu-5.09*mu*mu+4.61*e*e*mu*mu:.464-.38*mu-.631*e+.586*mu*e+.15*e*e-.198*mu*e*e);
