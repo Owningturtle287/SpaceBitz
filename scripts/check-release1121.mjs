@@ -51,7 +51,8 @@ export async function checkRelease1121(page,engine){
     await page.screenshot({path:`.qa/${engine}-1121-terminal-${viewport.width}.png`});
   }
   await page.setViewportSize({width:844,height:390});
-  await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.reducedMotion=false;g.applySettings();g.state.camera={x:0,y:0};g.state.zoom=.1;g.state.panUntil=0;});
+  await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.reducedMotion=false;g.applySettings();g.state.camera={x:0,y:0};g.state.zoom=.1;g.state.panUntil=0;g.state.followShip=false;g.state.followPanRemaining=0;});
+  await page.waitForTimeout(350); // Let the closing device release its input footprint.
   await page.mouse.move(420,190);await page.mouse.down();await page.mouse.move(520,235,{steps:5});await page.mouse.up();
   const camera=await page.evaluate(()=>{const g=window.__game;g.update(8000,0);if(g.state.panUntil!==Infinity)throw Error('Pan still times out');return {...g.state.camera};});
   await page.waitForTimeout(2800);assert.deepEqual(await page.evaluate(()=>{window.__game.update(8000,0);return {...window.__game.state.camera};}),camera);

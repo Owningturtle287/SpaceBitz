@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.5 — 2026-10-05
+
+- Moving target labels and action strips track without repeated CSS easing, retaining their placement until an obstruction requires a change.
+- Follow persists through zoom. Panning temporarily inspects the scene; five seconds after the last drag, the view smoothly returns at the current zoom. Explicitly switching Follow off freezes the camera.
+- Follow is half the Center control size and sits beside it. Warp Drive rests to the left of the terminal, gliding horizontally with its width.
+- Textured pixel-metal flight deck plates and square bolts frame the lower controls and block accidental coordinate picks.
+- Pixel typography throughout menus, telemetry, logs and terminal data, including custom glyphs for symbol keys, navigation arrows and scientific units; white arrow handles resize the expanded terminal by sliding.
+- Immediate keyboard press response and held-key repeat, separate Caps Lock and symbol Shift, slash, Enter, a blinking input cursor, and Delete at the input bar's right edge. Drafts remain available for future commands.
+
 ## 1.12.4 — 2026-10-05
 
 - Completing the second Center zoom enables ship/explorer following, including orbital station keeping. A small pixel tracking toggle below Center enables following at the current zoom or stops it; camera gestures stop following. Center and Warp retain their positions.
