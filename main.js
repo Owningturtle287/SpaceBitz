@@ -985,16 +985,23 @@ function terminalKey(key){
   input.setRangeText(text,from,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));
 }
 function bindTerminalKey(button,key){
+  let pointerClickPending=false,lastPointerRelease=-Infinity;
   button.onpointerdown=e=>{
-    if(e.button!==0)return;e.preventDefault();e.stopPropagation();if(e.isTrusted)button.setPointerCapture?.(e.pointerId);terminalKey(key);
+    if(e.button!==0)return;e.preventDefault();e.stopPropagation();pointerClickPending=true;lastPointerRelease=performance.now();if(e.isTrusted)button.setPointerCapture?.(e.pointerId);terminalKey(key);
     if(['Shift','CapsLock','Enter','Clear'].includes(key))return;
     const press={delay:setTimeout(()=>{press.repeat=setInterval(()=>terminalKey(key),55);terminalKey(key);},350)};
     heldTerminalKeys.set(e.pointerId,press);
   };
-  const release=e=>{const press=heldTerminalKeys.get(e.pointerId);if(press){clearTimeout(press.delay);clearInterval(press.repeat);heldTerminalKeys.delete(e.pointerId);}};
+  const release=e=>{lastPointerRelease=performance.now();if(e.type==='pointercancel')pointerClickPending=false;const press=heldTerminalKeys.get(e.pointerId);if(press){clearTimeout(press.delay);clearInterval(press.repeat);heldTerminalKeys.delete(e.pointerId);}};
   button.onpointerup=release;button.onpointercancel=release;button.onlostpointercapture=release;
   // Assistive technology and physical keyboard activation have no preceding pointer press.
-  button.onclick=e=>{if(e.detail===0)terminalKey(key);};
+  button.onkeydown=e=>{if(e.key==='Enter'||e.key===' ')pointerClickPending=false;};
+  button.onclick=e=>{
+    // Chromium touch clicks can have detail=0 too. Consume the click belonging to
+    // the press already handled above, including after a long held-key repeat.
+    if(pointerClickPending&&e.isTrusted&&performance.now()-lastPointerRelease<750){pointerClickPending=false;return;}
+    if(e.detail===0)terminalKey(key);
+  };
 }
 function renderTerminalKeyboard(){
   const keyboard=$('terminalKeyboard');
