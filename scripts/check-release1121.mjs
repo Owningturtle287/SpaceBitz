@@ -42,16 +42,16 @@ export async function checkRelease1121(page,engine){
   await page.evaluate(()=>window.__game.positionContext());await page.screenshot({path:`.qa/${engine}-1121-actions.png`});
   for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667},{width:1440,height:900}]){
     await page.setViewportSize(viewport);
-    await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(performance.now());g.updateUI();g.frame(performance.now());});await page.waitForTimeout(250);
+    await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.applySettings();g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(performance.now());g.updateUI();g.frame(performance.now());});await page.waitForTimeout(250);
     const layout=await page.evaluate(()=>{
       const card=document.getElementById('targetCard'),r=card.getBoundingClientRect(),log=document.getElementById('journalButton').getBoundingClientRect(),screen=document.getElementById('terminalScreen'),out=document.getElementById('terminalOutput');
       return {bottom:r.bottom,right:r.right,top:r.top,width:r.width,logBottom:log.bottom,logRight:log.right,columns:getComputedStyle(out).gridTemplateColumns.split(' ').length,overflow:screen.scrollWidth-screen.clientWidth,fonts:parseFloat(getComputedStyle(out).fontSize),text:out.textContent};
     });
-    assert.ok(Math.abs(layout.bottom-(viewport.height-4))<=1);assert.ok(layout.top>=60&&layout.logBottom<layout.top&&Math.abs(layout.logRight-layout.right)<=1);assert.equal(layout.columns,2);assert.ok(layout.overflow<=1);assert.ok(layout.text.startsWith('Object Data\n')&&!layout.text.includes('SPACEBITZ /'));assert.ok(layout.text.includes('DISTANCE FROM SHIP'));
+    assert.ok(Math.abs(layout.bottom-(viewport.height-4))<=1);assert.ok(layout.top>=60&&layout.logBottom<layout.top&&Math.abs(layout.logRight-layout.right)<=1,JSON.stringify({viewport,layout}));assert.equal(layout.columns,2);assert.ok(layout.overflow<=1);assert.ok(layout.text.startsWith('Object Data\n')&&!layout.text.includes('SPACEBITZ /'));assert.ok(layout.text.includes('DISTANCE FROM SHIP'));
     await page.screenshot({path:`.qa/${engine}-1121-terminal-${viewport.width}.png`});
   }
   await page.setViewportSize({width:844,height:390});
-  await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.reducedMotion=false;g.state.camera={x:0,y:0};g.state.zoom=.1;g.state.panUntil=0;});
+  await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.reducedMotion=false;g.applySettings();g.state.camera={x:0,y:0};g.state.zoom=.1;g.state.panUntil=0;});
   await page.mouse.move(420,190);await page.mouse.down();await page.mouse.move(520,235,{steps:5});await page.mouse.up();
   const camera=await page.evaluate(()=>{const g=window.__game;g.update(8000,0);if(g.state.panUntil!==Infinity)throw Error('Pan still times out');return {...g.state.camera};});
   await page.waitForTimeout(2800);assert.deepEqual(await page.evaluate(()=>{window.__game.update(8000,0);return {...window.__game.state.camera};}),camera);
