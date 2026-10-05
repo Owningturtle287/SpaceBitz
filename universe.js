@@ -125,18 +125,23 @@ export function makeStar(seed,name,family='main',spectral='G',options={}){
     if(options.mass===undefined){const tBounds={M:[2300,3699],K:[3700,5199],G:[5200,5999],F:[6000,7499],A:[7500,9999],B:[10000,29999],O:[30000,50000]};s.temperature=clamp(s.temperature,...tBounds[spectral]);}
     s.remainingYears=Math.max(1e5,life-s.ageYears);s.endEvent='Core hydrogen exhaustion';
   }else if(['giant','subgiant','agb','postagb','subdwarf'].includes(family)){
-    initialMass=options.mass??sample(1.0,4);s.mass=initialMass*(family==='postagb'?.22:.92);
-    const ranges={subgiant:[4500,6400,1.8,5],giant:[3300,5100,8,70],agb:[2500,3500,100,400],postagb:[30000,100000,.2,1],subdwarf:[22000,45000,.12,.3]},v=ranges[family];
-    s.temperature=sample(v[0],v[1]);s.radiusSolar=logBetween(r,v[2],v[3]);
+    initialMass=options.mass??sample(1.0,4);s.mass=initialMass*(family==='agb'?.70:.92);
+    // A common evolutionary-phase coordinate links expansion, cooling and
+    // luminosity; mass controls the scale instead of unrelated T/R draws.
+    const phase=r();
+    if(family==='subgiant'){s.temperature=clamp(5900*initialMass**.08*(1-.22*phase),4500,6400);s.radiusSolar=clamp(1.8*initialMass**.4*(1+1.2*phase),1.8,5);}
+    else if(family==='giant'){s.temperature=clamp(4900*initialMass**.05*(1-.30*phase),3300,5100);s.radiusSolar=clamp(8*initialMass**.45*8**phase,8,100);}
+    else if(family==='agb'){s.temperature=clamp(3450*initialMass**.04-800*phase,2500,3500);const luminosity=3500*initialMass**1.2*(1+2*phase);s.radiusSolar=Math.sqrt(luminosity)/(s.temperature/SUN_T)**2;}
+    else if(family==='postagb'){s.mass=clamp(.109*initialMass+.394,.53,.85);s.temperature=30000*(100000/30000)**phase;s.radiusSolar=Math.sqrt(56000*(s.mass-.5))/(s.temperature/SUN_T)**2;}
+    else{s.mass=sample(.43,.55);s.temperature=22000*(45000/22000)**phase;s.radiusSolar=.30*(1-.6*phase);}
     s.familyLabel={subgiant:'Subgiant',giant:r()<.35?'Red-clump giant':'Red giant',agb:r()<.15?'Carbon-rich AGB giant':'AGB giant',postagb:'Post-AGB core',subdwarf:'Hot subdwarf'}[family];
-    if(family==='postagb')s.mass=sample(.53,.85);if(family==='subdwarf')s.mass=sample(.43,.55);
     s.ageYears=mainLifetime(initialMass)*sample(1.02,1.12);s.remainingYears=family==='postagb'?sample(1e4,1e5):family==='agb'?sample(1e5,2e6):sample(1e7,3e8);
     s.luminosityClass=family==='subgiant'?'IV':family==='subdwarf'?'VI':'III';
     s.endEvent=family==='subgiant'?'Giant phase':family==='subdwarf'?'Helium exhaustion':'Envelope loss → white dwarf';
   }else if(['supergiant','lbv','wr','tzo'].includes(family)){
     initialMass=sample(family==='tzo'?8:15,family==='lbv'?70:40);s.mass=initialMass*(family==='wr'?.35:.7);
     const hot=family==='wr'||family==='lbv',t=family==='tzo'?sample(3000,4000):hot?sample(family==='wr'?40000:10000,family==='wr'?110000:25000):[sample(3300,4200),sample(5000,7500),sample(12000,25000)][Math.floor(r()*3)];
-    s.temperature=t;const l=logBetween(r,3e4,8e5);s.radiusSolar=Math.sqrt(l)/(t/SUN_T)**2;
+    s.temperature=t;const l=clamp(8e4*(initialMass/15)**1.5*sample(.7,1.3),3e4,1.2e6);s.radiusSolar=Math.sqrt(l)/(t/SUN_T)**2;
     s.familyLabel={supergiant:t<4500?'Red supergiant':t<10000?'Yellow supergiant':'Blue supergiant',lbv:'Luminous blue variable / hypergiant',wr:'Wolf–Rayet',tzo:'Thorne–Żytkow candidate'}[family];
     s.type=family==='wr'?['WN','WC','WO'][Math.floor(r()*3)]+' · stripped':' ';if(s.type===' ')delete s.type;
     s.luminosityClass='Ia';s.ageYears=mainLifetime(initialMass)*sample(1.02,1.15);s.remainingYears=sample(1e5,1e6);s.endEvent='Core collapse · outcome uncertain';
@@ -167,7 +172,7 @@ export function makeStar(seed,name,family='main',spectral='G',options={}){
     s.cloudContrast=cls==='L'?.55:cls==='T'?.75:.25;
     s.familyLabel=family==='brown'?'Brown dwarf · substellar':'Black dwarf · future remnant';s.endEvent='Cooling · no sustained hydrogen fusion';
   }else if(family==='protostar'){
-    s.mass=options.mass??sample(.2,3);initialMass=s.mass;s.ageYears=options.ageYears??sample(1e4,3e6);s.radiusSolar=clamp(2.5*s.mass**.35*(s.ageYears/1e6)**(-.16),1.5,8);s.temperature=clamp(3800*s.mass**.2,2800,6500);s.remainingYears=Math.max(1e5,3e7*s.mass**(-2.5)-s.ageYears);s.familyLabel='Protostar / pre-main-sequence';s.endEvent='Stable core hydrogen fusion';s.luminosityClass=' · young';
+    s.mass=options.mass??sample(.2,3);initialMass=s.mass;s.ageYears=options.ageYears??sample(1e4,Math.min(3e6,3e7*s.mass**(-2.5)*.8));s.radiusSolar=clamp(2.5*s.mass**.35*(s.ageYears/1e6)**(-.16),1.5,8);s.temperature=clamp(3800*s.mass**.2,2800,6500);s.remainingYears=Math.max(1e5,3e7*s.mass**(-2.5)-s.ageYears);s.familyLabel='Protostar / pre-main-sequence';s.endEvent='Stable core hydrogen fusion';s.luminosityClass=' · young';
   }else if(family==='blueDwarf'){
     s.mass=sample(.15,.3);initialMass=s.mass;s.radiusSolar=sample(.2,.35);s.temperature=sample(6500,9000);s.ageYears=2e12;s.remainingYears=sample(1e11,1e12);s.familyLabel='Blue dwarf · future model';s.endEvent='Fusion exhaustion';
   }else if(family==='popIII'||family==='dark'){
@@ -199,7 +204,7 @@ export function makeArchitecture(seed,name,config){
     // Coeval lower-initial-mass companions, never randomly assigned red giants
     // next to a newborn star. Restrict to non-interacting, detached architectures.
     const mass=clamp(primary.initialMass*between(r,.12,.9),.013,60),age=primary.ageYears;
-    const companion=mass<.08?makeStar(seed+':star'+i,name+' '+String.fromCharCode(65+i),'brown','L',{mass,ageYears:age,metallicity:primary.metallicity}):age<mainLifetime(mass)?makeStar(seed+':star'+i,name+' '+String.fromCharCode(65+i),'main','M',{mass,ageYears:age,metallicity:primary.metallicity}):makeStar(seed+':star'+i,name+' '+String.fromCharCode(65+i),mass>8?'ns':'wd','G',{initialMass:mass,ageYears:age,metallicity:primary.metallicity});
+    const companion=mass<.08?makeStar(seed+':star'+i,name+' '+String.fromCharCode(65+i),'brown','L',{mass,ageYears:age,metallicity:primary.metallicity}):age<mainLifetime(mass)?makeStar(seed+':star'+i,name+' '+String.fromCharCode(65+i),primary.family==='protostar'?'protostar':'main','M',{mass,ageYears:age,metallicity:primary.metallicity}):makeStar(seed+':star'+i,name+' '+String.fromCharCode(65+i),mass>8?'ns':'wd','G',{initialMass:mass,ageYears:age,metallicity:primary.metallicity});
     stars.push(companion);
   }
   if(count>1)primary.name=name+' A';
