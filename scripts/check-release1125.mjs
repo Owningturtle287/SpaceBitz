@@ -91,7 +91,17 @@ export async function checkRelease1125(page,engine){
     await page.locator('[data-key="Enter"]').click();
   }
   await page.setViewportSize({width:1440,height:900});await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.select(g.state.system.star);g.updateUI();});await page.waitForTimeout(400);
-  const slide=await page.evaluate(async()=>{const warp=document.getElementById('mapButton'),start=warp.getBoundingClientRect().left;document.getElementById('secondaryAction').click();await new Promise(r=>setTimeout(r,90));const mid=warp.getBoundingClientRect().left;await new Promise(r=>setTimeout(r,300));return {start,mid,end:warp.getBoundingClientRect().left};});
+  const slide=await page.evaluate(async()=>{
+    const warp=document.getElementById('mapButton'),dock=document.getElementById('terminalDock'),start=warp.getBoundingClientRect().left;
+    document.getElementById('secondaryAction').click();
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    const animation=dock.getAnimations().find(a=>a.transitionProperty==='width');
+    if(!animation)throw Error('Terminal width did not animate');
+    // Seek the browser's own transition so a busy headless runner cannot skip the sample.
+    animation.pause();animation.currentTime=animation.effect.getComputedTiming().duration/2;
+    const mid=warp.getBoundingClientRect().left;animation.finish();
+    return {start,mid,end:warp.getBoundingClientRect().left};
+  });
   assert.ok(slide.mid<slide.start&&slide.mid>slide.end,JSON.stringify(slide));
   await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.applySettings();document.getElementById('terminalInput').focus();});
   assert.equal(await page.locator('#terminalInputCaret').evaluate(e=>getComputedStyle(e).animationName),'none');

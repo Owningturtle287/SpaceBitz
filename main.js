@@ -1048,6 +1048,8 @@ function terminalLimits(){
 function applyTerminalSize(){
   const dock=$('terminalDock'),limits=terminalLimits();
   dock.style.setProperty('--terminal-max-width',limits.maxWidth+'px');
+  dock.style.setProperty('--terminal-collapsed-width',Math.min(280,limits.maxWidth)+'px');
+  dock.style.setProperty('--terminal-expanded-width',clamp(state.terminalSize?.width??600,limits.minWidth,limits.maxWidth)+'px');
   if(state.terminalSize){
     dock.style.setProperty('--terminal-width',clamp(state.terminalSize.width,limits.minWidth,limits.maxWidth)+'px');
     dock.style.setProperty('--terminal-user-height',clamp(state.terminalSize.height,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight)+'px');

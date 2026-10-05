@@ -509,8 +509,8 @@ body[data-reduced-motion=true] #terminalButton{transition:none}@media(prefers-re
 .dashboard-controls{border-width:1px;pointer-events:auto}
 #joystick{z-index:4}
 .terminal-dock{width:68px;--warp-gap:8px}
-.terminal-dock.has-target{width:min(280px,var(--terminal-max-width,calc(100vw - 80px)))}
-.terminal-dock.terminal-expanded:has(.expanded:not([hidden])){width:min(var(--terminal-width,600px),var(--terminal-max-width,calc(100vw - 80px)))}
+.terminal-dock.has-target{width:var(--terminal-collapsed-width,280px)}
+.terminal-dock.terminal-expanded:has(.expanded:not([hidden])){width:var(--terminal-expanded-width,600px)}
 #mapButton{position:absolute;right:calc(100% + var(--warp-gap));left:auto;top:auto;bottom:0;pointer-events:auto}
 .follow-ship-button{position:relative;top:auto;left:auto!important;transform:none;width:28px;height:26px;min-width:28px;min-height:26px;flex:none;padding:2px;display:grid;place-items:center}
 .follow-ship-button svg{width:24px;height:12px}
@@ -553,3 +553,4 @@ body{font-size:9px;line-height:1.7}
 }
 @media(orientation:landscape) and (max-height:500px){.terminal-keyboard{gap:2px}.keyboard-row .pixel-key{height:20px;min-height:20px}}
 @media(orientation:landscape) and (max-height:500px){.terminal-keyboard{margin-top:3px;padding-top:3px}.terminal-input-bar{margin-top:3px;padding-top:3px}}
+.terminal-dock{max-width:var(--terminal-max-width,calc(100vw - 80px))}
