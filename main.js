@@ -1587,7 +1587,7 @@ window.addEventListener('keydown',e=>{
       else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
     }return;
   }
-  if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName)||document.activeElement?.closest('#terminalScreen'))return;
+  if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName)||document.activeElement?.closest('#terminalScreen, #terminalKeyboard'))return;
   if(!state.save)return;
   const k=e.key.length===1?e.key.toLowerCase():e.key;
   if(k===' '&&['BUTTON','A'].includes(document.activeElement?.tagName))return;

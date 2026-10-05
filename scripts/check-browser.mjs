@@ -503,8 +503,8 @@ try{
   });
   const release112=await checkRelease112(page,engine);
   const release1121=await checkRelease1121(page,engine);
+  const release1124=await checkRelease1124(page,engine);
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
-  const release1124=await checkRelease1124(page,engine);
   assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}
