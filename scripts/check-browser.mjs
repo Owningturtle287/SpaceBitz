@@ -402,7 +402,7 @@ try{
   const v2Soak=await page.evaluate(async()=>{
     const g=window.__game,s=g.state,{defaults}=await import('/universe.js'),{makeSystem,bodyPosition,visualRadius}=await import('/model.js'),{stellarCacheStats}=await import('/stellar.js');
     const times=[];for(let i=0;i<360;i++){
-      if(i%60===0){const c=defaults(false),family=['main','giant','agb','wr','wd','magnetar'][i/60];for(const k of Object.keys(c.pools.family))c.pools.family[k]=k===family?100:0;for(const k of Object.keys(c.pools.multiplicity))c.pools.multiplicity[k]=k==='quad'?100:0;s.system=makeSystem('v2-soak-'+i,c);s.save.generation=c;s.save.currentSystem=s.system.seed;s.selected=null;s.scene='system';}
+      if(i%60===0){const c=defaults(false),family=['main','giant','agb','wr','wd','ns'][i/60];for(const k of Object.keys(c.pools.family))c.pools.family[k]=k===family?100:0;for(const k of Object.keys(c.pools.neutron))c.pools.neutron[k]=k==='magnetar'?100:0;for(const k of Object.keys(c.pools.multiplicity))c.pools.multiplicity[k]=k==='quad'?100:0;s.system=makeSystem('v3-soak-'+i,c);s.save.generation=c;s.save.currentSystem=s.system.seed;s.selected=null;s.scene='system';}
       const p=bodyPosition(s.system.star,s.save.days,s.system);s.camera=p;s.zoom=100/visualRadius(s.system.star.diameter);s.stellarSeconds=i/30;const begin=performance.now();g.backdrop(i*33);g.drawSystem(i*33);times.push(performance.now()-begin);if(i%12===0)await new Promise(r=>requestAnimationFrame(r));
     }
     g.enterChart();for(let i=0;i<30;i++){s.camera={x:i*300,y:i*200};g.backdrop(1000);g.drawChart(1000);}

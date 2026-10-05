@@ -14,6 +14,7 @@ export function terminalLines(object,system,context={}){
     const zone=habitableZone(object.luminosity);add('HABITABLE INNER BOUNDARY',number(zone.inner)+' AU');add('HABITABLE OUTER BOUNDARY',number(zone.outer)+' AU');
     add('ESTIMATED REMAINING LIFETIME',object.remainingYears?years(object.remainingYears):'Already a remnant / not predicted');
     add('ROTATION PERIOD',rotationText(object.rotationDays));
+    add('WIND MASS LOSS',Number.isFinite(object.windMassLoss)?object.windMassLoss.toExponential(2)+' M☉/yr':'Not modelled');
     add('MULTIPLICITY',system.multiplicity||'Single');
     add('ORBITAL RELATIONSHIP',system.architecture||'Single-star orbits');
     add('COMPANION RELATIONSHIP',object.id===system.star.id?'Primary': 'Companion of '+system.star.name);
