@@ -370,6 +370,8 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 let lastSingleTouchEnd=0;
 document.addEventListener('touchend',e=>{
   if(e.touches.length||e.changedTouches.length!==1)return;
+  // These controls disable double-tap zoom with touch-action; every key must click.
+  if(e.target.closest?.('#terminalKeyboard, #terminalInputBar')){lastSingleTouchEnd=0;return;}
   const now=performance.now();
   if(now-lastSingleTouchEnd<320)e.preventDefault();
   lastSingleTouchEnd=now;

@@ -6,7 +6,7 @@
 - Target action, green arrow and red X begin immediately and glide upward over 0.55 seconds, with immediate reduced-motion controls.
 - Narrowed the collapsed terminal to 280px while retaining the expanded two-column screen. Added a thin stepped metallic casing and metallic header.
 - Renamed Open Terminal / Close Terminal. Added a terminal launcher to the left of Log, including access without selecting a target. Both utilities follow the device edge.
-- Added a fixed input deck and pixel keyboard with physical-keyboard support, shift, deletion, selection replacement, space, clear and done. Text drafts remain when opening/closing; command execution is reserved for a later release. Readable 16px input prevents focus zoom.
+- Added a fixed input deck and pixel keyboard with rapid touchscreen typing and physical-keyboard support, shift, deletion, selection replacement, space, clear and done. Text drafts remain when opening/closing; command execution is reserved for a later release. Readable 16px input prevents focus zoom.
 - Preserved generation, saves, physical station keeping and rendering limits; updated cache/version/docs and Chromium/WebKit mobile regressions.
 
 ## 1.12.3 — 2026-10-05
