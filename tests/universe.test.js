@@ -12,15 +12,15 @@ test('every independent percentage table totals exactly 100%; no implicit normal
   for(const scientific of [true,false])assert.deepEqual(validateGeneration(defaults(scientific)),[]);
   assert.equal(percentUnits('0.000001'),1);assert.equal(percentUnits('99.999999'),99999999);
   for(const input of ['-1','101','NaN','1e2','','1.0000001','0x64'])assert.equal(percentUnits(input),null);
-  const c=defaults(false);c.pools.spectral.M='73.999999';assert.ok(validateGeneration(c).length);assert.throws(()=>checkedGeneration(c));
-  c.pools.spectral.K='14.000001';assert.deepEqual(validateGeneration(c),[]);assert.equal(checkedGeneration(c).pools.spectral.M,73.999999);
+  const c=defaults(false);c.pools.spectral.M='76.559869';assert.ok(validateGeneration(c).length);assert.throws(()=>checkedGeneration(c));
+  c.pools.spectral.K='13.580001';assert.deepEqual(validateGeneration(c),[]);assert.equal(checkedGeneration(c).pools.spectral.M,76.559869);
 });
 test('scientific settings lock agreed baseline and exclude speculative types',()=>{
   const c=force('spectral','O');c.scientific=true;
-  assert.equal(checkedGeneration(c).pools.spectral.M,74);
+  assert.equal(checkedGeneration(c).pools.spectral.M,76.55987);
   for(let i=0;i<1000;i++){const s=makeArchitecture('science-'+i,'Test',defaults());assert.doesNotMatch(s.star.provenance,/Speculative/);assert.ok(s.star.ageYears<13.8e9);assert.ok(!['black-hole','quasar'].includes(s.star.family));}
 });
-test('v2 stellar generation is deterministic and all principal physical values agree',()=>{
+test('v3 stellar generation is deterministic and all principal physical values agree',()=>{
   for(const family of POPULATIONS.family.entries.map(e=>e[0]))for(let i=0;i<10;i++){
     const config=force('family',family),a=makeSystem(family+i,config),b=makeSystem(family+i,config);assert.deepEqual(a,b);
     for(const s of a.stars){for(const field of ['mass','diameter','radiusSolar','temperature','luminosity','gravity','ageYears'])assert.ok(Number.isFinite(s[field])&&s[field]>=0,family+' '+field);

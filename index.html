@@ -26,7 +26,7 @@
         <div id="systemChartContent" class="mission-content" hidden>
           <p id="hint">Select a world to explore.</p>
           <div id="zoneLegend" class="legend"><i></i> TEMPERATE ZONE <button id="zoneToggle" type="button" class="text-button" aria-pressed="true">ON</button></div>
-          <div id="surfaceInfo" class="surface-info" hidden></div>
+          
           <div id="bodyList" class="body-list" aria-label="Celestial bodies"></div>
         </div>
       </aside>
@@ -49,12 +49,12 @@
         </div>
       </div>
     </header>
-    <section class="target glass target-minimal" id="targetCard" aria-live="polite" hidden>
-      <div class="target-line"><h2 id="targetName">Chart a course</h2></div>
-      <p id="targetDistance" class="target-distance"></p>
-      <div class="target-actions"><button id="primaryAction" class="button primary">TRAVEL</button><button id="secondaryAction" class="button subtle" hidden>INFO</button></div>
-      <button id="cancelTravel" class="button subtle cancel-travel" hidden>CANCEL</button>
+    <section class="terminal" id="targetCard" aria-label="Object terminal" hidden>
+      <div class="terminal-head"><h2 id="targetName">Object</h2><button id="focusSelected" class="icon-button focus-object" aria-label="Focus View" title="Focus View"><span class="focus-glyph" aria-hidden="true"></span></button><button id="secondaryAction" class="button subtle" aria-expanded="false">INFO</button></div>
+      <p id="targetStatus" class="terminal-status"></p><p id="targetDistance" class="target-distance"></p>
+      <div id="terminalScreen" class="terminal-screen" hidden tabindex="0" aria-label="Object information"><pre id="terminalOutput"></pre><span class="terminal-cursor" aria-hidden="true">█</span></div>
     </section>
+    <div id="contextActions" class="context-actions" hidden aria-label="Selected target actions"><button id="primaryAction" class="button primary">GO HERE</button><button id="cancelTravel" class="button subtle">CANCEL</button></div>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
     <div id="navigationControls" class="navigation-controls">
     <button id="homeButton" class="center-button hud-float" type="button" aria-label="Recenter view">
@@ -93,7 +93,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.11.0</span>
+        <span class="version-chip main-menu-version">v1.12.0</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>
@@ -102,17 +102,23 @@
           <button id="multiplayerGame" class="button menu-choice"><span>MULTIPLAYER</span></button>
           <button id="menuSettings" class="button menu-choice"><span>SETTINGS</span></button>
         </div>
-        <div class="universe-mode-row"><label class="scientific-check"><input id="scientificMode" type="checkbox" checked> <span>SCIENTIFIC MODE</span></label><button id="generationOptions" class="button subtle" hidden>UNIVERSE GENERATION</button></div>
-        <p id="customUniverseWarning" class="custom-warning" hidden>Custom distribution · applies to new voyages only.</p>
       </section>
 
       <section id="universeMenuStage" class="menu-stage generation-stage" hidden>
         <div class="generation-top"><button id="backToMain" class="text-button generation-back" type="button">← MAIN MENU</button><span class="eyebrow accent">NEW UNIVERSE</span></div>
-        <div class="create-row"><label for="universeName">UNIVERSE NAME</label><input id="universeName" maxlength="40" value="My Universe" autocomplete="off"></div>
-        <div class="create-row"><label for="universeSeed">SEED <small>OPTIONAL</small></label><input id="universeSeed" maxlength="64" placeholder="Leave blank for a surprise" autocomplete="off"></div>
-        <div class="welcome-actions"><button id="newGame" class="button primary">START EXPLORING <span>↗</span></button><button id="solGame" class="button subtle">VISIT SOL</button></div>
-        <div class="saved-heading">CONTINUE VOYAGE</div><div id="savedGames" class="saved-games"></div>
-        <div class="welcome-foot generation-foot"><button id="importButton" class="text-button">IMPORT SAVE ↑</button><input id="importFile" type="file" accept="application/json,.json" hidden><button id="installButton" class="text-button" hidden>INSTALL APP ↓</button></div>
+        <div class="generation-columns">
+          <div class="generation-column">
+            <div id="generationFields">
+              <div class="generation-inputs"><div class="create-row"><label for="universeName">UNIVERSE NAME</label><input id="universeName" maxlength="40" value="My Universe" autocomplete="off"></div><div class="create-row"><label for="universeSeed">SEED <small>OPTIONAL</small></label><input id="universeSeed" maxlength="64" placeholder="Surprise me" autocomplete="off"></div></div>
+              <div class="universe-mode-row"><label class="scientific-check"><input id="scientificMode" type="checkbox" checked> <span>SCIENTIFIC MODE</span></label><button id="generationOptions" class="button subtle" hidden>GENERATION SETTINGS</button></div>
+              <p id="customUniverseWarning" class="custom-warning" hidden>Custom distribution active — generated universe may not reflect observed stellar populations.</p>
+              <details id="scientificDefaults" class="scientific-defaults"><summary>SCIENTIFIC DEFAULT RARITIES</summary><select id="scientificPool" aria-label="Scientific percentage category"></select><div id="scientificValues"></div><output>TABLE TOTAL: 100.000000%</output></details>
+              <div class="welcome-actions"><button id="newGame" class="button primary">GENERATE / START</button><button id="solGame" class="button subtle">START ON SOL</button></div>
+            </div>
+            <div id="generationEditor" class="generation-editor inline-editor" hidden></div>
+          </div>
+          <aside class="voyages-column"><div class="saved-heading">SAVED GAMES / VOYAGES</div><div id="savedGames" class="saved-games" tabindex="0" aria-label="Saved voyages"></div><div class="welcome-foot generation-foot"><button id="importButton" class="text-button">IMPORT SAVE ↑</button><input id="importFile" type="file" accept="application/json,.json" hidden><button id="installButton" class="text-button" hidden>INSTALL APP ↓</button></div></aside>
+        </div>
       </section>
     </div>
   </div>

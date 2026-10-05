@@ -161,7 +161,7 @@ function proceduralStar(seed,r){
     diameter:Math.round(SUN_DIAMETER_KM*mass**.8),color:spectral.color,type:spectral.type+'V'};
 }
 export function starAppearance(seed,generation=null){
-  if(generation?.version===GENERATION_VERSION){
+  if(generation?.version>=2){
     if(seed==='sol')return solFacts({id:'sol:star',name:'Sol',kind:'star',type:'G2V',diameter:SUN_DIAMETER_KM});
     return makeArchitecture(seed,starName(seed),generation).star;
   }
@@ -169,7 +169,7 @@ export function starAppearance(seed,generation=null){
   return proceduralStar(seed,rng('system:'+seed));
 }
 export function makeSystem(seed,generation=null) {
-  if(seed!=='sol'&&generation?.version===GENERATION_VERSION)return makeModernSystem(seed,generation);
+  if(seed!=='sol'&&generation?.version>=2)return makeModernSystem(seed,generation);
   if (seed === 'sol') {
     const planets = SOL.map(([name, au, diameter, color, type], i) => ({
       id: `sol:${name}`, name, kind: name==='Pluto'?'dwarf-planet':'planet', type, au, diameter, color,
@@ -182,7 +182,7 @@ export function makeSystem(seed,generation=null) {
       })).sort((a,b)=>a.orbitKm-b.orbitKm)
     }));
     const system=completeSystem({ seed, name: 'Sol', star: { id:'sol:star', name:'Sol', kind:'star', mass:1, luminosity:1, diameter:SUN_DIAMETER_KM, color:'#ffd75a', type:'G2V' }, planets });
-    if(generation?.version===GENERATION_VERSION){system.star=solFacts(system.star);system.stars=[system.star];system.binaries=[];system.rootId=system.star.id;system.multiplicity='Single';system.architecture='Single-star orbits';system.hostId=system.star.id;system.hostLuminosity=1;system.hostMass=1;system.generation=generation;}
+    if(generation?.version>=2){system.star=solFacts(system.star);system.stars=[system.star];system.binaries=[];system.rootId=system.star.id;system.multiplicity='Single';system.architecture='Single-star orbits';system.hostId=system.star.id;system.hostLuminosity=1;system.hostMass=1;system.generation=generation;}
     return system;
   }
   const r = rng('system:' + seed);
@@ -214,7 +214,7 @@ export function makeSystem(seed,generation=null) {
   return completeSystem({seed,name:star.name,star,planets});
 }
 function makeModernSystem(seed,generation){
-  const r=randomFor('planets:v2:'+seed),system={seed,name:starName(seed),...makeArchitecture(seed,starName(seed),generation),planets:[]};
+  const r=randomFor('planets:v'+generation.version+':'+seed),system={seed,name:starName(seed),...makeArchitecture(seed,starName(seed),generation),planets:[]};
   const {star,hostLuminosity,hostMass}=system,zone=habitableZone(hostLuminosity);
   // Preserve existing planet art until the dedicated planet/moon release.
   // Evolved survivors begin outside a conservative former stellar envelope.
