@@ -1,4 +1,4 @@
-/* SpaceBitz 1.12.3 — pixel instruments and universal terminal. */
+/* SpaceBitz 1.12.4 — pixel instruments and universal terminal. */
 @font-face{font-family:SpaceBitz Pixel;src:url('./assets/spacebitz-pixel.woff') format('woff');font-display:swap}
 :root{
   color-scheme:dark;
@@ -406,7 +406,7 @@ body[data-reduced-motion=true] .terminal-cursor{animation:none}@media(prefers-re
 body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #targetCard.terminal{transition:none}
 .topbar,.top-actions,.mission-tools,.utility-stack{pointer-events:none}.topbar button,.topbar .flight-readout,.topbar .mission-content{pointer-events:auto}
 
-/* v1.12.3: readable inputs retain the browser's normal page-zoom controls. */
+/* v1.12.4: readable inputs retain the browser's normal page-zoom controls. */
 .create-row input,.inline-editor input,.scientific-defaults select,.inline-editor select,.setting-row select,input[type=text],textarea{font-size:16px}
 #welcome .welcome-card:has(.generation-stage:not([hidden])){width:min(1280px,100%)}
 .generation-stage{height:min(760px,calc(100dvh - 28px));padding:12px}
@@ -436,7 +436,7 @@ body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #
 @media(max-height:560px) and (orientation:portrait){.generation-columns{grid-template-rows:minmax(190px,1fr) minmax(70px,.35fr)}}
 
 /* The clipped pocket reveals the terminal upward; its sibling Log follows its edge. */
-.terminal-dock{position:absolute;z-index:6;right:max(8px,env(safe-area-inset-right));bottom:calc(4px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 32px));min-height:0;pointer-events:none;transition:width .24s cubic-bezier(.22,.7,.25,1)}
+.terminal-dock{position:absolute;z-index:6;right:max(8px,env(safe-area-inset-right));bottom:calc(4px + env(safe-area-inset-bottom));width:min(280px,calc(100vw - 32px));min-height:0;pointer-events:none;transition:width .24s cubic-bezier(.22,.7,.25,1)}
 .terminal-dock:has(.expanded:not([hidden])){width:min(600px,calc(100vw - 330px))}
 .terminal-pocket{position:relative;height:0;overflow:hidden;transition:height .24s cubic-bezier(.22,.7,.25,1)}
 .terminal-dock.has-target{--log-gap:7px}
@@ -458,7 +458,7 @@ body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #
 
 /* Names remain framed; only the slim action strip slides up after a tap. */
 .context-actions{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:min(320px,calc(100vw - 16px));transition:transform 75ms linear;pointer-events:none}
-.context-action-row{display:flex;align-items:center;gap:4px;opacity:0;transform:translateY(9px);transition:opacity .15s ease,transform .18s ease;pointer-events:none}
+.context-action-row{display:flex;align-items:center;gap:4px;opacity:0;transform:translateY(14px);transition:opacity .4s ease,transform .55s cubic-bezier(.22,.7,.25,1);pointer-events:none}
 .context-actions.ready .context-action-row{opacity:1;transform:translateY(0);pointer-events:auto}
 .context-name{border:1px solid #6fe1cf80;background:transparent;color:#e8fff9;padding:5px 8px;font:9px/1.4 var(--pixel);overflow-wrap:anywhere;text-align:center;max-width:100%}
 .context-actions .button,.context-actions .primary{border:1px solid #6fe1cf80;box-shadow:none;clip-path:none;background:transparent;color:#b5f7ce;min-height:28px;padding:5px 7px;font:8px/1.4 var(--pixel)}
@@ -474,3 +474,29 @@ body[data-reduced-motion=true] .context-action-row{transition:none;transform:non
 .pixel-x,.pixel-arrow{width:16px;height:16px;display:block;pointer-events:none;transform-origin:center}
 body[data-reduced-motion=true] .terminal-dock,body[data-reduced-motion=true] .terminal-pocket,body[data-reduced-motion=true] #journalButton{transition:none}
 @media(prefers-reduced-motion:reduce){.terminal-dock,.terminal-pocket,#journalButton{transition:none}}
+
+/* Thin stepped metal casing surrounds a phosphor screen and fixed input deck. */
+#targetCard.terminal{border:2px solid #81979d;box-shadow:inset 1px 0 #c3d2cb,inset -1px -1px #324a57,0 0 0 1px #172a36;padding:7px 8px}
+#targetCard .terminal-head{position:relative;margin:-7px -8px 0;padding:4px 7px;gap:5px;border-bottom:2px solid #243f4b;background:linear-gradient(0deg,#526674 0 2px,#293f4b 2px 5px,#405663 5px calc(100% - 3px),#a8b9bd calc(100% - 3px) calc(100% - 1px),#6d8590 calc(100% - 1px));box-shadow:inset 1px 0 #b9c9c7,inset -1px 0 #182c39}
+#targetCard.terminal h2{font-size:9px;line-height:1.5;text-shadow:1px 1px #122b2b}
+#targetCard .terminal-head .button{font-size:7px;white-space:nowrap;padding:2px 4px;text-transform:uppercase}
+#targetCard .focus-object{width:24px;min-width:24px;padding:2px}
+.terminal-meta{margin-top:5px}
+#terminalButton{position:absolute;right:37px;bottom:calc(100% + var(--log-gap,0px));pointer-events:auto;transition:bottom .24s cubic-bezier(.22,.7,.25,1)}
+.terminal-glyph{width:16px;height:14px;display:block}
+#terminalButton[aria-expanded=true]{background:#15342a;color:#b0ffc9}
+.terminal-input-bar{flex:none;display:flex;align-items:center;gap:6px;border-top:2px solid #354e51;margin-top:5px;padding:5px 0 0;min-width:0;background:#03110d}
+.terminal-prompt{font:14px var(--pixel);color:#9af5b1}
+#terminalInput{flex:1;min-width:0;width:0;height:31px;box-sizing:border-box;background:#071b15;color:#bcffd0;border:1px solid #456b59;border-radius:0;padding:3px 5px;font:16px/1.4 var(--pixel);outline-offset:1px}
+#terminalInput::placeholder{font:10px var(--pixel);color:#619774}
+.pixel-key{display:grid;place-items:center;box-sizing:border-box;min-width:0;height:27px;min-height:27px;padding:3px 2px;border:1px solid #78989a;border-radius:0;background:linear-gradient(#405963 0 2px,#18352e 2px calc(100% - 2px),#0b2420 calc(100% - 2px));color:#b4f8cc;box-shadow:inset 1px 0 #3f6459,inset -1px 0 #0b211d;font:8px/1 var(--pixel);clip-path:polygon(2px 0,calc(100% - 2px) 0,calc(100% - 2px) 2px,100% 2px,100% calc(100% - 2px),calc(100% - 2px) calc(100% - 2px),calc(100% - 2px) 100%,2px 100%,2px calc(100% - 2px),0 calc(100% - 2px),0 2px,2px 2px);touch-action:manipulation}
+.pixel-key:hover,.pixel-key[aria-pressed=true]{color:#d8ffe1;background:#305247}.pixel-key:active{background:#487261}
+#terminalKeyboardToggle{width:29px;height:31px;flex:none}#terminalKeyboardToggle svg{width:18px;height:12px}
+.terminal-keyboard{flex:none;margin-top:5px;padding:5px 0 0;border-top:1px solid #476066;display:flex;flex-direction:column;gap:3px}
+.keyboard-row{display:flex;justify-content:center;gap:3px}.keyboard-row .pixel-key{flex:1;max-width:10%;font-size:10px}.keyboard-row:last-child .pixel-key{max-width:none;font-size:7px;flex:1}.keyboard-row:last-child .space-key{flex:2}
+#targetCard.terminal.keyboard-open{height:min(70dvh,calc(100dvh - 115px))}
+@media(max-width:699px){#targetCard.terminal.keyboard-open{height:min(70dvh,calc(100dvh - 220px))}}
+@media(min-width:700px) and (max-height:500px){.terminal-keyboard{gap:2px}.keyboard-row .pixel-key{height:20px;min-height:20px}}
+.follow-ship-button{position:absolute;top:calc(100% + 1px);transform:translateX(-50%);width:26px;height:12px;min-height:12px;padding:0 1px;border:1px solid #728c95;background:#14212d;color:#809c9c;box-shadow:inset 1px 0 #9cb5b5,inset -1px -1px #263e4e;clip-path:var(--pixel-corners);touch-action:manipulation}
+.follow-ship-button svg{display:block;width:22px;height:10px}.follow-lamp{opacity:.3}.follow-ship-button[aria-pressed=true]{color:#a4ffbe;background:#1d3d31}.follow-ship-button[aria-pressed=true] .follow-lamp{opacity:1}
+body[data-reduced-motion=true] #terminalButton{transition:none}@media(prefers-reduced-motion:reduce){#terminalButton{transition:none}}

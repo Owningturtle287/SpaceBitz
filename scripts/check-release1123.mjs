@@ -12,7 +12,7 @@ export async function checkRelease1123(page,engine){
       s.scene=scene;s.save.landed=scene==='surface'?'sol:Earth':null;g.settings.reducedMotion=reduced;g.applySettings();
       const p=scene==='surface'?s.save.surface:scene==='chart'?s.save.chart:s.save.ship;
       p.x=1e7;p.y=1e7;s.camera={x:p.x+10000,y:p.y-10000};s.zoom=scene==='system'?.001:.65;
-      s.selected=s.waypoint=null;s.centerZoom=null;s.centerReady=false;s.focusBody=s.followBody=null;s.panUntil=0;
+      s.selected=s.waypoint=null;s.centerZoom=null;s.centerReady=false;s.followShip=false;s.focusBody=s.followBody=null;s.panUntil=0;
       const view=()=>JSON.stringify({camera:s.camera,zoom:s.zoom}),before=view(),shipBefore=p.x;
       s.keys.add('d');g.update(100,0);s.keys.clear();if(view()!==before||p.x===shipBefore)throw Error('Manual movement changed view or did not move in '+scene);
       s.waypoint={x:p.x+100,y:p.y+100};g.primary();if(view()!==before||!s.autopilot)throw Error('Route departure changed view in '+scene);
@@ -32,7 +32,7 @@ export async function checkRelease1123(page,engine){
       if(s.zoom!==Math.max(zoom,scene==='system'?SHIP_FOCUS_ZOOM:2.4)||s.camera.x!==p.x||s.camera.y!==p.y||s.centerZoom||s.centerReady)throw Error('Second Center failed in '+scene);
       results.push({scene,reduced,firstZoom:zoom,secondZoom:s.zoom});
     }
-    s.scene='chart';s.centerZoom=null;s.centerReady=false;s.selected=null;s.waypoint={x:s.save.chart.x+10000,y:s.save.chart.y};s.camera={x:s.save.chart.x-1000,y:s.save.chart.y-1000};s.zoom=.65;g.settings.reducedMotion=false;g.applySettings();
+    s.scene='chart';s.centerZoom=null;s.centerReady=false;s.followShip=false;s.selected=null;s.waypoint={x:s.save.chart.x+10000,y:s.save.chart.y};s.camera={x:s.save.chart.x-1000,y:s.save.chart.y-1000};s.zoom=.65;g.settings.reducedMotion=false;g.applySettings();
     g.primary();const route=s.autopilot;document.getElementById('homeButton').click();g.update(650,0);g.update(650,0);
     if(s.autopilot!==route||!s.centerReady||s.zoom!==.65||s.camera.x!==s.save.chart.x)throw Error('Center disrupted a running route');
     document.getElementById('homeButton').click();g.update(650,0);g.zoom(.5);const interrupted=JSON.stringify(s.camera),z=s.zoom;
@@ -44,7 +44,7 @@ export async function checkRelease1123(page,engine){
     const g=window.__game;g.enterSystem({seed:'sol',x:0,y:0});g.settings.reducedMotion=false;g.applySettings();g.select(g.state.system.star);g.positionContext();
     const row=document.querySelector('.context-action-row');
     return {ready:document.getElementById('contextActions').classList.contains('ready'),opacity:+getComputedStyle(row).opacity,transition:getComputedStyle(row).transitionDuration,name:document.getElementById('contextName').textContent};
-  });assert.ok(immediate.ready&&immediate.name==='Sol'&&immediate.opacity<1&&immediate.transition.includes('0.15s'),JSON.stringify(immediate));
+  });assert.ok(immediate.ready&&immediate.name==='Sol'&&immediate.opacity<1&&immediate.transition.includes('0.55s'),JSON.stringify(immediate));
   await page.waitForTimeout(100);assert.ok(await page.locator('.context-action-row').evaluate(e=>+getComputedStyle(e).opacity>0),'Actions still wait before appearing');
   await page.waitForTimeout(150);await page.evaluate(async()=>{const g=window.__game,{visualRadius}=await import('/model.js');g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.positionContext();g.backdrop(0);g.drawSystem(0);});
   await page.screenshot({path:`.qa/${engine}-1123-immediate-actions.png`});

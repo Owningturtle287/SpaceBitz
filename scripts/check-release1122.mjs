@@ -14,6 +14,7 @@ export async function checkRelease1122(page,engine){
     const g=window.__game,pocket=document.getElementById('terminalPocket'),log=document.getElementById('journalButton');
     const before=log.getBoundingClientRect().bottom;g.select(g.state.system.star);
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    await new Promise(r=>setTimeout(r,60));
     return {before,after:log.getBoundingClientRect().bottom,height:pocket.getBoundingClientRect().height,full:document.getElementById('targetCard').getBoundingClientRect().height};
   });
   assert.ok(Math.abs(opening.before-896)<1,JSON.stringify(opening));
@@ -55,6 +56,7 @@ export async function checkRelease1122(page,engine){
   const closing=await page.evaluate(async()=>{
     const g=window.__game,pocket=document.getElementById('terminalPocket'),before=pocket.getBoundingClientRect().height;g.cancelTarget();
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    await new Promise(r=>setTimeout(r,60));
     return {before,mid:pocket.getBoundingClientRect().height,cardHidden:document.getElementById('targetCard').hidden};
   });assert.ok(closing.cardHidden&&closing.mid>0&&closing.mid<closing.before,JSON.stringify(closing));await page.waitForTimeout(350);
   assert.ok(Math.abs(await page.locator('#journalButton').evaluate(e=>e.getBoundingClientRect().bottom)-386)<1);
