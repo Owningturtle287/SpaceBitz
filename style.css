@@ -477,7 +477,7 @@ body[data-reduced-motion=true] .terminal-dock,body[data-reduced-motion=true] .te
 
 /* Thin stepped metal casing surrounds a phosphor screen and fixed input deck. */
 #targetCard.terminal{border:2px solid #81979d;box-shadow:inset 1px 0 #c3d2cb,inset -1px -1px #324a57,0 0 0 1px #172a36;padding:7px 8px}
-#targetCard .terminal-head{position:relative;margin:-7px -8px 0;padding:5px 7px 6px;gap:5px;border-bottom:2px solid #243f4b;background:linear-gradient(0deg,#526674 0 2px,#293f4b 2px 5px,#405663 5px calc(100% - 3px),#a8b9bd calc(100% - 3px) calc(100% - 1px),#6d8590 calc(100% - 1px));box-shadow:inset 1px 0 #b9c9c7,inset -1px 0 #182c39}
+#targetCard .terminal-head{position:relative;margin:-7px -8px 0;padding:4px 7px;gap:5px;border-bottom:2px solid #243f4b;background:linear-gradient(0deg,#526674 0 2px,#293f4b 2px 5px,#405663 5px calc(100% - 3px),#a8b9bd calc(100% - 3px) calc(100% - 1px),#6d8590 calc(100% - 1px));box-shadow:inset 1px 0 #b9c9c7,inset -1px 0 #182c39}
 #targetCard.terminal h2{font-size:9px;line-height:1.5;text-shadow:1px 1px #122b2b}
 #targetCard .terminal-head .button{font-size:7px;white-space:nowrap;padding:2px 4px;text-transform:uppercase}
 #targetCard .focus-object{width:24px;min-width:24px;padding:2px}

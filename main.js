@@ -974,7 +974,7 @@ function renderTerminalKeyboard(){
   const keyboard=$('terminalKeyboard');keyboard.replaceChildren();
   for(const keys of ['1234567890','QWERTYUIOP','ASDFGHJKL','ZXCVBNM',['Shift','Space','Backspace','Clear','Done']]){
     const row=document.createElement('div');row.className='keyboard-row';
-    for(const key of keys){const button=document.createElement('button');button.type='button';button.className='pixel-key';button.dataset.key=key;button.textContent=key==='Backspace'?'⌫':key==='Space'?'SPACE':key==='Shift'?'SHIFT':key.length===1?(terminalShift?key:key.toLowerCase()):key.toUpperCase();
+    for(const key of keys){const button=document.createElement('button');button.type='button';button.className='pixel-key';button.dataset.key=key;button.textContent=key==='Backspace'?'DEL':key==='Space'?'SPACE':key==='Shift'?'SHIFT':key.length===1?(terminalShift?key:key.toLowerCase()):key.toUpperCase();
       button.setAttribute('aria-label',key);if(key==='Shift')button.setAttribute('aria-pressed',String(terminalShift));if(key==='Space')button.classList.add('space-key');
       button.onpointerdown=e=>e.preventDefault();button.onclick=()=>terminalKey(key);row.append(button);
     }keyboard.append(row);
