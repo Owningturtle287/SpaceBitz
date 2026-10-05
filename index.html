@@ -45,16 +45,18 @@
         </div>
         <div class="utility-stack">
           <button id="settingsOpen" class="icon-button settings-button utility-button" aria-label="Open settings"><span class="settings-glyph" aria-hidden="true"></span><span class="utility-label">SET</span></button>
-          <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
         </div>
       </div>
     </header>
+    <div class="terminal-dock" id="terminalDock">
+    <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
     <section class="terminal" id="targetCard" aria-label="Object terminal" hidden>
       <div class="terminal-head"><h2 id="targetName">Object</h2><button id="focusSelected" class="icon-button focus-object" aria-label="Focus View" title="Focus View"><span class="focus-glyph" aria-hidden="true"></span></button><button id="secondaryAction" class="button subtle" aria-expanded="false">INFO</button></div>
       <p id="targetStatus" class="terminal-status"></p><p id="targetDistance" class="target-distance"></p>
-      <div id="terminalScreen" class="terminal-screen" hidden tabindex="0" aria-label="Object information"><pre id="terminalOutput"></pre><span class="terminal-cursor" aria-hidden="true">█</span></div>
+      <div id="terminalScreen" class="terminal-screen" hidden tabindex="0" aria-label="Object information"><div id="terminalOutput" class="terminal-data"></div><span class="terminal-cursor" aria-hidden="true">█</span></div>
     </section>
-    <div id="contextActions" class="context-actions" hidden aria-label="Selected target actions"><button id="primaryAction" class="button primary">GO HERE</button><button id="cancelTravel" class="button subtle">CANCEL</button></div>
+    </div>
+    <div id="contextActions" class="context-actions" hidden aria-label="Selected target actions"><div class="context-action-row"><button id="primaryAction" class="button primary">GO HERE</button><button id="cancelTravel" class="button subtle" aria-label="Cancel target" title="Cancel">×</button></div><span id="contextName" class="context-name"></span></div>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
     <div id="navigationControls" class="navigation-controls">
     <button id="homeButton" class="center-button hud-float" type="button" aria-label="Recenter view">
@@ -93,7 +95,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.12.0</span>
+        <span class="version-chip main-menu-version">v1.12.1</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>
@@ -112,7 +114,7 @@
               <div class="generation-inputs"><div class="create-row"><label for="universeName">UNIVERSE NAME</label><input id="universeName" maxlength="40" value="My Universe" autocomplete="off"></div><div class="create-row"><label for="universeSeed">SEED <small>OPTIONAL</small></label><input id="universeSeed" maxlength="64" placeholder="Surprise me" autocomplete="off"></div></div>
               <div class="universe-mode-row"><label class="scientific-check"><input id="scientificMode" type="checkbox" checked> <span>SCIENTIFIC MODE</span></label><button id="generationOptions" class="button subtle" hidden>GENERATION SETTINGS</button></div>
               <p id="customUniverseWarning" class="custom-warning" hidden>Custom distribution active — generated universe may not reflect observed stellar populations.</p>
-              <details id="scientificDefaults" class="scientific-defaults"><summary>SCIENTIFIC DEFAULT RARITIES</summary><select id="scientificPool" aria-label="Scientific percentage category"></select><div id="scientificValues"></div><output>TABLE TOTAL: 100.000000%</output></details>
+              <details id="scientificDefaults" class="scientific-defaults"><summary>SCIENTIFIC DEFAULT RARITIES</summary><div class="scientific-body"><select id="scientificPool" aria-label="Scientific percentage category"></select><div id="scientificValues"></div><div id="scientificPages" class="editor-pages" hidden><button id="scientificPrev" class="button subtle" aria-label="Previous scientific entries">←</button><span id="scientificPage"></span><button id="scientificNext" class="button subtle" aria-label="Next scientific entries">→</button></div><output>TABLE TOTAL: 100.000000%</output></div></details>
               <div class="welcome-actions"><button id="newGame" class="button primary">GENERATE / START</button><button id="solGame" class="button subtle">START ON SOL</button></div>
             </div>
             <div id="generationEditor" class="generation-editor inline-editor" hidden></div>

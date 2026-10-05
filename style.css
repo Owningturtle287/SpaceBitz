@@ -1,4 +1,4 @@
-/* SpaceBitz 1.12.0 — pixel instruments and universal terminal. */
+/* SpaceBitz 1.12.1 — pixel instruments and universal terminal. */
 @font-face{font-family:SpaceBitz Pixel;src:url('./assets/spacebitz-pixel.woff') format('woff');font-display:swap}
 :root{
   color-scheme:dark;
@@ -405,3 +405,59 @@ body[data-reduced-motion=true] .terminal-cursor{animation:none}@media(prefers-re
 .inline-editor{gap:3px}.inline-editor .rarity-row{padding:0;margin:0;min-height:21px}.inline-editor .rarity-total{padding-top:0;line-height:1.4}.inline-editor .generation-error{min-height:12px;line-height:1.2}.inline-editor select{height:28px;flex:none}.inline-editor .editor-pages .button{min-height:24px;padding:3px}.inline-editor .editor-actions{flex:none}.inline-editor .editor-actions .button{padding:4px;min-height:28px}.inline-editor #rarityInputs{flex:none}
 body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #targetCard.terminal{transition:none}
 .topbar,.top-actions,.mission-tools,.utility-stack{pointer-events:none}.topbar button,.topbar .flight-readout,.topbar .mission-content{pointer-events:auto}
+
+/* v1.12.1: readable inputs retain the browser's normal page-zoom controls. */
+.create-row input,.inline-editor input,.scientific-defaults select,.inline-editor select,.setting-row select,input[type=text],textarea{font-size:16px}
+#welcome .welcome-card:has(.generation-stage:not([hidden])){width:min(1280px,100%)}
+.generation-stage{height:min(760px,calc(100dvh - 28px));padding:12px}
+.generation-columns{grid-template-columns:minmax(0,1.4fr) minmax(220px,.9fr)}
+#generationFields{height:100%;display:flex;flex-direction:column;min-height:0}
+.generation-inputs,.universe-mode-row,.custom-warning,.generation-stage .welcome-actions{flex:none}
+.generation-stage .welcome-actions{margin-top:auto;padding-top:8px}
+.scientific-defaults[open]{position:relative;flex:1;min-height:0}
+.scientific-defaults summary{height:28px;box-sizing:border-box}
+.scientific-body{position:absolute;inset:28px 0 0;display:flex;flex-direction:column;min-height:0}
+.scientific-defaults summary,.scientific-defaults select,.scientific-defaults output,.scientific-defaults .editor-pages{flex:none}
+.scientific-defaults select,.inline-editor select{height:34px;padding:4px 6px;font-family:var(--mono)}
+#scientificValues{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;gap:0;margin:6px 0}
+.scientific-value{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:center;gap:14px;flex:none;min-height:30px;padding:4px 0;border-bottom:1px solid #23394f;font:13px/1.4 var(--mono)}
+.scientific-value span{white-space:normal;overflow:visible;overflow-wrap:anywhere;text-overflow:clip}
+.scientific-value strong{font-size:14px}
+.scientific-defaults output{font:12px/1.5 var(--mono);padding-top:3px}
+.editor-pages{min-height:26px;flex:none;font:12px var(--mono)}.editor-pages.single-page{visibility:hidden}
+.inline-editor{gap:6px}.inline-editor #rarityInputs{flex:1;min-height:0;overflow:hidden}
+.inline-editor .rarity-row{display:grid;grid-template-columns:minmax(0,1fr) 118px 12px;min-height:40px;gap:8px;padding:4px 0;font:14px/1.35 var(--mono)}
+.inline-editor .rarity-row>span:first-child{white-space:normal;overflow:visible;overflow-wrap:anywhere;text-overflow:clip}
+.inline-editor input{width:100%;height:32px;font-size:16px;padding:3px 5px;box-sizing:border-box}
+.inline-editor .rarity-total{font-size:13px}.inline-editor .generation-error{min-height:28px;line-height:1.4;font-size:12px}
+.inline-editor .editor-actions{margin-top:0;flex-wrap:wrap}.inline-editor .editor-actions .button{min-height:32px;padding:6px}
+@media(max-width:600px) and (orientation:portrait){.generation-columns{grid-template-columns:1fr;grid-template-rows:minmax(310px,1.45fr) minmax(100px,.55fr);gap:10px}.generation-stage{padding:10px}.scientific-value{font-size:12px;gap:8px}.inline-editor .rarity-row{font-size:13px}}
+@media(orientation:landscape) and (max-height:500px){.generation-stage{padding:8px}.inline-editor{gap:3px}.inline-editor .rarity-row{min-height:36px;font-size:12px}.scientific-value{min-height:25px;padding:2px 0;font-size:12px}.scientific-defaults select,.inline-editor select{height:30px}.inline-editor .generation-error{min-height:18px;font-size:11px}}
+@media(max-height:560px) and (orientation:portrait){.generation-columns{grid-template-rows:minmax(190px,1fr) minmax(70px,.35fr)}}
+
+/* The log is a sibling above the dock, so it follows upward expansion. */
+.terminal-dock{position:absolute;z-index:6;right:max(8px,env(safe-area-inset-right));bottom:calc(4px + env(safe-area-inset-bottom));width:min(430px,calc(100vw - 16px));min-height:96px;pointer-events:none}
+.terminal-dock:has(.expanded){width:min(760px,calc(100vw - 300px))}
+#targetCard.terminal{position:relative;inset:auto;width:100%;height:96px;max-height:none;padding:10px;box-sizing:border-box;pointer-events:auto;font-size:12px}
+#targetCard.terminal.expanded{height:min(70dvh,calc(100dvh - 115px));max-height:none;display:flex;flex-direction:column}
+#targetCard.terminal h2{font-size:11px}.terminal-head{flex:none}
+#targetCard .terminal-status,#targetCard .target-distance{font-size:11px;flex:none}
+#targetCard .terminal-screen{flex:1;min-height:0;height:auto;max-height:none;padding:8px 4px 4px;margin-top:7px;overflow-y:auto;overflow-x:hidden}
+.terminal-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:22px;row-gap:9px;font:12px/1.4 var(--mono);color:#9af5b1}
+.terminal-field{min-width:0}.terminal-key{display:block;color:#76b58c;font-size:10px}.terminal-value{overflow-wrap:anywhere}
+.terminal-title,.terminal-note,.terminal-break{grid-column:1 / -1}.terminal-title{font-size:14px;color:#b6ffc7}.terminal-break{height:3px}.terminal-note{font-size:11px}
+.utility-button{width:30px;height:30px;min-width:30px;min-height:30px;padding:3px;gap:3px}.utility-label{font-size:6px}
+.settings-glyph{width:12px;height:12px;border-width:3px;box-shadow:none}.log-glyph{width:12px;height:12px}.log-glyph:after{top:2px;height:1px;box-shadow:0 3px var(--cyan)}
+#journalButton{position:absolute;right:0;bottom:calc(100% + 7px);pointer-events:auto}
+@media(max-width:699px){.terminal-dock:has(.expanded){width:calc(100vw - 16px)}#targetCard.terminal.expanded{height:min(70dvh,calc(100dvh - 220px))}.terminal-data{font-size:11px;column-gap:14px}.terminal-visible #joystick{bottom:calc(var(--terminal-height,84px) + 16px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}
+
+/* Names remain framed; only the slim action strip slides up after a tap. */
+.context-actions{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:min(320px,calc(100vw - 16px));transition:transform 75ms linear;pointer-events:none}
+.context-action-row{display:flex;align-items:center;gap:4px;opacity:0;transform:translateY(9px);transition:opacity .15s ease,transform .18s ease;pointer-events:none}
+.context-actions.ready .context-action-row{opacity:1;transform:translateY(0);pointer-events:auto}
+.context-name{border:1px solid #6fe1cf80;background:transparent;color:#e8fff9;padding:5px 8px;font:9px/1.4 var(--pixel);overflow-wrap:anywhere;text-align:center;max-width:100%}
+.context-actions .button,.context-actions .primary{border:1px solid #6fe1cf80;box-shadow:none;clip-path:none;background:transparent;color:#b5f7ce;min-height:28px;padding:5px 7px;font:8px/1.4 var(--pixel)}
+.context-actions .button:hover:not(:disabled){background:rgb(25 65 51 / 20%)}
+#cancelTravel{color:#ff7979;border-color:#cf737380;font:20px/1 var(--mono);width:28px;min-width:28px;padding:0}
+.context-actions.coordinate .context-name{display:none}.context-actions.coordinate .primary{color:#82f7aa;width:28px;min-width:28px;padding:0;font:23px/1 var(--mono)}
+body[data-reduced-motion=true] .context-action-row{transition:none;transform:none}@media(prefers-reduced-motion:reduce){.context-action-row{transition:none;transform:none}}
