@@ -495,6 +495,6 @@ body[data-reduced-motion=true] .terminal-dock,body[data-reduced-motion=true] .te
 .terminal-keyboard{flex:none;margin-top:5px;padding:5px 0 0;border-top:1px solid #476066;display:flex;flex-direction:column;gap:3px}
 .keyboard-row{display:flex;justify-content:center;gap:3px}.keyboard-row .pixel-key{flex:1;max-width:10%;font-size:10px}.keyboard-row:last-child .pixel-key{max-width:none;font-size:7px;flex:1}.keyboard-row:last-child .space-key{flex:2}
 #targetCard.terminal.keyboard-open{height:min(82dvh,calc(100dvh - 70px))}
-.follow-ship-button{position:absolute;top:calc(100% + 2px);transform:translateX(-50%);width:26px;height:14px;min-height:14px;padding:1px;border:1px solid #728c95;background:#14212d;color:#809c9c;box-shadow:inset 1px 0 #9cb5b5,inset -1px -1px #263e4e;clip-path:var(--pixel-corners);touch-action:manipulation}
+.follow-ship-button{position:absolute;top:calc(100% + 1px);transform:translateX(-50%);width:26px;height:14px;min-height:14px;padding:1px;border:1px solid #728c95;background:#14212d;color:#809c9c;box-shadow:inset 1px 0 #9cb5b5,inset -1px -1px #263e4e;clip-path:var(--pixel-corners);touch-action:manipulation}
 .follow-ship-button svg{display:block;width:22px;height:10px}.follow-lamp{opacity:.3}.follow-ship-button[aria-pressed=true]{color:#a4ffbe;background:#1d3d31}.follow-ship-button[aria-pressed=true] .follow-lamp{opacity:1}
 body[data-reduced-motion=true] #terminalButton{transition:none}@media(prefers-reduced-motion:reduce){#terminalButton{transition:none}}
