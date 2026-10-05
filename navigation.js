@@ -3,6 +3,8 @@ import {SURFACE_UNIT,CHART_UNIT,SYSTEM_UNIT,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM,
 
 export function centerZoomAt(from,to,progress){
   const t=Math.max(0,Math.min(1,progress)),ease=t*t*(3-2*t);
+  if(t===0)return from;
+  if(t===1)return to;
   return from*Math.pow(to/from,ease);
 }
 

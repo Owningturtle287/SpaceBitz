@@ -17,7 +17,7 @@ export async function checkRelease112(page,engine){
   const input=page.locator('input[data-pool="family"][data-type="brown"]');await input.fill('21');assert.equal(await page.locator('#applyGeneration').isDisabled(),true);
   await page.getByRole('button',{name:'RESTORE SCIENTIFIC DEFAULTS',exact:true}).click();assert.equal(await page.locator('#applyGeneration').isDisabled(),false);await page.locator('#applyGeneration').click();await page.locator('#scientificMode').check();
   await page.evaluate(()=>localStorage.removeItem('spacebitz:field:v1'));await page.locator('#solGame').click();await page.waitForFunction(()=>window.__game.state.scene==='surface');
-  await page.evaluate(()=>{const g=window.__game;g.launch();g.select(g.state.system.star);g.showDetails(g.state.selected);g.state.terminal.start=performance.now();g.updateTerminal(performance.now()+40);});
+  await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;g.launch();g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(g.state.terminal.start+40);});
   const early=await page.locator('#terminalOutput').innerText();assert.ok(early.length>0&&early.length<200);
   await page.evaluate(()=>{const g=window.__game;g.updateTerminal(performance.now()+9000);g.positionContext();});
   assert.ok((await page.locator('#terminalOutput').innerText()).includes('Home System'));assert.equal(await page.locator('#targetCard details').count(),0);

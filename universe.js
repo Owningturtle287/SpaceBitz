@@ -93,8 +93,8 @@ function completeStar(s,r){
   if(['brown','blackDwarf','boson'].includes(s.family)){s.visual.spots=0;s.visual.prominences=0;}
 
   const brown=s.family==='brown',neutron=s.family==='ns'||s.family==='magnetar';
-  if(brown){s.activity=0;s.magnetic='Weak atmospheric / auroral activity';s.windSpeed=0;s.windMassLoss=0;s.xrayFraction=0;s.visual={granulation:0,spots:0,prominences:0,pulsation:.018};}
-  if(neutron){s.activity=s.subtype==='magnetar'?4:s.subtype==='pulsar'?1:.02;s.magnetic=s.subtype==='magnetar'?'Extreme twisted field · irregular bursts':s.subtype==='pulsar'?'Rotating tilted dipole · active beams':'Cooling remnant · quiet field';s.visual={granulation:0,spots:0,prominences:0,pulsation:0};s.windSpeed=0;s.windMassLoss=0;}
+  if(brown){s.activity=0;s.magnetic='Auroral fields possible · weak photospheric coupling';s.windSpeed=0;s.windMassLoss=0;s.xrayFraction=0;s.visual={granulation:0,spots:0,prominences:0,pulsation:.018};}
+  if(neutron){s.activity=s.subtype==='magnetar'?4:s.subtype==='pulsar'?1:.02;s.magnetic=s.subtype==='magnetar'?'Extreme twisted field · irregular bursts':s.subtype==='pulsar'?'Rotating tilted dipole · active beams':'Cooling remnant · quiet field';s.xrayFraction=clamp(blackbodyFraction(s.temperature,.124,12.4)+(s.subtype==='magnetar'?.03:s.subtype==='pulsar'?.01:0),0,1);s.visual={granulation:0,spots:0,prominences:0,pulsation:0};s.windSpeed=0;s.windMassLoss=0;}
   if(!compact&&!brown){
     const turnover=evolved?100:s.spectral==='M'?65:s.spectral==='K'?35:12;
     const rossby=s.rotationDays/turnover;
@@ -147,7 +147,7 @@ export function makeStar(seed,name,family='main',spectral='G',options={}){
     initialMass=options.initialMass??sample(10,22);s.mass=sample(1.2,2.1);s.radiusSolar=sample(10,14)/695700;
     s.subtype=family==='magnetar'?'magnetar':family==='quark'?'quark':options.subtype||'ordinary';
     const active=s.subtype!=='ordinary';
-    s.remnantAgeYears=active?logBetween(r,1e3,s.subtype==='magnetar'?5e4:1e7):logBetween(r,1e7,1e10);
+    s.remnantAgeYears=options.ageYears!==undefined?Math.max(1e3,options.ageYears-mainLifetime(initialMass)):active?logBetween(r,1e3,s.subtype==='magnetar'?5e4:1e7):logBetween(r,1e7,1e10);
     s.ageYears=mainLifetime(initialMass)+s.remnantAgeYears;
     s.temperature=clamp(1.3e6*(s.remnantAgeYears/1e3)**(-.35),3000,1.3e6);
     s.rotationDays=(s.subtype==='magnetar'?sample(2,12):s.subtype==='pulsar'?logBetween(r,.003,3):sample(3,30))/86400;

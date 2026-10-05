@@ -22,7 +22,7 @@ function brownFrame(body,time,size){
 }
 export function paintBrownAtmosphere(ctx,body,x,y,r,seconds,reducedMotion,width,height){
   if(r<1||x+r<0||y+r<0||x-r>width||y-r>height)return;
-  const time=reducedMotion?0:seconds,tick=Math.floor(time*6),size=r<80?96:192,key=body.id+':'+size+':'+reducedMotion;
+  const time=reducedMotion?0:seconds,tick=Math.floor(time*6),size=r<80?96:192,key=[body.id,body.type,body.temperature,body.rotationDays,body.cloudContrast,size,reducedMotion].join(':');
   let pair=frames.get(key);
   if(!pair||pair.tick!==tick){pair={tick,a:pair?.tick===tick-1?pair.b:brownFrame(body,tick/6,size),b:brownFrame(body,(tick+1)/6,size),blend:pair?.blend};frames.set(key,pair);if(frames.size>4)frames.delete(frames.keys().next().value);}
   if(!pair.blend){pair.blend=document.createElement('canvas');pair.blend.width=pair.blend.height=size;}
@@ -35,7 +35,7 @@ export function compactState(body,seconds,reducedMotion=false){
   return {period,phase,magnetar,burst,pulse:reducedMotion?1:period<1/30?.85:.7+.3*Math.cos(phase)**8,tilt:body.magneticTilt||.6};
 }
 export function paintCompact(ctx,body,x,y,r,seconds,reducedMotion,width,height){
-  const state=compactState(body,seconds,reducedMotion),active=body.subtype==='pulsar'||state.magnetar||body.family==='quark';
+  const state=compactState(body,seconds,reducedMotion),active=body.subtype==='pulsar'||(!body.subtype&&body.familyLabel==='Pulsar / neutron star')||state.magnetar||body.family==='quark';
   const effect=active?Math.min(Math.max(12,r*9),Math.max(width,height)*.65):Math.min(Math.max(3,r*1.4),Math.max(width,height)*.65);
   if(x+effect<0||x-effect>width||y+effect<0||y-effect>height)return;
   ctx.save();const color=state.magnetar?'#b282ff':'#70dfff';
