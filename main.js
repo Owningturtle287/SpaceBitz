@@ -850,7 +850,7 @@ function updateUI() {
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
   if(state.terminalExpanded&&!state.terminal)buildTerminal();
   $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
-  $('primaryActionLabel').textContent=state.waypoint?'':action;$('primaryActionLabel').hidden=Boolean(state.waypoint);$('coordinateArrow').hidden=!state.waypoint;
+  $('primaryActionLabel').textContent=state.waypoint?'':action;$('primaryActionLabel').hidden=Boolean(state.waypoint);$('coordinateArrow').toggleAttribute('hidden',!state.waypoint);
   $('primaryAction').setAttribute('aria-label',action==='GO HERE'?'Go Here':action);
   $('contextName').textContent=title||'Target';$('contextActions').classList.toggle('coordinate',Boolean(state.waypoint));
   document.body.classList.toggle('terminal-visible',!$('targetCard').hidden);

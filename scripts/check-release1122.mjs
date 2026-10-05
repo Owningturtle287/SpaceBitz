@@ -4,7 +4,7 @@ export async function checkRelease1122(page,engine){
   await page.setViewportSize({width:1440,height:900});
   await page.evaluate(async()=>{
     const g=window.__game,{makeSystem,visualRadius}=await import('/model.js');
-    globalThis.__qaPause=true;g.cancelTarget();g.settings.reducedMotion=false;
+    globalThis.__qaPause=true;g.cancelTarget();g.settings.reducedMotion=false;g.applySettings();
     g.state.system=makeSystem('sol');g.state.save.currentSystem=g.state.save.homeSeed='sol';
     g.state.scene='system';g.state.save.homePlanet=null;g.state.autopilot=g.state.centerZoom=g.state.followBody=null;
     g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.state.panUntil=Infinity;
@@ -41,7 +41,7 @@ export async function checkRelease1122(page,engine){
     for(let elapsed=0;elapsed<=8000;elapsed+=100){g.updateTerminal(record.start+elapsed);if(record.finished)break;}
     const start=record.rewind.start;g.updateTerminal(start+150);screen.dispatchEvent(new WheelEvent('wheel',{deltaY:1}));screen.scrollTop=60;g.updateTerminal(start+4000);
     const manual=screen.scrollTop,cancelled=!record.rewind;
-    g.settings.reducedMotion=true;g.showDetails(g.state.selected);g.updateTerminal(performance.now());g.updateUI();
+    g.settings.reducedMotion=true;g.applySettings();g.showDetails(g.state.selected);g.updateTerminal(performance.now());g.updateUI();
     return {manual,cancelled,reducedTop:screen.scrollTop,full:g.state.terminal.count===g.state.terminal.text.length,rewind:!!g.state.terminal.rewind};
   });assert.ok(reading.manual===60&&reading.cancelled&&reading.reducedTop===0&&reading.full&&!reading.rewind,JSON.stringify(reading));
   for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667}]){
@@ -51,7 +51,7 @@ export async function checkRelease1122(page,engine){
     await page.screenshot({path:`.qa/${engine}-1122-terminal-${viewport.width}.png`});
   }
   await page.setViewportSize({width:844,height:390});
-  await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;g.updateUI();});
+  await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;g.applySettings();});
   const closing=await page.evaluate(async()=>{
     const g=window.__game,pocket=document.getElementById('terminalPocket'),before=pocket.getBoundingClientRect().height;g.cancelTarget();
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));

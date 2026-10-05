@@ -30,7 +30,7 @@ try{
     const response=await route.fetch();let source=await response.text();
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
-    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected};';
+    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected,applySettings};';
     await route.fulfill({response,body:source});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
