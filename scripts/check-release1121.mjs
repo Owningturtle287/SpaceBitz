@@ -23,7 +23,7 @@ export async function checkRelease1121(page,engine){
     do {
       const rows=await page.locator('.rarity-row:visible').evaluateAll(rows=>rows.map(row=>{
         const r=row.getBoundingClientRect(),list=row.parentElement.getBoundingClientRect(),input=row.querySelector('input');
-        if(r.bottom>list.bottom+1||parseFloat(getComputedStyle(input).fontSize)<16||row.children[0].scrollWidth>row.children[0].clientWidth+1)throw Error('Clipped custom rarity: '+row.textContent);
+        if(r.bottom>list.bottom+1||parseFloat(getComputedStyle(input).fontSize)<16||row.children[0].scrollWidth>row.children[0].clientWidth+1)throw Error('Clipped custom rarity: '+row.textContent+' '+JSON.stringify({bottom:r.bottom,listBottom:list.bottom,font:getComputedStyle(input).fontSize,label:[row.children[0].scrollWidth,row.children[0].clientWidth],viewport:[innerWidth,innerHeight]}));
         return row.children[0].textContent;
       }));rows.forEach(row=>custom.add(row));maxRows=Math.max(maxRows,rows.length);customPages++;
       const next=page.getByRole('button',{name:'Next rarity entries',exact:true});if(await next.isDisabled())break;await next.click();
@@ -34,7 +34,7 @@ export async function checkRelease1121(page,engine){
     layouts.push({viewport,sciencePages,customPages,maxRows});await page.locator('#generationEditor').getByRole('button',{name:'CANCEL',exact:true}).click();await page.locator('#scientificMode').check();
   }
   await page.setViewportSize({width:844,height:390});await page.locator('#solGame').click();await page.waitForFunction(()=>window.__game.state.scene==='surface');
-  await page.evaluate(()=>{const g=window.__game;globalThis.__qaPause=true;g.launch();g.state.autopilot=null;g.state.centerZoom=null;g.state.focusBody=null;g.state.panUntil=Infinity;g.state.camera={x:0,y:0};g.state.zoom=.1;g.select(g.state.system.star);});
+  await page.evaluate(()=>{const g=window.__game;globalThis.__qaPause=true;g.launch();g.state.autopilot=null;g.state.centerZoom=null;g.state.focusBody=null;g.state.panUntil=Infinity;g.state.camera={x:0,y:0};g.state.zoom=.1;g.select(g.state.system.star);g.frame(performance.now());});
   assert.equal(await page.locator('#contextActions').evaluate(e=>e.classList.contains('ready')),false);
   await page.waitForTimeout(600);assert.equal(await page.locator('#contextActions').evaluate(e=>e.classList.contains('ready')),true);
   assert.equal(await page.locator('#cancelTravel').innerText(),'×');assert.equal(await page.locator('#contextName').innerText(),'Sol');
@@ -42,7 +42,7 @@ export async function checkRelease1121(page,engine){
   await page.evaluate(()=>window.__game.positionContext());await page.screenshot({path:`.qa/${engine}-1121-actions.png`});
   for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667},{width:1440,height:900}]){
     await page.setViewportSize(viewport);
-    await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(performance.now());g.updateUI();});await page.waitForTimeout(250);
+    await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(performance.now());g.updateUI();g.frame(performance.now());});await page.waitForTimeout(250);
     const layout=await page.evaluate(()=>{
       const card=document.getElementById('targetCard'),r=card.getBoundingClientRect(),log=document.getElementById('journalButton').getBoundingClientRect(),screen=document.getElementById('terminalScreen'),out=document.getElementById('terminalOutput');
       return {bottom:r.bottom,right:r.right,top:r.top,width:r.width,logBottom:log.bottom,logRight:log.right,columns:getComputedStyle(out).gridTemplateColumns.split(' ').length,overflow:screen.scrollWidth-screen.clientWidth,fonts:parseFloat(getComputedStyle(out).fontSize),text:out.textContent};
@@ -58,7 +58,7 @@ export async function checkRelease1121(page,engine){
   const manual=await page.evaluate(()=>{const g=window.__game;g.state.joy.x=.5;g.update(100,0);g.state.joy.x=0;return {pan:g.state.panUntil,camera:{...g.state.camera}};});assert.equal(manual.pan,0);assert.notDeepEqual(manual.camera,camera);
   // Pick an empty square; its green arrow and red X remain compact and cancellable.
   await page.evaluate(()=>{const g=window.__game;g.state.camera={x:1e7,y:1e7};g.state.panUntil=Infinity;g.state.centerZoom=null;g.state.zoom=.1;});
-  await page.mouse.click(420,190);await page.waitForTimeout(650);await page.evaluate(()=>window.__game.positionContext());
+  await page.mouse.click(420,190);await page.waitForTimeout(650);await page.evaluate(()=>{window.__game.frame(performance.now());window.__game.positionContext();});
   assert.equal(await page.locator('#primaryAction').innerText(),'↗');assert.equal(await page.locator('#primaryAction').getAttribute('aria-label'),'Go Here');
   const controls=await page.locator('#contextActions').boundingBox();assert.ok(controls.width<70&&controls.height<40);
   await page.screenshot({path:`.qa/${engine}-1121-coordinate.png`});await page.locator('#cancelTravel').click();assert.equal(await page.locator('#contextActions').isVisible(),false);

@@ -558,7 +558,7 @@ function showGenerationOptions(){
   function render(){
     const key=category.value;rows.replaceChildren();
     for(const [id,label]of POPULATIONS[key].entries){const row=document.createElement('label');row.className='rarity-row';const name=document.createElement('span'),input=document.createElement('input'),unit=document.createElement('span');name.textContent=label;name.title=label;input.type='text';input.inputMode='decimal';input.maxLength=12;input.value=String(draft.pools[key][id]);input.dataset.pool=key;input.dataset.type=id;input.setAttribute('aria-label',label+' percentage');unit.textContent='%';input.oninput=()=>{draft.pools[key][id]=input.value;input.setAttribute('aria-invalid',String(percentUnits(input.value)===null));validate();};row.append(name,input,unit);rows.append(row);}
-    layout();validate();
+    validate();layout();
   }
   function layout(){const result=fitRarities(rows,page);page=result.page;pageLabel.textContent=`${page+1} / ${result.count||1}`;prev.disabled=page===0;next.disabled=page>=result.count-1;pages.classList.toggle('single-page',result.count<=1);}
   category.onchange=()=>{page=0;render();};prev.onclick=()=>{page--;layout();};next.onclick=()=>{page++;layout();};
@@ -793,7 +793,7 @@ function updateUI() {
   $('modeLabel').textContent=scene==='chart'?'SECTOR / STAR CHART':'ORBITAL / SYSTEM';
   $('placeLabel').textContent=scene==='chart'?'Deep Space':scene==='surface'?findBody(state.save.landed)?.name||'Surface':sys.name;
   const planetCount=sys.planets.filter(p=>p.kind==='planet').length,dwarfCount=sys.planets.length-planetCount;
-  $('hint').textContent=scene==='chart'?'Select a star, then set a jump course.':scene==='surface'?'Tap a 1 m square, then GO HERE. Collect samples and return to your lander.':`${sys.star.type} STAR · ${planetCount} PLANETS${dwarfCount?` · ${dwarfCount} DWARF PLANET`:''}`;
+  $('hint').textContent=scene==='chart'?'Select a star, then engage Warp Drive.':scene==='surface'?'Tap a 1 m square, then its green arrow. Collect samples and return to your lander.':`${sys.star.type} STAR · ${planetCount} PLANETS${dwarfCount?` · ${dwarfCount} DWARF PLANET`:''}`;
   $('zoneLegend').hidden=scene!=='system';$('zoneToggle').textContent=settings.zone?'ON':'OFF';$('zoneToggle').setAttribute('aria-pressed',String(settings.zone));
   const list=$('bodyList'),listKey=`${scene}:${sys.seed}:${sel?.id||''}`;
   if(state.listKey!==listKey){
