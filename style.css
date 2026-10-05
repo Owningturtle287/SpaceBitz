@@ -485,7 +485,7 @@ body[data-reduced-motion=true] .terminal-dock,body[data-reduced-motion=true] .te
 #terminalButton{position:absolute;right:37px;bottom:calc(100% + var(--log-gap,0px));pointer-events:auto;transition:bottom .24s cubic-bezier(.22,.7,.25,1)}
 .terminal-glyph{width:16px;height:14px;display:block}
 #terminalButton[aria-expanded=true]{background:#15342a;color:#b0ffc9}
-.terminal-input-bar{flex:none;display:flex;align-items:center;gap:6px;border-top:2px solid #354e51;margin-top:5px;padding:5px 0 0;min-width:0;background:#03110d}
+.terminal-input-bar{flex:none;display:flex;align-items:center;gap:6px;border-top:2px solid #354e51;margin-top:5px;padding:5px 0 0;min-width:0;background:#03110d;touch-action:manipulation}
 .terminal-prompt{font:14px var(--pixel);color:#9af5b1}
 #terminalInput{flex:1;min-width:0;width:0;height:31px;box-sizing:border-box;background:#071b15;color:#bcffd0;border:1px solid #456b59;border-radius:0;padding:3px 5px;font:16px/1.4 var(--pixel);outline-offset:1px}
 #terminalInput::placeholder{font:10px var(--pixel);color:#619774}

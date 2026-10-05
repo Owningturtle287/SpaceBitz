@@ -90,6 +90,8 @@ export async function checkRelease1124(page,engine){
   await page.locator('#secondaryAction').click();await page.waitForTimeout(350);await page.locator('#terminalButton').click();await page.waitForTimeout(350);
   assert.equal(await page.locator('#terminalInput').inputValue(),'Cwasd a','Closing lost the text draft');
   await page.locator('#terminalInput').focus();await page.locator('[data-key="Clear"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'');
+  await page.locator('[data-key="A"]').tap();await page.locator('[data-key="B"]').tap();await page.locator('[data-key="B"]').tap();
+  assert.equal(await page.locator('#terminalInput').inputValue(),'ABB','Rapid touchscreen keys were suppressed');
   await page.locator('#terminalInput').fill('x'.repeat(128));await page.locator('[data-key="A"]').click();assert.equal((await page.locator('#terminalInput').inputValue()).length,128);
   await page.locator('[data-key="Done"]').click();
   await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.reducedMotion=true;g.applySettings();document.getElementById('terminalButton').click();g.updateTerminal(performance.now());});
