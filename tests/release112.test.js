@@ -67,5 +67,5 @@ test('giant cells, spots and eruptions scale to their star and activity has quie
   const giant=makeStar('giant','Giant','giant'),dwarf=makeStar('dwarf','Dwarf','main','M');assert.ok(giant.activityModel.cellScale>dwarf.activityModel.cellScale);
   const activeGiant={...giant,visual:{...giant.visual,spots:1}};const spots=Array.from({length:20},(_,i)=>stellarActivity(activeGiant,i*10)).flat();assert.ok(spots.some(s=>s.diameterKm>28000));
   const quiet={...giant,activityModel:{...giant.activityModel,flareRate:.03},visual:{...giant.visual,prominences:.03}};
-  let quietFrames=0;for(let i=0;i<1000;i++)if(stellarProminences(quiet,i).every(p=>p.life===0))quietFrames++;assert.ok(quietFrames>700);
+  let quietFrames=0,height=0;for(let i=0;i<1000;i++){const plumes=stellarProminences(quiet,i);if(plumes.every(p=>p.life===0))quietFrames++;height=Math.max(height,...plumes.map(p=>p.height));}assert.ok(quietFrames>700);assert.ok(height>.03,'Infrequent giant eruptions still extend visibly from their surface');
 });

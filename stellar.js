@@ -40,7 +40,7 @@ export function stellarProminences(body,seconds){
   return Array.from({length:6},(_,i)=>{
     const seed=body.id+':prominence:'+i,rate=body.activityModel?.flareRate??1,cycle=(32+unit(seed)*28)/Math.max(.08,rate),duration=9+unit(seed+':duration')*6;
     const age=((seconds+unit(seed+':phase')*cycle)%cycle+cycle)%cycle;
-    const life=(age<duration?Math.sin(Math.PI*age/duration)**2:0)*Math.min(1,body.visual?.prominences??1);
+    const life=(age<duration?Math.sin(Math.PI*age/duration)**2:0)*Math.sqrt(Math.min(1,body.visual?.prominences??1));
     return {angle:unit(seed+':angle')*TAU+Math.sin(seconds*.07+i)*.035,
       life,height:(.2+unit(seed+':height')*.14)*life,width:.10+unit(seed+':width')*.09,
       bend:(unit(seed+':bend')-.5)*.55,phase:unit(seed+':grain')*TAU};

@@ -23,7 +23,7 @@ export function terminalLines(object,system,context={}){
     if(object.remnantAgeYears)add('REMNANT AGE',years(object.remnantAgeYears));
     if(object.fieldGauss)add('MAGNETIC FIELD',object.fieldGauss.toExponential(2)+' G');
     if(object.cloudChemistry)add('ATMOSPHERE',object.cloudChemistry);
-    for(const pair of system.binaries||[])if(pair.members.includes(object.id)){add('PAIR '+pair.id.split(':').at(-1).toUpperCase(),number(pair.au)+' AU / e '+number(pair.eccentricity)+' / '+number(pair.orbitalInclination)+' deg / '+number(pair.period)+' days');}
+    for(const pair of system.binaries||[])if(pair.members.includes(object.id)){add('PAIR '+pair.id.split(':').at(-1).toUpperCase(),number(pair.au)+' AU / e '+number(pair.eccentricity)+' / '+number(pair.orbitalInclination)+' deg / '+number(pair.period)+' days / q '+number(pair.mu/(1-pair.mu)));add('PAIR MEMBERS',pair.members.map(id=>system.stars.find(star=>star.id===id)?.name||id).join(' + '));}
   }else if(['planet','moon','dwarf-planet'].includes(object.kind)){
     const orbit=orbitalElements(object,days);
     add('TYPE',object.kind+' / '+object.type);add('DIAMETER',formatDiameter(object.diameter));add('RADIUS',formatDiameter(object.diameter/2));
