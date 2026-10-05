@@ -1,5 +1,6 @@
 // Real browser regression gate. Test hooks exist only in the intercepted response.
 import assert from 'node:assert/strict';
+import {checkRelease112} from './check-release112.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
@@ -27,22 +28,24 @@ try{
     const response=await route.fetch();let source=await response.text();
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
-    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel};';
+    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected};';
     await route.fulfill({response,body:source});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
+  assert.equal(await page.locator('#mainMenuStage #scientificMode').count(),0);
+  await page.locator('#startGame').click();
   assert.equal(await page.locator('#scientificMode').isChecked(),true);
   assert.equal(await page.locator('#generationOptions').isVisible(),false);
-  await page.locator('#scientificMode').uncheck();await page.locator('#generationOptions').click();
+  await page.locator('#scientificMode').uncheck();await page.locator('#generationOptions').click();await page.locator('#generationEditor select').selectOption('spectral');
   const m=page.locator('input[data-pool="spectral"][data-type="M"]'),k=page.locator('input[data-pool="spectral"][data-type="K"]');
-  await m.fill('73.999999');assert.equal(await page.locator('#applyGeneration').isDisabled(),true);
-  await k.fill('14.000001');assert.equal(await page.locator('#applyGeneration').isDisabled(),false);
+  await m.fill('76.559869');assert.equal(await page.locator('#applyGeneration').isDisabled(),true);
+  await k.fill('13.580001');assert.equal(await page.locator('#applyGeneration').isDisabled(),false);
   await k.fill('NaN');assert.equal(await page.locator('#applyGeneration').isDisabled(),true);
-  await k.fill('14.000001');await page.screenshot({path:`.qa/${engine}-generation-editor.png`}).catch(()=>{});
+  await k.fill('13.580001');await page.screenshot({path:`.qa/${engine}-generation-editor.png`}).catch(()=>{});
   await page.locator('#applyGeneration').click();
   await page.reload();assert.equal(await page.locator('#scientificMode').isChecked(),false);
-  await page.locator('#scientificMode').check();
   await page.locator('#startGame').click();
+  await page.locator('#scientificMode').check();
   const started=Date.now();await page.locator('#solGame').click();
   await page.waitForFunction(()=>window.__game?.state.scene==='surface'&&window.__game.state.lastUI>0);
   assert.equal(await page.evaluate(()=>window.__game.state.save.homePlanet),await page.evaluate(()=>window.__game.state.save.landed));
@@ -61,7 +64,7 @@ try{
   await mkdir('.qa',{recursive:true});await writeFile(`.qa/${engine}-canvas.png`,Buffer.from(initial.image.split(',')[1],'base64'));
   delete initial.image;assert.deepEqual(initial.transform,[2,0,0,2,0,0]);
   assert.equal(initial.canvasWidth,initial.width*initial.dpr);assert.equal(initial.width,initial.rect.width);
-  assert.ok(initial.shipPixels>200,`Ship missing from the viewport centre on startup: ${JSON.stringify(initial)}`);
+  assert.ok(initial.shipPixels>3,`Ship missing from the viewport centre on startup: ${JSON.stringify(initial)}`);
   await page.screenshot({path:`.qa/${engine}-sol.png`});
   assert.equal(await page.locator('#gridToggle').count(),0);
   assert.equal(await page.locator('#systemChartContent #systemFit').count(),0);
@@ -93,7 +96,7 @@ try{
   assert.ok(controls.joy.left<100&&390-controls.joy.bottom<=7);
   assert.equal(controls.warp.width,controls.center.width);assert.equal(controls.warp.height,controls.center.height);
   assert.ok(Math.abs(controls.warp.left-controls.center.right-6)<1);
-  assert.ok(844-controls.target.right<=7&&390-controls.target.bottom<=7&&controls.target.width<=160);
+  assert.ok(controls.target.right<=844&&controls.target.bottom<=390&&controls.target.width<=360);
   await page.locator('#settingsOpen').click();
   assert.equal(await page.locator('.modal-card').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(16, 30, 50)');
   assert.equal(await page.locator('#setting-showGrid').isChecked(),false);
@@ -109,24 +112,25 @@ try{
     s.showClock=true;s.showCoords=true;g.updateUI();return {full,small};
   });
   assert.ok(readout.small<readout.full);
-  await page.evaluate(()=>{
+  await page.evaluate(async()=>{
+    const {SHIP_FOCUS_ZOOM}=await import('/scale.js');
     const g=window.__game,s=g.state; s.followBody=null;s.camera={x:0,y:0};s.zoom=.00001;
     document.getElementById('homeButton').click();
     if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y||s.zoom!==.00001)throw new Error('Center must snap before zooming');
-    g.update(650,0);if(!(s.zoom>.00001&&s.zoom<1.3))throw new Error('No intermediate zoom');
-    g.update(650,0);if(Math.abs(s.zoom-1.3)>1e-9||s.centerZoom)throw new Error('Zoom did not finish');
+    g.update(650,0);if(!(s.zoom>.00001&&s.zoom<SHIP_FOCUS_ZOOM))throw new Error('No intermediate zoom');
+    g.update(650,0);if(Math.abs(s.zoom-SHIP_FOCUS_ZOOM)>1e-9||s.centerZoom)throw new Error('Zoom did not finish');
     s.zoom=.001;document.getElementById('homeButton').click();g.zoom(.5);
     if(s.centerZoom)throw new Error('Manual zoom did not cancel animation');
     g.settings.reducedMotion=true;document.getElementById('homeButton').click();
-    if(s.zoom!==1.3||s.centerZoom)throw new Error('Reduced-motion zoom must be immediate');g.settings.reducedMotion=false;
+    if(s.zoom!==SHIP_FOCUS_ZOOM||s.centerZoom)throw new Error('Reduced-motion zoom must be immediate');g.settings.reducedMotion=false;
     const earth=s.system.planets.find(p=>p.name==='Earth');g.showDetails(earth);
-    const tile=[...document.querySelectorAll('.detail-tile')].find(e=>e.textContent.includes('DIAMETER'));
-    if(!tile.textContent.includes('12,742 km'))throw new Error('Diameter not kilometres');
-    if(getComputedStyle(document.querySelector('.modal-card')).backgroundColor!=='rgb(16, 30, 50)')throw new Error('World info is not opaque');g.closeModal();
+    g.updateTerminal(performance.now()+9000);
+    if(!document.getElementById('terminalOutput').textContent.includes('12,742 km'))throw new Error('Diameter not kilometres');
+    if(getComputedStyle(document.getElementById('targetCard')).backgroundColor!=='rgb(3, 17, 13)')throw new Error('World terminal is not opaque');
     g.enterSurface(earth);g.updateUI();
     if(!document.getElementById('mapButton').hidden||!document.getElementById('modeLabel').hidden)throw new Error('Surface still has warp/expedition label');
-    const info=document.getElementById('surfaceInfo');
-    for(const fact of ['12,742 km','365.26 days','MOONS','ROTATION'])if(!info.textContent.includes(fact))throw new Error('Missing surface fact '+fact);
+    g.showDetails(earth);g.updateTerminal(performance.now()+9000);const info=document.getElementById('terminalOutput');
+    for(const fact of ['12,742 km','365.256 days','MOON COUNT','ROTATION'])if(!info.textContent.includes(fact))throw new Error('Missing terminal fact '+fact);
     s.zoom=.65;s.camera={x:999,y:999};document.getElementById('homeButton').click();
     if(s.camera.x!==s.save.surface.x||s.centerZoom.duration!==1300)throw new Error('Surface center did not snap/start');
     g.update(650,0);if(!(s.zoom>.65&&s.zoom<2.4))throw new Error('Surface zoom has no intermediate frame');
@@ -322,7 +326,7 @@ try{
     s.system=sol;s.save.currentSystem='sol';
     for(const name of ['Tethys','Dione','Rhea','Iapetus','Ariel','Umbriel','Titania','Oberon','Pluto','Charon']){
       const body=all.find(b=>b.name===name);g.select(body);g.showDetails(body);
-      if(!document.getElementById('modalContent').textContent.includes(Math.round(body.diameter).toLocaleString('en-US')))throw new Error('Missing factual diameter for '+name);
+      if(!(g.updateTerminal(performance.now()+9000),document.getElementById('terminalOutput').textContent).includes(Math.round(body.diameter).toLocaleString('en-US')))throw new Error('Missing factual diameter for '+name);
       g.closeModal();g.enterSurface(body);if(s.save.landed!==body.id)throw new Error('Cannot land on '+name);
       g.backdrop(1000);g.drawGround(1000);g.launch();
       if(s.scene!=='system'||s.selected.id!==body.id||s.followBody.id!==body.id)throw new Error('Cannot launch beside '+name);
@@ -351,24 +355,26 @@ try{
   assert.equal(await page.evaluate(()=>window.__game.state.followBody.id),'sol:Neptune');
   // This save/portrait fixture needs a landable home. Random new universes can
   // legitimately be barren; that startup/entry path has separate coverage below.
-  await page.evaluate(()=>{document.getElementById('universeSeed').value='browser-start-1';window.__game.state.warpUntil=0;window.__game.create(false);window.__game.frame(performance.now());});
+  await page.evaluate(()=>{document.getElementById('universeSeed').value='browser-start-2';window.__game.state.warpUntil=0;window.__game.create(false);window.__game.frame(performance.now());});
   assert.equal(await page.evaluate(()=>window.__game.state.scene),'surface');
   await page.reload();await page.locator('#startGame').click();await page.locator('.load-save').first().click();
   await page.waitForFunction(()=>window.__game?.state.scene==='surface'&&window.__game.state.lastUI>0);
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
   await page.screenshot({path:`.qa/${engine}-portrait.png`});
+  await page.evaluate(()=>{const g=window.__game;g.select({id:'lander',name:'Lander',kind:'lander',x:0,y:0});});
   const portraitPanel=await page.locator('#targetCard').boundingBox();
-  assert.ok(844-portraitPanel.y-portraitPanel.height<=7&&390-portraitPanel.x-portraitPanel.width<=7);
+  assert.ok(portraitPanel.y>=0&&portraitPanel.y+portraitPanel.height<=844&&portraitPanel.x+portraitPanel.width<=390);
   await page.evaluate(()=>{window.__game.launch();window.__game.frame(performance.now());});
   await page.screenshot({path:`.qa/${engine}-portrait-system.png`});
   await page.evaluate(()=>{window.__qaPause=true;});
   const starsV2=await page.evaluate(async()=>{
     const g=window.__game,s=g.state,{defaults}=await import('/universe.js'),{makeSystem,bodyPosition,visualRadius}=await import('/model.js');
     const reports=[],montage=document.createElement('canvas');montage.width=1000;montage.height=750;const out=montage.getContext('2d');
-    const types=['main','subgiant','giant','agb','supergiant','lbv','wr','wd','ns','magnetar','postagb','brown'];
+    const types=['main','subgiant','giant','agb','supergiant','lbv','wr','wd','ns','pulsar','magnetar','brown'];
     for(const [index,type]of types.entries()){
-      const config=defaults(false);for(const k of Object.keys(config.pools.family))config.pools.family[k]=k===type?100:0;for(const k of Object.keys(config.pools.speculative))config.pools.speculative[k]=k==='ordinary'?100:0;
+      const config=defaults(false);for(const k of Object.keys(config.pools.family))config.pools.family[k]=k===(['pulsar','magnetar'].includes(type)?'ns':type)?100:0;for(const k of Object.keys(config.pools.speculative))config.pools.speculative[k]=k==='ordinary'?100:0;
       for(const k of Object.keys(config.pools.multiplicity))config.pools.multiplicity[k]=k==='triple'?100:0;
+      if(['ns','pulsar','magnetar'].includes(type))for(const k of Object.keys(config.pools.neutron))config.pools.neutron[k]=k===(type==='ns'?'ordinary':type)?100:0;
       const system=makeSystem('browser-v2-'+type,config);s.system=system;s.save.generation=config;s.save.currentSystem=system.seed;s.scene='system';s.followBody=null;s.autopilot=null;s.centerZoom=null;s.focusBody=null;s.selected=system.star;s.panUntil=Infinity;
       const position=bodyPosition(system.star,s.save.days,system);s.camera={...position};s.save.ship={x:position.x+visualRadius(system.star.diameter)*1.2+150,y:position.y};s.zoom=100/visualRadius(system.star.diameter);
       g.updateUI();s.stellarSeconds=24;g.backdrop(1000);g.drawSystem(1000);
@@ -377,12 +383,10 @@ try{
       const c=document.getElementById('sky'),tile=document.createElement('canvas');tile.width=tile.height=460;
       tile.getContext('2d').putImageData(c.getContext('2d').getImageData(Math.round(c.width/2)-230,Math.round(c.height/2)-230,460,460),0,0);
       out.drawImage(tile,0,0,460,460,index%4*250,Math.floor(index/4)*250,250,250);out.fillStyle='#8ee9d4';out.font='12px monospace';out.fillText(system.star.familyLabel.slice(0,31),index%4*250+8,Math.floor(index/4)*250+238);
-      g.showDetails(system.star);const panel=document.querySelector('.modal-card');
-      if(getComputedStyle(panel).backgroundColor!=='rgb(16, 30, 50)')throw Error('Star panel not opaque');
-      if(!document.getElementById('modalEyebrow').hidden||panel.textContent.includes('System origin:'))throw Error('Old atlas boilerplate remains');
-      if(!document.querySelector('#modalTitleActions .focus-object')||!document.getElementById('modalTelemetry').textContent.includes('DISTANCE FROM SHIP'))throw Error('Missing star header telemetry/focus');
-      if(document.querySelector('.stellar-family').textContent.indexOf(system.star.familyLabel)<0)throw Error('Missing family');
-      const facts=[...document.querySelectorAll('#modalContent details')];if(facts.length<17||facts.some(f=>!f.textContent.includes('SOL REFERENCE')))throw Error('Missing expandable references');
+      g.showDetails(system.star);g.updateTerminal(performance.now()+9000);const panel=document.getElementById('targetCard');
+      if(getComputedStyle(panel).backgroundColor!=='rgb(3, 17, 13)')throw Error('Star terminal not opaque');
+      if(!document.getElementById('focusSelected')||!panel.textContent.includes('DISTANCE FROM SHIP')||!panel.textContent.includes(system.star.familyLabel))throw Error('Missing terminal facts/focus');
+      if(panel.querySelector('details'))throw Error('Old expandable facts remain');
       g.closeModal();g.select(system.stars[1]);g.primary();for(let i=0;i<5000&&s.autopilot;i++)g.update(100,0);if(s.autopilot)throw Error('Companion travel never arrives: '+type);
       const parked=bodyPosition(system.stars[1],s.save.days,system);if(Math.hypot(s.save.ship.x-parked.x,s.save.ship.y-parked.y)<visualRadius(system.stars[1].diameter))throw Error('Companion arrival inside star');
       reports.push({family:type,temperature:system.star.temperature,diameter:system.star.diameter,stars:system.stars.length,planets:system.planets.length});
@@ -392,13 +396,13 @@ try{
   await writeFile(`.qa/${engine}-stellar-catalogue.png`,Buffer.from(starsV2.image.split(',')[1],'base64'));delete starsV2.image;
   await page.evaluate(()=>window.__game.showDetails(window.__game.state.system.star));
   await page.screenshot({path:`.qa/${engine}-stellar-info-portrait.png`});
-  const overflow=await page.locator('.modal-card').evaluate(e=>e.scrollWidth>e.clientWidth);assert.equal(overflow,false);
+  const overflow=await page.locator('#targetCard').evaluate(e=>e.scrollWidth>e.clientWidth);assert.equal(overflow,false);
   await page.evaluate(()=>window.__game.closeModal());await page.locator('#journalButton').click();
   assert.equal(await page.locator('.modal-card').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(16, 30, 50)');await page.evaluate(()=>window.__game.closeModal());
   const v2Soak=await page.evaluate(async()=>{
     const g=window.__game,s=g.state,{defaults}=await import('/universe.js'),{makeSystem,bodyPosition,visualRadius}=await import('/model.js'),{stellarCacheStats}=await import('/stellar.js');
     const times=[];for(let i=0;i<360;i++){
-      if(i%60===0){const c=defaults(false),family=['main','giant','agb','wr','wd','magnetar'][i/60];for(const k of Object.keys(c.pools.family))c.pools.family[k]=k===family?100:0;for(const k of Object.keys(c.pools.multiplicity))c.pools.multiplicity[k]=k==='quad'?100:0;s.system=makeSystem('v2-soak-'+i,c);s.save.generation=c;s.save.currentSystem=s.system.seed;s.selected=null;s.scene='system';}
+      if(i%60===0){const c=defaults(false),family=['main','giant','agb','wr','wd','ns'][i/60];for(const k of Object.keys(c.pools.family))c.pools.family[k]=k===family?100:0;for(const k of Object.keys(c.pools.neutron))c.pools.neutron[k]=k==='magnetar'?100:0;for(const k of Object.keys(c.pools.multiplicity))c.pools.multiplicity[k]=k==='quad'?100:0;s.system=makeSystem('v3-soak-'+i,c);s.save.generation=c;s.save.currentSystem=s.system.seed;s.selected=null;s.scene='system';}
       const p=bodyPosition(s.system.star,s.save.days,s.system);s.camera=p;s.zoom=100/visualRadius(s.system.star.diameter);s.stellarSeconds=i/30;const begin=performance.now();g.backdrop(i*33);g.drawSystem(i*33);times.push(performance.now()-begin);if(i%12===0)await new Promise(r=>requestAnimationFrame(r));
     }
     g.enterChart();for(let i=0;i<30;i++){s.camera={x:i*300,y:i*200};g.backdrop(1000);g.drawChart(1000);}
@@ -488,5 +492,6 @@ try{
     let seed,system;for(let i=0;i<50;i++){seed='barren-'+i;system=makeSystem(seed,generation);if(!system.planets.length)break;}if(system.planets.length)throw Error('No barren fixture');
     const save={...g.state.save,generation,currentSystem:seed,scene:'system',landed:null,homePlanet:null};g.start(save);g.enterSystem({seed,x:0,y:0});g.drawSystem(0);g.showDetails(system.star);g.closeModal();if(g.state.save.ship.x!==g.state.camera.x)throw Error('Barren entry not centered');return {seed,scene:g.state.scene};
   });
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release112=await checkRelease112(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

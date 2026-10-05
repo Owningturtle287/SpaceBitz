@@ -20,15 +20,16 @@ function sphere(size){
 }
 export function stellarActivity(body,seconds){
   if(body.visual?.spots===0)return [];
-  return Array.from({length:9},(_,i)=>{
-    const seed=body.id+':activity:'+i,cycle=60+unit(seed)*55;
+  const model=body.activityModel;
+  return Array.from({length:model?.spotCount||9},(_,i)=>{
+    const seed=body.id+':activity:'+i,cycle=(model?.spotLife||60)*(1+unit(seed)*.7);
     const age=((seconds/cycle+unit(seed+':phase'))%1+1)%1;
     const envelope=age<.8?Math.sin(Math.PI*age/.8)**2:0;
     const flareCycle=40+unit(seed+':flare')*35;
     const flareAge=((seconds+unit(seed+':offset')*flareCycle)%flareCycle+flareCycle)%flareCycle;
     const duration=7+unit(seed+':duration')*4;
     return {longitude:unit(seed+':lon')*TAU,latitude:(unit(seed+':lat')-.5)*1.15,
-      diameterKm:(body.visual?body.diameter*(.006+unit(seed+':size')*.017)*body.visual.spots:7000+unit(seed+':size')*21000)*envelope,
+      diameterKm:(model?body.diameter*model.spotFraction*(.5+unit(seed+':size')*1.5)*body.visual.spots:body.visual?body.diameter*(.006+unit(seed+':size')*.017)*body.visual.spots:7000+unit(seed+':size')*21000)*envelope,
       life:envelope,flare:flareAge<duration?Math.sin(Math.PI*flareAge/duration)**2:0};
   });
 }
@@ -37,9 +38,9 @@ export function stellarActivity(body,seconds){
 export function stellarProminences(body,seconds){
   if(body.visual?.prominences===0)return [];
   return Array.from({length:6},(_,i)=>{
-    const seed=body.id+':prominence:'+i,cycle=32+unit(seed)*28,duration=9+unit(seed+':duration')*6;
+    const seed=body.id+':prominence:'+i,rate=body.activityModel?.flareRate??1,cycle=(32+unit(seed)*28)/Math.max(.08,rate),duration=9+unit(seed+':duration')*6;
     const age=((seconds+unit(seed+':phase')*cycle)%cycle+cycle)%cycle;
-    const life=(age<duration?Math.sin(Math.PI*age/duration)**2:0)*Math.min(1,body.visual?.prominences??1);
+    const life=(age<duration?Math.sin(Math.PI*age/duration)**2:0)*Math.sqrt(Math.min(1,body.visual?.prominences??1));
     return {angle:unit(seed+':angle')*TAU+Math.sin(seconds*.07+i)*.035,
       life,height:(.2+unit(seed+':height')*.14)*life,width:.10+unit(seed+':width')*.09,
       bend:(unit(seed+':bend')-.5)*.55,phase:unit(seed+':grain')*TAU};
@@ -49,8 +50,8 @@ function makeFrame(body,seconds,rotation,SIZE){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=SIZE;
   const g=canvas.getContext('2d'),image=g.createImageData(SIZE,SIZE),data=image.data,seed=hash(body.id);
   const base=body.color.match(/\w\w/g).map(h=>parseInt(h,16));
-  const compact=body.visual?.granulation===0,scale=body.visual?.granulation||1,pulse=1+(body.visual?.pulsation||0)*Math.sin(seconds*.8+seed%11);
-  const points=sphere(SIZE),angle=rotation+seconds*.025,ca=Math.cos(angle),sa=Math.sin(angle),drift=seconds*.26;
+  const compact=body.visual?.granulation===0,scale=body.visual?.granulation||1,pulse=1+(body.visual?.pulsation||0)*(body.family==='protostar'?.6*Math.sin(seconds*1.73+seed%11)+.4*Math.sin(seconds*.43+seed%7):Math.sin(seconds*.8+seed%11));
+  const points=sphere(SIZE),angle=rotation+seconds*.025,ca=Math.cos(angle),sa=Math.sin(angle),drift=seconds*(body.activityModel?.flowSpeed||.26);
   const plumes=stellarProminences(body,seconds).filter(p=>p.life>.005);
   for(let i=0;i<points.length;i+=6){
     const p=points[i],nx=points[i+1],ny=points[i+2],nz=points[i+3],rho=points[i+4],a=points[i+5];
@@ -118,7 +119,7 @@ export function paintStellarSurface(ctx,body,x,y,r,seconds,days,reducedMotion=fa
   const extent=r*PAD;
   if(r<1||x+extent<0||x-extent>width||y+extent<0||y-extent>height)return;
   const t=reducedMotion?0:seconds,rotation=reducedMotion?0:rotationAngle(body,days);
-  const size=r<80?96:192,tick=Math.floor(t*FPS),key=`${body.id}:${body.color}:${body.family||'legacy'}:${size}:${reducedMotion}`;
+  const size=r<80?96:192,tick=Math.floor(t*FPS),key=[body.id,body.color,body.family||'legacy',body.activity,body.rotationDays,JSON.stringify(body.activityModel),size,reducedMotion].join(':');
   let pair=cache.get(key);
   if(!pair||pair.tick!==tick){
     const current=pair?.tick===tick-1?pair.next:makeFrame(body,tick/FPS,rotation,size);

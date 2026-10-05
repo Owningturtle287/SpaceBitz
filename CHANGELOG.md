@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.0 — 2026-10-05
+
+- Rebalanced Scientific Mode to the planned stellar-family census: 20% brown dwarfs, 5% white dwarfs and 0.1% neutron stars, with genuinely rare massive main-sequence and short-lived evolved stars. Pulsars/magnetars are conditional active neutron-star subtypes, with documented uncertain population estimates.
+- Linked brown-dwarf cooling, L/T/Y chemistry, radius and luminosity; added burgundy atmospheric bands, turbulent clouds and dim cooler subclasses. Added spin-linked blue pulsar beams/loops, irregular magnetar bursts, accreting young-star disks/jets and post-AGB envelopes.
+- Scaled stellar convection, spot groups and limb plasma to stellar radius, rotation and magnetic activity. Quiet stars retain quiet intervals; giants evolve large cells. Pixel textures, interpolation, caches and effects remain bounded and respect reduced motion.
+- Moved Scientific Mode and customization into a fixed two-column New Universe screen. Scientific tables are inspectable and locked; independent numerical custom tables must each total exactly 100%. Saved voyages scroll inside their own column, including stacked portrait layouts.
+- Replaced all object fact dialogs with an opaque universal green retro terminal: header Focus View/Info, incremental typing, cursor, scrolling and immediate reduced-motion output. Stars, planets, moons, coordinates and surface targets share the framework; logs remain opaque.
+- Moved travel/interaction actions and Cancel beside projected targets, with smooth movement, viewport bounds and HUD avoidance. Renamed the interstellar layer Deep Space and replaced persistent home labels with small green house outlines. Home status never boosts stellar diameter.
+- Made System Fit and minimum zoom depend on the entire hierarchy and orbital envelope. Very wide binaries/triples/quadruples remain frameable. Set the system spacecraft to 1 km with unchanged artwork, locator support and enough close-up zoom to inspect its detail.
+- Froze v1.11 generation for existing voyages; retained older identities, orbital geometry, home, positions, routes and discoveries. New rules apply to new v3 voyages. Major planet/moon realism remains deferred.
+- Updated offline cache, visible/package version, scientific documentation and Chromium/WebKit regression gates, including mobile viewport layouts and rendering stress coverage.
+
 ## 1.11.0 — 2026-10-04
 
 - Added deterministic, physically linked stellar families from main sequence through giants and compact remnants; black holes and quasars remain excluded.

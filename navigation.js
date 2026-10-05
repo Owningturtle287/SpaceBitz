@@ -3,6 +3,8 @@ import {SURFACE_UNIT,CHART_UNIT,SYSTEM_UNIT,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM,
 
 export function centerZoomAt(from,to,progress){
   const t=Math.max(0,Math.min(1,progress)),ease=t*t*(3-2*t);
+  if(t===0)return from;
+  if(t===1)return to;
   return from*Math.pow(to/from,ease);
 }
 
@@ -18,10 +20,26 @@ export function cameraViewAt(fromCamera,toCamera,fromZoom,toZoom,progress){
 }
 
 export function systemFitZoom(system,width,height,days=0){
-  const stellarReach=(system.binaries||[]).reduce((n,b)=>n+orbitRadius(b.au)*(1+b.eccentricity),0);
-  const reach=Math.max(visualRadius(system.star.diameter)*1.5,stellarReach,...system.planets.map(p=>{const o=orbitalElements(p,days);return o.a*(1+o.e)*1.1+stellarReach;}));
-  return Math.max(SYSTEM_MIN_ZOOM,Math.min(width,height)*.42/reach);
+  return Math.min(width,height)*.42/systemExtent(system,days);
 }
+// Conservative all-phase bounds for every node, orbit and satellite. No fixed
+// lower zoom can exclude a very wide hierarchy; fit and gesture bounds agree.
+export function systemExtent(system,days=0){
+  const stars=system.stars||[system.star],nodes=new Map([...stars,...(system.binaries||[])].map(n=>[n.id,n])),bounds=new Map();
+  let reach=1;
+  function visit(id,offset){
+    const node=nodes.get(id);if(!node)return;bounds.set(id,offset);
+    if(node.kind!=='binary'){reach=Math.max(reach,offset+visualRadius(node.diameter)*1.5);return;}
+    const span=orbitRadius(node.au)*(1+node.eccentricity);
+    visit(node.left,offset+span*node.mu);visit(node.right,offset+span*(1-node.mu));
+  }
+  visit(system.rootId||system.star.id,0);
+  for(const body of system.planets){const o=orbitalElements(body,days),offset=bounds.get(body.orbitHost)||0;
+    const moons=Math.max(0,...body.moons.map(m=>m.orbitKm*(1+(m.eccentricity||0))*visualRadius(2)+visualRadius(m.diameter)));
+    reach=Math.max(reach,offset+o.a*(1+o.e)+Math.max(visualRadius(body.diameter),moons));}
+  return reach;
+}
+export const systemMinZoom=(system,width,height,days=0)=>systemFitZoom(system,width,height,days)*.25;
 export function travelSpeed(scene,distance,drive='hyper'){
   if(scene==='surface')return SURFACE_UNIT*2.2;
   if(scene==='chart')return CHART_UNIT*9;
