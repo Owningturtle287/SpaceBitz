@@ -4,6 +4,7 @@ import {checkRelease112} from './check-release112.mjs';
 import {checkRelease1121} from './check-release1121.mjs';
 import {checkRelease1122} from './check-release1122.mjs';
 import {checkRelease1123} from './check-release1123.mjs';
+import {checkRelease1124} from './check-release1124.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
@@ -128,7 +129,7 @@ try{
     if(s.centerZoom||s.centerReady)throw new Error('Manual zoom did not reset Center');
     g.settings.reducedMotion=true;const z=s.zoom;document.getElementById('homeButton').click();
     if(s.zoom!==z||s.centerZoom||!s.centerReady)throw new Error('Reduced-motion first Center changed zoom');
-    document.getElementById('homeButton').click();if(s.zoom!==SHIP_FOCUS_ZOOM||s.centerZoom)throw new Error('Reduced-motion second Center must zoom immediately');g.settings.reducedMotion=false;
+    document.getElementById('homeButton').click();if(s.zoom!==SHIP_FOCUS_ZOOM||s.centerZoom)throw new Error('Reduced-motion second Center must zoom immediately');g.settings.reducedMotion=false;s.followShip=false;
     const earth=s.system.planets.find(p=>p.name==='Earth');g.showDetails(earth);
     g.updateTerminal(performance.now()+9000);
     if(!document.getElementById('terminalOutput').textContent.includes('12,742 km'))throw new Error('Diameter not kilometres');
@@ -155,7 +156,7 @@ try{
   await page.screenshot({path:`.qa/${engine}-surface-info.png`});
   await page.locator('#systemChartToggle').click();
   await page.evaluate(async()=>{
-    const g=window.__game,s=g.state;g.launch();
+    const g=window.__game,s=g.state;s.followShip=false;g.launch();
     const {bodyPosition,visualRadius,makeSystem}=await import('/model.js');
     const {SYSTEM_UNIT}=await import('/scale.js');
     // Chase a receding planet: the old integrator reached the boundary but could
@@ -199,7 +200,7 @@ try{
   });
   await page.screenshot({path:`.qa/${engine}-surface-ship-arrow.png`});
   await page.evaluate(async()=>{
-    const g=window.__game,s=g.state;g.launch();
+    const g=window.__game,s=g.state;s.followShip=false;g.launch();
     const {visualRadius}=await import('/model.js'),r=visualRadius(s.system.star.diameter);
     const camera={...s.camera},zoom=s.zoom;g.select(s.system.star);document.getElementById('primaryAction').click();
     if(s.autopilot?.type!=='stellar')throw new Error('Star travel unavailable');
@@ -504,5 +505,6 @@ try{
   const release1121=await checkRelease1121(page,engine);
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release1124=await checkRelease1124(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

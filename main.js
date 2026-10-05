@@ -79,6 +79,11 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.12.4',items:[
+    'The second Center press zooms in and follows the moving ship. A small tracking toggle below Center enables or stops following at the current zoom; manual camera gestures stop following.',
+    'Target controls start immediately and glide upward more slowly. The collapsed terminal is narrower; its metallic pixel frame opens into the usual two-column data screen.',
+    'Open Terminal and Close Terminal controls, a standalone terminal launcher beside Log, and a fixed input bar with a pixel keyboard prepare the device for future commands.'
+  ]},
   {version:'1.12.3',items:[
     'Small solid green home icons sit above the home star in Deep Space and above its planet in system view.',
     'Manual movement, routes and arrival preserve the camera position and zoom. Center eases to the ship at the current zoom; a second press after completion zooms in without cancelling travel.',
@@ -316,7 +321,7 @@ const CHANGELOG=[
   ]}
 ];
 const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,y:0}, zoom:1,
-  panUntil:0, centerZoom:null, centerReady:false, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
+  panUntil:0, centerZoom:null, centerReady:false, followShip:false, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, fps:60, particles:[], textureCache:new Map(),
   waypoint:null,hoverCell:null,warpUntil:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
 const loadSaves = () => {
@@ -329,7 +334,7 @@ let centerDrag=null,centerSuppressClick=false;
 function applyCenterButtonLayout(){
   const btn=$('homeButton'),group=$('navigationControls');if(!btn||!group)return;
   const mode=settings.centerButton||'right';
-  btn.hidden=mode==='hidden';btn.dataset.centerPosition=mode;
+  btn.hidden=mode==='hidden';$('followShipButton').hidden=btn.hidden;btn.dataset.centerPosition=mode;
   btn.classList.toggle('center-custom',mode==='custom');
   requestAnimationFrame(()=>{
     const bw=btn.hidden?0:btn.offsetWidth,bh=group.offsetHeight||48;
@@ -345,9 +350,10 @@ function applyCenterButtonLayout(){
         top=mode==='above'?r.top-bh-8:r.top+(r.height-bh)/2;
       }else{left=12;top=window.innerHeight-bh-12;}
     }
-    const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','systemChartContent'].map(id=>$(id)).filter(el=>el&&!el.hidden).map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:r.left,y:r.top,width:r.width,height:r.height}));
+    const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','systemChartContent'].map(id=>$(id)).filter(el=>el&&!el.hidden).map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:r.left,y:r.top,width:r.width,height:r.height}));
     const placed=placeControls({x:left,y:top},{width,height:bh},{width:window.innerWidth,height:window.innerHeight},obstacles);
     group.style.left=placed.x+'px';group.style.top=placed.y+'px';
+    $('followShipButton').style.left=(btn.offsetLeft+bw/2)+'px';
   });
 }
 function applySettings(){
@@ -462,7 +468,7 @@ function start(save) {
   if(settings.timeMode==='realtime')save.days=currentDays();
   migrateLayout(save,state.system);save.route||=[];
   if(state.scene==='surface' && !findBody(save.landed)?.solid){state.scene='system';save.scene='system';save.landed=null;}
-  state.terminal=null;state.terminalExpanded=false;state.selected=null;state.waypoint=null;state.hoverCell=null;state.warpUntil=0;state.focusBody=null;state.centerZoom=null;state.centerReady=false; state.autopilot=null;state.followBody=null;state.panUntil=0;
+  state.terminal=null;state.terminalExpanded=false;state.selected=null;state.waypoint=null;state.hoverCell=null;state.warpUntil=0;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false; state.autopilot=null;state.followBody=null;state.panUntil=0;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.actorMotion={direction:'down',steps:0};
   state.zoom=state.scene==='chart'?1:state.scene==='surface'?1.3:.85;
   if(state.scene==='chart') state.camera={...save.chart};
@@ -722,7 +728,8 @@ function cancelTravel(){state.autopilot=null;state.warpUntil=0;state.waypoint=nu
 function cancelTarget(){cancelTravel();state.selected=null;state.terminal=null;state.terminalExpanded=false;updateUI();}
 $('cancelTravel').onclick=cancelTarget;
 $('primaryAction').onclick=primary;
-$('secondaryAction').onclick=()=>{state.terminalExpanded=!state.terminalExpanded;if(state.terminalExpanded)showDetails(state.selected||{kind:'coordinate',name:'Coordinate'});else updateUI();};
+$('secondaryAction').onclick=toggleTerminal;
+$('terminalButton').onclick=toggleTerminal;
 $('focusSelected').onclick=focusSelected;
 $('mapButton').onclick=()=>{
   if(state.scene==='surface'||state.warpUntil)return;
@@ -731,7 +738,7 @@ $('mapButton').onclick=()=>{
   updateUI();
 };
 $('systemFit').onclick=()=>{
-  state.focusBody=null;state.centerZoom=null;state.centerReady=false;
+  state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false;
   const to=systemFitZoom(state.system,state.width,state.height,state.save.days);
   if(settings.reducedMotion){state.zoom=to;state.camera={x:0,y:0};}
   else state.centerZoom={from:state.zoom,to,fromCamera:{...state.camera},elapsed:0,duration:2600,systemFit:true};
@@ -743,10 +750,21 @@ $('homeButton').onclick=()=>{
   if(centerSuppressClick){centerSuppressClick=false;return;}
   if(!state.save||state.centerZoom?.centerAction)return;
   const zoomIn=state.centerReady,to=zoomIn?Math.max(state.zoom,state.scene==='system'?SHIP_FOCUS_ZOOM:2.4):state.zoom;
-  state.panUntil=Infinity;state.focusBody=null;state.centerReady=false;
+  state.panUntil=Infinity;state.focusBody=null;state.centerReady=false;state.followShip=false;
   const target=state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship;
-  if(settings.reducedMotion||(!zoomIn&&Math.hypot(target.x-state.camera.x,target.y-state.camera.y)*state.zoom<.5)){state.centerZoom=null;state.camera={...target};state.zoom=to;state.centerReady=!zoomIn;}
+  if(settings.reducedMotion||(!zoomIn&&Math.hypot(target.x-state.camera.x,target.y-state.camera.y)*state.zoom<.5)){state.centerZoom=null;state.camera={...target};state.zoom=to;state.centerReady=!zoomIn;state.followShip=zoomIn;}
   else state.centerZoom={from:state.zoom,to,fromCamera:{...state.camera},elapsed:0,duration:1300,centerAction:zoomIn?'zoom':'pan'};
+  updateUI();
+};
+$('followShipButton').onclick=()=>{
+  if(!state.save)return;
+  const following=state.followShip||state.centerZoom?.centerAction==='follow';
+  state.centerZoom=null;state.centerReady=false;state.focusBody=null;state.panUntil=Infinity;state.followShip=false;
+  if(!following){
+    const target=state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship;
+    if(settings.reducedMotion){state.camera={...target};state.followShip=true;}
+    else state.centerZoom={from:state.zoom,to:state.zoom,fromCamera:{...state.camera},elapsed:0,duration:1300,centerAction:'follow'};
+  }
   updateUI();
 };
 $('homeButton').addEventListener('pointerdown',e=>{
@@ -778,7 +796,7 @@ $('systemChartToggle').onclick=()=>{
   panel.classList.toggle('open',open);content.hidden=!open;
   $('systemChartToggle').setAttribute('aria-expanded',String(open));
 };
-function zoom(factor){state.centerZoom=null;state.centerReady=false;if(state.autopilot)state.autopilot.manualZoom=true;state.zoom=clamp(state.zoom*factor,state.scene==='system'?systemMinZoom(state.system,state.width,state.height,state.save.days):state.scene==='surface'?.65:.34,state.scene==='system'?SYSTEM_MAX_ZOOM:2.4);}
+function zoom(factor){state.centerZoom=null;state.centerReady=false;state.followShip=false;if(state.autopilot)state.autopilot.manualZoom=true;state.zoom=clamp(state.zoom*factor,state.scene==='system'?systemMinZoom(state.system,state.width,state.height,state.save.days):state.scene==='surface'?.65:.34,state.scene==='system'?SYSTEM_MAX_ZOOM:2.4);}
 
 function addMetric(parent,label,value) {
   const div=document.createElement('div');div.className='metric';
@@ -851,10 +869,14 @@ function updateUI() {
   }
   if(state.warpUntil){title='WARP DRIVE';action='ENGAGING';destination=null;}
   $('cancelTravel').hidden=false;
-  $('targetCard').hidden=!sel&&!state.waypoint&&!traveling;$('contextActions').hidden=$('targetCard').hidden||Boolean(state.warpUntil);
-  $('targetName').textContent=title||'Target';
+  const hasTarget=Boolean(sel||state.waypoint||traveling);
+  $('targetCard').hidden=!hasTarget&&!state.terminalExpanded;$('contextActions').hidden=!hasTarget||Boolean(state.warpUntil);
+  $('targetName').textContent=title||'Ship Terminal';$('focusSelected').hidden=!sel&&!state.waypoint;
   $('targetStatus').textContent=state.waypoint?'Coordinate selected':scene==='chart'&&sel?.seed===state.save.homeSeed||scene==='system'&&sel?.kind==='star'&&state.save.currentSystem===state.save.homeSeed?'Home System':sel?.id===state.save.homePlanet?'Home World':traveling?'Course active':sel?.familyLabel||sel?.kind||'Target selected';
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
+  $('terminalInputBar').hidden=!state.terminalExpanded;
+  if(!hasTarget)$('targetStatus').textContent='Ready · '+(scene==='chart'?'Deep Space':scene==='surface'?'Surface':'System');
+  if(!state.terminalExpanded){setTerminalKeyboard(false);if(document.activeElement===$('terminalInput'))$('terminalInput').blur();}
   if(state.terminalExpanded&&!state.terminal)buildTerminal();
   $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
   $('primaryActionLabel').textContent=state.waypoint?'':action;$('primaryActionLabel').hidden=Boolean(state.waypoint);$('coordinateArrow').toggleAttribute('hidden',!state.waypoint);
@@ -862,7 +884,8 @@ function updateUI() {
   $('contextName').textContent=title||'Target';$('contextActions').classList.toggle('coordinate',Boolean(state.waypoint));
   document.body.classList.toggle('terminal-visible',!$('targetCard').hidden);
   layoutTerminalDock();
-  $('secondaryAction').hidden=false;$('secondaryAction').textContent=state.terminalExpanded?'CLOSE INFO':'INFO';$('secondaryAction').setAttribute('aria-expanded',String(Boolean(state.terminalExpanded)));
+  $('secondaryAction').hidden=false;$('secondaryAction').textContent=state.terminalExpanded?'Close Terminal':'Open Terminal';$('secondaryAction').setAttribute('aria-expanded',String(Boolean(state.terminalExpanded)));
+  $('terminalButton').setAttribute('aria-expanded',String(Boolean(state.terminalExpanded)));$('terminalButton').setAttribute('aria-label',state.terminalExpanded?'Close Terminal':'Open Terminal');
   $('primaryAction').disabled=traveling||action==='NO SOLID SURFACE'||action==='HOLDING';
   const warp=$('mapButton');
   const wasHidden=warp.hidden;warp.hidden=scene==='surface';
@@ -875,6 +898,8 @@ function updateUI() {
   warp.disabled=scene==='surface'||state.warpUntil>0;
   const centerLabel=(state.centerReady?'Zoom in on ':'Center on ')+(scene==='surface'?'explorer':'ship');
   $('homeButton').setAttribute('aria-label',centerLabel);$('homeButton').title=centerLabel;
+  const following=state.followShip||state.centerZoom?.centerAction==='follow';
+  $('followShipButton').setAttribute('aria-pressed',String(Boolean(following)));$('followShipButton').title=following?'Stop following ship':'Follow ship';$('followShipButton').setAttribute('aria-label',$('followShipButton').title);
   $('clock').textContent=formatGameDate();
   $('clock').title=(settings.timeMode==='realtime'?'Real-time 1:1':'Accelerated · 1 real minute = 1 game hour')+' · '+preferredTimeZone()+(settings.paused&&settings.timeMode!=='realtime'?' · paused':'');
   $('telemetry').hidden=!settings.showCoords&&!settings.showFPS;
@@ -910,6 +935,7 @@ function selectedRecord(){
 function buildTerminal(){
   if(!state.save)return;const record=selectedRecord();
   state.terminal={text:terminalLines(record.object,record.system,{days:state.save.days,scene:state.scene,position:record.position,ship:record.ship,homeSystem:state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.save.currentSystem===state.save.homeSeed&&record.object.kind==='star',homeWorld:record.object.id===state.save.homePlanet}),start:performance.now(),count:-1};
+  if(!state.selected&&!state.waypoint)state.terminal.text='Object Data\n\nSTATUS : READY\nLAYER : '+(state.scene==='chart'?'Deep Space':state.scene==='surface'?'Surface':'System')+'\nPOSITION : '+formatCoordinates(record.ship,state.scene)+'\nVOYAGE : '+state.save.name+'\n\nSelect an object or area to retrieve its data.\nCommand input is on standby.';
   const output=$('terminalOutput');output.replaceChildren();let offset=0;
   state.terminal.lines=state.terminal.text.split('\n').map((text,index)=>{
     const node=document.createElement('div'),colon=text.indexOf(' : '),key=document.createElement('span'),value=document.createElement('span');
@@ -922,8 +948,44 @@ function showDetails(body){
   if(body&&body!==state.selected&&body.kind!=='coordinate')select(body);
   state.terminalExpanded=true;buildTerminal();updateUI();
 }
+function toggleTerminal(){
+  if(!state.save)return;
+  state.terminalExpanded=!state.terminalExpanded;
+  if(state.terminalExpanded)buildTerminal();
+  else {$('terminalInput').blur();setTerminalKeyboard(false);}
+  updateUI();
+}
+let terminalShift=false;
+function setTerminalKeyboard(visible){
+  $('terminalKeyboard').hidden=!visible;$('targetCard').classList.toggle('keyboard-open',visible);
+  $('terminalKeyboardToggle').setAttribute('aria-expanded',String(visible));$('terminalKeyboardToggle').setAttribute('aria-label',visible?'Hide terminal keyboard':'Show terminal keyboard');
+}
+function terminalKey(key){
+  const input=$('terminalInput'),start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
+  if(key==='Shift'){terminalShift=!terminalShift;renderTerminalKeyboard();return;}
+  if(key==='Done'){setTerminalKeyboard(false);input.blur();return;}
+  if(key==='Clear'){input.value='';input.setSelectionRange(0,0);return;}
+  const from=key==='Backspace'&&start===end?Math.max(0,start-1):start;
+  const text=key==='Backspace'?'':key==='Space'?' ':terminalShift?key:key.toLowerCase();
+  if(input.value.length-(end-from)+text.length>input.maxLength)return;
+  input.setRangeText(text,from,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));
+}
+function renderTerminalKeyboard(){
+  const keyboard=$('terminalKeyboard');keyboard.replaceChildren();
+  for(const keys of ['1234567890','QWERTYUIOP','ASDFGHJKL','ZXCVBNM',['Shift','Space','Backspace','Clear','Done']]){
+    const row=document.createElement('div');row.className='keyboard-row';
+    for(const key of keys){const button=document.createElement('button');button.type='button';button.className='pixel-key';button.dataset.key=key;button.textContent=key==='Backspace'?'⌫':key==='Space'?'SPACE':key==='Shift'?'SHIFT':key.length===1?(terminalShift?key:key.toLowerCase()):key.toUpperCase();
+      button.setAttribute('aria-label',key);if(key==='Shift')button.setAttribute('aria-pressed',String(terminalShift));if(key==='Space')button.classList.add('space-key');
+      button.onpointerdown=e=>e.preventDefault();button.onclick=()=>terminalKey(key);row.append(button);
+    }keyboard.append(row);
+  }
+}
+renderTerminalKeyboard();
+$('terminalInput').onfocus=()=>{resetInput();setTerminalKeyboard(true);};
+$('terminalInput').onkeydown=e=>{if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();setTerminalKeyboard(false);$('terminalInput').blur();}};
+$('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden;if(open)$('terminalInput').focus({preventScroll:true});setTerminalKeyboard(open);};
 function focusSelected(){
-  if(!state.save)return;const {object,position}=selectedRecord();state.centerZoom=null;state.centerReady=false;
+  if(!state.save)return;const {object,position}=selectedRecord();state.centerZoom=null;state.centerReady=false;state.followShip=false;
   if(state.scene==='chart'){state.zoom=2.4;state.focusBody=null;}
   else if(state.scene==='system'){state.zoom=clamp(Math.min(state.width,state.height)*.24/Math.max(visualRadius(object.diameter||1),.001),systemMinZoom(state.system,state.width,state.height,state.save.days),SYSTEM_MAX_ZOOM);state.focusBody=object.id||null;}
   else state.zoom=2.4;
@@ -947,7 +1009,7 @@ function positionContext(){
   const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
   const radius=(state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10)+(homeIcon?16:0);
   if(state.waypoint)$('coordinateArrow').style.transform=`rotate(${coordinateHeading(record.ship,record.position,state.shipMotion.heading)}deg)`;
-  const obstacles=['terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
+  const obstacles=['terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','joystick','navigationControls','followShipButton'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
   const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles);element.style.transform=`translate(${Math.round(place.x)}px,${Math.round(place.y)}px)`;
 }
 function layoutTerminalDock(){
@@ -1120,7 +1182,8 @@ function update(dt,clockDt=dt) {
       const view=cameraViewAt(animation.fromCamera,targetCamera,animation.from,animation.to,progress);
       state.zoom=view.zoom;state.camera=view.camera;
     }else {state.zoom=centerZoomAt(animation.from,animation.to,progress);state.camera={...targetCamera};}
-    if(progress>=1){state.centerZoom=null;if(animation.centerAction){state.centerReady=animation.centerAction==='pan';updateUI();}}
+    if(progress>=1){state.centerZoom=null;if(animation.centerAction){state.centerReady=animation.centerAction==='pan';state.followShip=animation.centerAction==='zoom'||animation.centerAction==='follow';updateUI();}}
+  }else if(state.followShip){state.camera={...p};
   }else if(state.scene==='system'&&state.focusBody&&state.panUntil===Infinity){
     const body=findBody(state.focusBody);
     if(body)state.camera=bodyPosition(body,state.save.days,state.system);
@@ -1490,7 +1553,7 @@ canvas.addEventListener('pointermove',e=>{
   if(pointers.size===2){const [a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);
     if(state.pinch)zoom(dist/state.pinch);state.hoverCell=null;state.pinch=dist;return;}
   if(gesture){if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>7)gesture.moved=true;
-    if(gesture.moved){state.centerZoom=null;state.centerReady=false;state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
+    if(gesture.moved){state.centerZoom=null;state.centerReady=false;state.followShip=false;state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
       state.panUntil=Infinity;state.focusBody=null;}}
 });
 function pick(e){const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
