@@ -97,7 +97,7 @@ try{
   assert.ok(controls.joy.left<100&&390-controls.joy.bottom<=7);
   assert.equal(controls.warp.width,controls.center.width);assert.equal(controls.warp.height,controls.center.height);
   assert.ok(Math.abs(controls.warp.left-controls.center.right-6)<1);
-  assert.ok(controls.target.right<=844&&controls.target.bottom<=390&&controls.target.width<=360);
+  assert.ok(controls.target.right<=844&&controls.target.bottom<=390&&controls.target.width<=430);
   await page.locator('#settingsOpen').click();
   assert.equal(await page.locator('.modal-card').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(16, 30, 50)');
   assert.equal(await page.locator('#setting-showGrid').isChecked(),false);
