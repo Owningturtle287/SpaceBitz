@@ -552,3 +552,4 @@ body{font-size:9px;line-height:1.7}
   .terminal-visible #joystick{bottom:calc(6px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}
 }
 @media(orientation:landscape) and (max-height:500px){.terminal-keyboard{gap:2px}.keyboard-row .pixel-key{height:20px;min-height:20px}}
+@media(orientation:landscape) and (max-height:500px){.terminal-keyboard{margin-top:3px;padding-top:3px}.terminal-input-bar{margin-top:3px;padding-top:3px}}
