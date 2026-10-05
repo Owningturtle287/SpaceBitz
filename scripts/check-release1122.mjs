@@ -76,14 +76,14 @@ export async function checkRelease1122(page,engine){
   });
   await page.waitForTimeout(350);await page.screenshot({path:`.qa/${engine}-1122-coordinate.png`});
   const markers=await page.evaluate(async()=>{
-    const g=window.__game,{bodyPosition,visualRadius}=await import('/model.js'),ctx=document.getElementById('sky').getContext('2d'),stroke=ctx.stroke;let count=0;
-    ctx.stroke=function(...args){if(this.strokeStyle==='#75ee98')count++;return stroke.apply(this,args);};
+    const g=window.__game,{bodyPosition,visualRadius}=await import('/model.js'),ctx=document.getElementById('sky').getContext('2d'),fill=ctx.fill;let count=0;
+    ctx.fill=function(...args){if(this.fillStyle==='#75ee98')count++;return fill.apply(this,args);};
     try{
       g.cancelTarget();g.settings.labels=false;g.state.scene='system';g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.state.save.homePlanet=null;g.drawSystem(0);const system=count;
       g.enterChart();g.cancelTarget();g.state.camera={x:0,y:0};g.state.zoom=1;count=0;g.backdrop(0);g.drawChart(0);const chart=count;
       g.state.scene='system';const earth=g.state.system.planets.find(b=>b.name==='Earth');g.state.save.homePlanet=earth.id;g.state.camera=bodyPosition(earth,g.state.save.days,g.state.system);g.state.zoom=30/visualRadius(earth.diameter);g.updateUI();count=0;g.backdrop(0);g.drawSystem(0);
       return {system,chart,planet:count};
-    }finally{ctx.stroke=stroke;}
+    }finally{ctx.fill=fill;}
   });assert.deepEqual(markers,{system:0,chart:1,planet:1});
   await page.waitForTimeout(350);await page.screenshot({path:`.qa/${engine}-1122-home-world.png`});
   await page.evaluate(()=>{const g=window.__game;g.enterChart();g.cancelTarget();g.state.camera={x:0,y:0};g.backdrop(0);g.drawChart(0);});
