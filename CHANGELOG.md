@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.2 — 2026-10-05
+
+- Balanced the doorless home outline proportions while keeping the star/planet visible. The home-star marker now appears only in Deep Space; the home-world marker remains in system view.
+- Narrowed the two-column Object Data terminal, compacted its header and reduced the distance font. Target selection smoothly reveals the terminal upward; Log rests at bottom-right when closed and follows above its top-right edge when open.
+- Finished typing smoothly returns records to the beginning. Wheel, touch, pointer or keyboard interaction cancels that automatic scroll. Reduced motion reveals the terminal and complete record immediately.
+- Added stepped pixel outlines without changing transparent target panel content boxes. Replaced glyphs with pixel red X/green arrow artwork; the arrow continuously follows the ship-to-target travel direction.
+- Preserved saves, generation and bounded rendering; extended Chromium/WebKit coverage for transitions, terminal rewind, home-marker layers and coordinate heading.
+
 ## 1.12.1 — 2026-10-05
 
 - Prevented mobile input-focus zoom with readable 16px text controls, preserving browser page zoom. Camera pans now remain where placed until ship movement, travel or Center.

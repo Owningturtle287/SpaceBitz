@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import {checkRelease112} from './check-release112.mjs';
 import {checkRelease1121} from './check-release1121.mjs';
+import {checkRelease1122} from './check-release1122.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
@@ -29,7 +30,7 @@ try{
     const response=await route.fetch();let source=await response.text();
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
-    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected};';
+    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected,applySettings};';
     await route.fulfill({response,body:source});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
@@ -495,5 +496,6 @@ try{
   });
   const release112=await checkRelease112(page,engine);
   const release1121=await checkRelease1121(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release1122=await checkRelease1122(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

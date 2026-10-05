@@ -190,7 +190,7 @@ The local census also depends on which objects and systems are counted:
 Temperature drives stellar color, luminosity brightness and radius a compressed
 size contribution in Deep Space. The chart is symbolic rather than physical disk
 scale and does not simulate distance-dependent observed flux. **Home status has
-no size or brightness multiplier.** Small green pixel house outlines mark home;
+no size or brightness multiplier.** Balanced green pixel house outlines mark home; the home star is marked only in Deep Space, while its planet is marked in system view.
 Home System / Home World appears in selection telemetry without permanent labels.
 
 Photospheric animation uses radius-scaled convection, rotational circulation,
@@ -221,7 +221,11 @@ other existing bounded renderer caches retain their earlier limits.
 
 All objects use an opaque green terminal with name, Focus View, Info, status and
 distance. Info expands upward and types telemetry with brief section pauses;
-its own screen scrolls. Stellar output includes physical, evolutionary, magnetic,
+its own screen scrolls and smoothly returns to the beginning when typing finishes.
+Manual wheel, touch or keyboard reading interrupts this return. The narrower
+terminal reveals upward from the bottom, with a compact header and two columns;
+Log rests at bottom-right when closed and follows above its edge when open.
+Stellar output includes physical, evolutionary, magnetic,
 radiation, habitable-zone and orbital data. Planet/moon data uses the same framework
 without adding the deferred environment overhaul. Actions plus Cancel follow
 selected targets, avoid HUD controls and clamp inside the viewport. Coordinates,

@@ -50,13 +50,15 @@
     </header>
     <div class="terminal-dock" id="terminalDock">
     <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
+    <div id="terminalPocket" class="terminal-pocket">
     <section class="terminal" id="targetCard" aria-label="Object terminal" hidden>
       <div class="terminal-head"><h2 id="targetName">Object</h2><button id="focusSelected" class="icon-button focus-object" aria-label="Focus View" title="Focus View"><span class="focus-glyph" aria-hidden="true"></span></button><button id="secondaryAction" class="button subtle" aria-expanded="false">INFO</button></div>
-      <p id="targetStatus" class="terminal-status"></p><p id="targetDistance" class="target-distance"></p>
+      <div class="terminal-meta"><p id="targetStatus" class="terminal-status"></p><p id="targetDistance" class="target-distance"></p></div>
       <div id="terminalScreen" class="terminal-screen" hidden tabindex="0" aria-label="Object information"><div id="terminalOutput" class="terminal-data"></div><span class="terminal-cursor" aria-hidden="true">█</span></div>
     </section>
     </div>
-    <div id="contextActions" class="context-actions" hidden aria-label="Selected target actions"><div class="context-action-row"><button id="primaryAction" class="button primary">GO HERE</button><button id="cancelTravel" class="button subtle" aria-label="Cancel target" title="Cancel">×</button></div><span id="contextName" class="context-name"></span></div>
+    </div>
+    <div id="contextActions" class="context-actions" hidden aria-label="Selected target actions"><div class="context-action-row"><button id="primaryAction" class="button primary"><span id="primaryActionLabel">GO HERE</span><svg id="coordinateArrow" class="pixel-arrow" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true" hidden><path fill="currentColor" d="M5 0h2v2h2v2h2v2H8v6H4V6H1V4h2V2h2z"/></svg></button><button id="cancelTravel" class="button subtle" aria-label="Cancel target" title="Cancel"><svg class="pixel-x" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h2v2H1z M3 3h2v2H3z M5 5h2v2H5z M7 7h2v2H7z M9 9h2v2H9z M9 1h2v2H9z M7 3h2v2H7z M3 7h2v2H3z M1 9h2v2H1z"/></svg></button></div><span id="contextName" class="context-name"></span></div>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
     <div id="navigationControls" class="navigation-controls">
     <button id="homeButton" class="center-button hud-float" type="button" aria-label="Recenter view">
@@ -95,7 +97,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.12.1</span>
+        <span class="version-chip main-menu-version">v1.12.2</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>

@@ -1,4 +1,4 @@
-/* SpaceBitz 1.12.1 — pixel instruments and universal terminal. */
+/* SpaceBitz 1.12.2 — pixel instruments and universal terminal. */
 @font-face{font-family:SpaceBitz Pixel;src:url('./assets/spacebitz-pixel.woff') format('woff');font-display:swap}
 :root{
   color-scheme:dark;
@@ -406,7 +406,7 @@ body[data-reduced-motion=true] .terminal-cursor{animation:none}@media(prefers-re
 body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #targetCard.terminal{transition:none}
 .topbar,.top-actions,.mission-tools,.utility-stack{pointer-events:none}.topbar button,.topbar .flight-readout,.topbar .mission-content{pointer-events:auto}
 
-/* v1.12.1: readable inputs retain the browser's normal page-zoom controls. */
+/* v1.12.2: readable inputs retain the browser's normal page-zoom controls. */
 .create-row input,.inline-editor input,.scientific-defaults select,.inline-editor select,.setting-row select,input[type=text],textarea{font-size:16px}
 #welcome .welcome-card:has(.generation-stage:not([hidden])){width:min(1280px,100%)}
 .generation-stage{height:min(760px,calc(100dvh - 28px));padding:12px}
@@ -435,21 +435,26 @@ body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #
 @media(orientation:landscape) and (max-height:500px){.generation-stage{padding:8px}.inline-editor{gap:3px}.inline-editor .rarity-row{min-height:36px;font-size:12px}.scientific-value{min-height:25px;padding:2px 0;font-size:12px}.scientific-defaults select,.inline-editor select{height:30px}.inline-editor .generation-error{min-height:18px;font-size:11px}}
 @media(max-height:560px) and (orientation:portrait){.generation-columns{grid-template-rows:minmax(190px,1fr) minmax(70px,.35fr)}}
 
-/* The log is a sibling above the dock, so it follows upward expansion. */
-.terminal-dock{position:absolute;z-index:6;right:max(8px,env(safe-area-inset-right));bottom:calc(4px + env(safe-area-inset-bottom));width:min(430px,calc(100vw - 16px));min-height:96px;pointer-events:none}
-.terminal-dock:has(.expanded){width:min(760px,calc(100vw - 300px))}
-#targetCard.terminal{position:relative;inset:auto;width:100%;height:96px;max-height:none;padding:10px;box-sizing:border-box;pointer-events:auto;font-size:12px}
+/* The clipped pocket reveals the terminal upward; its sibling Log follows its edge. */
+.terminal-dock{position:absolute;z-index:6;right:max(8px,env(safe-area-inset-right));bottom:calc(4px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 32px));min-height:0;pointer-events:none;transition:width .24s cubic-bezier(.22,.7,.25,1)}
+.terminal-dock:has(.expanded:not([hidden])){width:min(600px,calc(100vw - 330px))}
+.terminal-pocket{position:relative;height:0;overflow:hidden;transition:height .24s cubic-bezier(.22,.7,.25,1)}
+.terminal-dock.has-target{--log-gap:7px}
+#targetCard.terminal{position:absolute;inset:auto;right:0;bottom:0;width:100%;height:auto;min-height:64px;max-height:none;padding:7px 8px;box-sizing:border-box;pointer-events:auto;font-size:12px;transition:none}
 #targetCard.terminal.expanded{height:min(70dvh,calc(100dvh - 115px));max-height:none;display:flex;flex-direction:column}
-#targetCard.terminal h2{font-size:11px}.terminal-head{flex:none}
-#targetCard .terminal-status,#targetCard .target-distance{font-size:11px;flex:none}
+#targetCard.terminal h2{font-size:11px}.terminal-head{flex:none;gap:6px}
+#targetCard .terminal-head .button,#targetCard .focus-object{height:24px;min-height:24px;padding:2px 6px}.terminal-head .focus-object{width:30px;min-width:30px}#targetCard .focus-glyph{width:16px;height:16px;border-width:2px}#targetCard .focus-glyph:after{left:4px;top:4px}
+.terminal-meta{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px;flex:none}
+#targetCard .terminal-status{font-size:10px;margin:0}
+#targetCard .target-distance{font-size:9px;line-height:1.3;margin:0;min-width:0;text-align:right;overflow-wrap:anywhere}
 #targetCard .terminal-screen{flex:1;min-height:0;height:auto;max-height:none;padding:8px 4px 4px;margin-top:7px;overflow-y:auto;overflow-x:hidden}
 .terminal-data{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:22px;row-gap:9px;font:12px/1.4 var(--mono);color:#9af5b1}
 .terminal-field{min-width:0}.terminal-key{display:block;color:#76b58c;font-size:10px}.terminal-value{overflow-wrap:anywhere}
 .terminal-title,.terminal-note,.terminal-break{grid-column:1 / -1}.terminal-title{font-size:14px;color:#b6ffc7}.terminal-break{height:3px}.terminal-note{font-size:11px}
 .utility-button{width:30px;height:30px;min-width:30px;min-height:30px;padding:3px;gap:3px}.utility-label{font-size:6px}
 .settings-glyph{width:12px;height:12px;border-width:3px;box-shadow:none}.log-glyph{width:12px;height:12px}.log-glyph:after{top:2px;height:1px;box-shadow:0 3px var(--cyan)}
-#journalButton{position:absolute;right:0;bottom:calc(100% + 7px);pointer-events:auto}
-@media(max-width:699px){.terminal-dock:has(.expanded){width:calc(100vw - 16px)}#targetCard.terminal.expanded{height:min(70dvh,calc(100dvh - 220px))}.terminal-data{font-size:11px;column-gap:14px}.terminal-visible #joystick{bottom:calc(var(--terminal-height,84px) + 16px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}
+#journalButton{position:absolute;right:0;bottom:calc(100% + var(--log-gap,0px));pointer-events:auto;transition:bottom .24s cubic-bezier(.22,.7,.25,1)}
+@media(max-width:699px){.terminal-dock:has(.expanded:not([hidden])){width:calc(100vw - 32px)}#targetCard.terminal.expanded{height:min(70dvh,calc(100dvh - 220px))}.terminal-data{font-size:11px;column-gap:14px}.terminal-visible #joystick{bottom:calc(var(--terminal-height,84px) + 16px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}
 
 /* Names remain framed; only the slim action strip slides up after a tap. */
 .context-actions{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:min(320px,calc(100vw - 16px));transition:transform 75ms linear;pointer-events:none}
@@ -458,6 +463,14 @@ body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #
 .context-name{border:1px solid #6fe1cf80;background:transparent;color:#e8fff9;padding:5px 8px;font:9px/1.4 var(--pixel);overflow-wrap:anywhere;text-align:center;max-width:100%}
 .context-actions .button,.context-actions .primary{border:1px solid #6fe1cf80;box-shadow:none;clip-path:none;background:transparent;color:#b5f7ce;min-height:28px;padding:5px 7px;font:8px/1.4 var(--pixel)}
 .context-actions .button:hover:not(:disabled){background:rgb(25 65 51 / 20%)}
-#cancelTravel{color:#ff7979;border-color:#cf737380;font:20px/1 var(--mono);width:28px;min-width:28px;padding:0}
-.context-actions.coordinate .context-name{display:none}.context-actions.coordinate .primary{color:#82f7aa;width:28px;min-width:28px;padding:0;font:23px/1 var(--mono)}
+#cancelTravel{color:#ff7979;width:28px;min-width:28px;padding:0;display:grid;place-items:center;--target-frame:var(--cancel-frame)}
+.context-actions.coordinate .context-name{display:none}.context-actions.coordinate .primary{color:#82f7aa;width:28px;min-width:28px;padding:0;display:grid;place-items:center}
 body[data-reduced-motion=true] .context-action-row{transition:none;transform:none}@media(prefers-reduced-motion:reduce){.context-action-row{transition:none;transform:none}}
+
+/* Stepped outlines preserve the previous label and control content boxes. */
+:root{--target-frame:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27 shape-rendering=%27crispEdges%27%3E%3Cpath fill=%27%236fe1cf%27 fill-opacity=%27.65%27 fill-rule=%27evenodd%27 d=%27M4 0H8V1H10V2H11V4H12V8H11V10H10V11H8V12H4V11H2V10H1V8H0V4H1V2H2V1H4Z M4 1V2H2V4H1V8H2V10H4V11H8V10H10V8H11V4H10V2H8V1Z%27/%3E%3C/svg%3E");--cancel-frame:url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2712%27 height=%2712%27 viewBox=%270 0 12 12%27 shape-rendering=%27crispEdges%27%3E%3Cpath fill=%27%23cf7373%27 fill-opacity=%27.65%27 fill-rule=%27evenodd%27 d=%27M4 0H8V1H10V2H11V4H12V8H11V10H10V11H8V12H4V11H2V10H1V8H0V4H1V2H2V1H4Z M4 1V2H2V4H1V8H2V10H4V11H8V10H10V8H11V4H10V2H8V1Z%27/%3E%3C/svg%3E")}
+.context-name,.context-actions .button,.context-actions .primary{position:relative;border-color:transparent}
+.context-name::before,.context-actions .button::before{content:"";position:absolute;inset:-1px;pointer-events:none;border:5px solid transparent;border-image:var(--target-frame) 5 / 5px / 0 stretch}
+.pixel-x,.pixel-arrow{width:16px;height:16px;display:block;pointer-events:none;transform-origin:center}
+body[data-reduced-motion=true] .terminal-dock,body[data-reduced-motion=true] .terminal-pocket,body[data-reduced-motion=true] #journalButton{transition:none}
+@media(prefers-reduced-motion:reduce){.terminal-dock,.terminal-pocket,#journalButton{transition:none}}
