@@ -543,6 +543,6 @@ body{font-size:9px;line-height:1.7}
 .body-entry{font-size:9px;line-height:1.7}.body-entry.moon{font-size:8px}.body-entry small{font-size:7px}
 .save-row small,.log-item small{font-size:8px;line-height:1.7}.toast{font-size:9px;line-height:1.7}
 .scientific-value,.scientific-value strong{font-size:10px;line-height:1.7}.scientific-defaults output,.editor-pages{font-size:9px}
-.inline-editor .rarity-row{grid-template-columns:minmax(0,1fr) 160px 10px;font-size:10px;line-height:1.6;gap:6px}
+.inline-editor .rarity-row{grid-template-columns:minmax(0,1fr) 118px 10px;font-size:10px;line-height:1.6;gap:6px}
 .inline-editor .rarity-total{font-size:9px}.inline-editor .generation-error{font-size:9px;line-height:1.7}
 @media(max-width:600px){#clock{font-size:8px}#telemetry{font-size:7px}.terminal-data{column-gap:12px}.scientific-value,.scientific-value strong{font-size:9px}.inline-editor .rarity-row{font-size:9px}}

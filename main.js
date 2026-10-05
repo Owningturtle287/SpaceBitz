@@ -1019,6 +1019,7 @@ function updateInputCaret(){
   const measured=inputMeasure.measureText(input.value.slice(0,input.selectionStart)).width;
   const available=input.clientWidth-12;
   if(measured-input.scrollLeft>available)input.scrollLeft=measured-available;
+  else if(measured<input.scrollLeft)input.scrollLeft=measured;
   caret.style.left=(6+measured-input.scrollLeft)+'px';
 }
 renderTerminalKeyboard();bindTerminalKey($('terminalDelete'),'Backspace');
@@ -1261,7 +1262,7 @@ function update(dt,clockDt=dt) {
   if(state.followBody && !manual && !state.autopilot){motion.thrust=0;motion.moving=false;}
   if(state.followShip&&state.followPanRemaining>0){
     const wait=state.followPanRemaining;
-    if(!gesture?.moved)state.followPanRemaining=Math.max(0,wait-dt);
+    state.followPanRemaining=Math.max(0,wait-dt);
     if(!state.followPanRemaining)state.centerZoom={from:state.zoom,to:state.zoom,fromCamera:{...state.camera},elapsed:-Math.min(dt,wait),duration:1300,centerAction:'resume'};
   }
   if(state.centerZoom){

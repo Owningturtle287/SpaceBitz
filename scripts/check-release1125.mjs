@@ -47,6 +47,7 @@ export async function checkRelease1125(page,engine){
   });await page.mouse.click(deck.x,deck.y);
   assert.equal(await page.evaluate(()=>Boolean(window.__game.state.selected||window.__game.state.waypoint)),false,'Dashboard tap selected space');
   await page.locator('#terminalButton').click();await page.waitForTimeout(400);await page.locator('#terminalInput').focus();await page.waitForTimeout(400);
+  for(const mode of ['Shift','CapsLock'])if(await page.locator(`[data-key="${mode}"]`).getAttribute('aria-pressed')==='true')await page.locator(`[data-key="${mode}"]`).click();
   await page.locator('[data-key="Clear"]').click();
   await page.locator('[data-key="CapsLock"]').click();await page.locator('[data-key="A"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'A');
   await page.locator('[data-key="Shift"]').click();await page.locator('[data-key="Q"]').click();await page.locator('[data-key="/"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'A!/');
