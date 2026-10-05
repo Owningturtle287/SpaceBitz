@@ -35,7 +35,7 @@ export function compactState(body,seconds,reducedMotion=false){
   return {period,phase,magnetar,burst,pulse:reducedMotion?1:period<1/30?.85:.7+.3*Math.cos(phase)**8,tilt:body.magneticTilt||.6};
 }
 export function paintCompact(ctx,body,x,y,r,seconds,reducedMotion,width,height){
-  const state=compactState(body,seconds,reducedMotion),active=body.subtype==='pulsar'||(!body.subtype&&body.familyLabel==='Pulsar / neutron star')||state.magnetar||body.family==='quark';
+  const state=compactState(body,seconds,reducedMotion),active=body.subtype==='pulsar'||(!body.subtype&&body.familyLabel==='Pulsar')||state.magnetar||body.family==='quark';
   const effect=active?Math.min(Math.max(12,r*9),Math.max(width,height)*.65):Math.min(Math.max(3,r*1.4),Math.max(width,height)*.65);
   if(x+effect<0||x-effect>width||y+effect<0||y-effect>height)return;
   ctx.save();const color=state.magnetar?'#b282ff':'#70dfff';

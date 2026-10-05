@@ -645,7 +645,7 @@ function primary() {
     const sample=state.selected?.kind==='sample'?state.selected:nearestSample();const d=sample?Math.hypot(sample.x-state.save.surface.x,sample.y-state.save.surface.y):Infinity;
     if(state.selected?.kind==='sample'&&d<SURFACE_UNIT){state.save.discoveries.push(sample.id);state.save.log.unshift({name:findBody(state.save.landed)?.name||'World',action:'Sample collected',days:state.save.days});
       toast('Sample secured · added to logbook');persist();updateUI();return;}
-    if(Math.hypot(state.save.surface.x,state.save.surface.y)<62){launch();return;}
+    if(state.selected?.kind!=='sample'&&Math.hypot(state.save.surface.x,state.save.surface.y)<62){launch();return;}
     state.autopilot={type:'surface',x:state.selected?.kind==='sample'?state.selected.x:0,y:state.selected?.kind==='sample'?state.selected.y:0};toast(state.selected?.kind==='sample'?'Course set to sample':'Returning to lander');updateUI();return;
   }
   if(state.scene==='system'){
@@ -804,10 +804,10 @@ function updateUI() {
   $('cancelTravel').hidden=false;
   $('targetCard').hidden=!sel&&!state.waypoint&&!traveling;$('contextActions').hidden=$('targetCard').hidden||Boolean(state.warpUntil);
   $('targetName').textContent=title||'Target';
-  $('targetStatus').textContent=state.waypoint?'Coordinate selected':scene==='chart'&&sel?.seed===state.save.homeSeed?'Home System':sel?.id===state.save.homePlanet?'Home World':traveling?'Course active':sel?.familyLabel||sel?.kind||'Target selected';
+  $('targetStatus').textContent=state.waypoint?'Coordinate selected':scene==='chart'&&sel?.seed===state.save.homeSeed||scene==='system'&&sel?.kind==='star'&&state.save.currentSystem===state.save.homeSeed?'Home System':sel?.id===state.save.homePlanet?'Home World':traveling?'Course active':sel?.familyLabel||sel?.kind||'Target selected';
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
   if(state.terminalExpanded&&!state.terminal)buildTerminal();
-  $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&!state.waypoint?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
+  $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
   $('primaryAction').textContent=action;
   $('secondaryAction').hidden=false;$('secondaryAction').textContent=state.terminalExpanded?'CLOSE INFO':'INFO';$('secondaryAction').setAttribute('aria-expanded',String(Boolean(state.terminalExpanded)));
   $('primaryAction').disabled=traveling||action==='NO SOLID SURFACE'||action==='HOLDING';
@@ -878,7 +878,7 @@ function updateTerminal(now){
 function positionContext(){
   if($('contextActions').hidden||!state.save)return;const record=selectedRecord(),target=screen(record.position.x,record.position.y),element=$('contextActions');
   const radius=state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10;
-  const obstacles=[$('targetCard'),$('systemChart'),$('flightReadout'),$('joystick'),$('navigationControls')].filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};});
+  const obstacles=['targetCard','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};});
   const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles);element.style.transform=`translate(${Math.round(place.x)}px,${Math.round(place.y)}px)`;
 }
 function showJournal() {

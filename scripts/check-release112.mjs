@@ -8,6 +8,11 @@ export async function checkRelease112(page,engine){
     const layout=await page.evaluate(()=>{const list=document.getElementById('savedGames'),stage=document.getElementById('universeMenuStage'),card=document.querySelector('.welcome-card');list.scrollTop=list.scrollHeight;return {listScroll:list.scrollTop,stageOverflow:stage.scrollHeight-stage.clientHeight,cardOverflow:card.scrollHeight-card.clientHeight,bodyOverflow:document.scrollingElement.scrollHeight-innerHeight};});
     assert.ok(layout.listScroll>100,JSON.stringify(layout));assert.ok(layout.stageOverflow<=1&&layout.cardOverflow<=1&&layout.bodyOverflow<=1,JSON.stringify(layout));
     await page.screenshot({path:`.qa/${engine}-generation-${viewport.width}x${viewport.height}.png`});
+    await page.locator('#scientificMode').uncheck();await page.locator('#generationOptions').click();
+    const editor=await page.evaluate(()=>{const column=document.querySelector('.generation-column').getBoundingClientRect(),buttons=[...document.querySelectorAll('.editor-actions button')].map(e=>e.getBoundingClientRect());return {columnBottom:column.bottom,scrollTop:document.querySelector('.generation-column').scrollTop,bottom:Math.max(...buttons.map(r=>r.bottom)),left:Math.min(...buttons.map(r=>r.left)),right:Math.max(...buttons.map(r=>r.right))};});
+    assert.ok(editor.scrollTop===0&&editor.bottom<=editor.columnBottom+1&&editor.left>=0&&editor.right<=viewport.width,JSON.stringify(editor));
+    await page.screenshot({path:`.qa/${engine}-custom-${viewport.width}x${viewport.height}.png`});
+    await page.locator('#generationEditor').getByRole('button',{name:'CANCEL',exact:true}).click();await page.locator('#scientificMode').check();
   }
   await page.setViewportSize({width:844,height:390});
   await page.locator('#scientificMode').check();await page.locator('#scientificDefaults summary').click();await page.locator('#scientificPool').selectOption('family');
@@ -17,9 +22,10 @@ export async function checkRelease112(page,engine){
   const input=page.locator('input[data-pool="family"][data-type="brown"]');await input.fill('21');assert.equal(await page.locator('#applyGeneration').isDisabled(),true);
   await page.getByRole('button',{name:'RESTORE SCIENTIFIC DEFAULTS',exact:true}).click();assert.equal(await page.locator('#applyGeneration').isDisabled(),false);await page.locator('#applyGeneration').click();await page.locator('#scientificMode').check();
   await page.evaluate(()=>localStorage.removeItem('spacebitz:field:v1'));await page.locator('#solGame').click();await page.waitForFunction(()=>window.__game.state.scene==='surface');
-  await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;g.launch();g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(g.state.terminal.start+40);});
-  const early=await page.locator('#terminalOutput').innerText();assert.ok(early.length>0&&early.length<200);
+  const early=await page.evaluate(()=>{const g=window.__game;globalThis.__qaPause=true;g.settings.reducedMotion=false;g.launch();g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(g.state.terminal.start+40);return {text:document.getElementById('terminalOutput').textContent,length:g.state.terminal.text.length,count:g.state.terminal.count};});
+  assert.ok(early.text.length>0&&early.text.length<early.length,JSON.stringify(early));
   await page.evaluate(()=>{const g=window.__game;g.updateTerminal(performance.now()+9000);g.positionContext();});
+  await page.waitForTimeout(220);
   assert.ok((await page.locator('#terminalOutput').innerText()).includes('Home System'));assert.equal(await page.locator('#targetCard details').count(),0);
   const terminal=await page.locator('#terminalScreen').evaluate(e=>({overflow:e.scrollHeight>e.clientHeight,background:getComputedStyle(document.getElementById('targetCard')).backgroundColor}));assert.ok(terminal.overflow);assert.equal(terminal.background,'rgb(3, 17, 13)');
   await page.locator('#terminalScreen').evaluate(e=>{e.scrollTop=100;});assert.ok(await page.locator('#terminalScreen').evaluate(e=>e.scrollTop>0));

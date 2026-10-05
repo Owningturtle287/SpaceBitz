@@ -119,7 +119,7 @@ export function paintStellarSurface(ctx,body,x,y,r,seconds,days,reducedMotion=fa
   const extent=r*PAD;
   if(r<1||x+extent<0||x-extent>width||y+extent<0||y-extent>height)return;
   const t=reducedMotion?0:seconds,rotation=reducedMotion?0:rotationAngle(body,days);
-  const size=r<80?96:192,tick=Math.floor(t*FPS),key=`${body.id}:${body.color}:${body.family||'legacy'}:${size}:${reducedMotion}`;
+  const size=r<80?96:192,tick=Math.floor(t*FPS),key=[body.id,body.color,body.family||'legacy',body.activity,body.rotationDays,JSON.stringify(body.activityModel),size,reducedMotion].join(':');
   let pair=cache.get(key);
   if(!pair||pair.tick!==tick){
     const current=pair?.tick===tick-1?pair.next:makeFrame(body,tick/FPS,rotation,size);
