@@ -510,6 +510,8 @@ body[data-reduced-motion=true] #terminalButton{transition:none}@media(prefers-re
 #joystick{z-index:4}
 .terminal-dock{width:68px;--warp-gap:8px}
 .terminal-dock.has-target{width:var(--terminal-collapsed-width,280px)}
+/* Reveal a stable header through the pocket instead of rewrapping it as the dock widens. */
+.terminal-dock #targetCard.terminal:not(.expanded){min-width:var(--terminal-collapsed-width,280px)}
 .terminal-dock.terminal-expanded:has(.expanded:not([hidden])){width:var(--terminal-expanded-width,600px)}
 #mapButton{position:absolute;right:calc(100% + var(--warp-gap));left:auto;top:auto;bottom:0;pointer-events:auto}
 .follow-ship-button{position:relative;top:auto;left:auto!important;transform:none;width:28px;height:26px;min-width:28px;min-height:26px;flex:none;padding:2px;display:grid;place-items:center}
