@@ -63,5 +63,12 @@ export async function checkRelease1123(page,engine){
     return {results,image:canvas.toDataURL()};
   });assert.equal(new Set(icons.results.map(x=>x.width+':'+x.height)).size,1);
   await writeFile(`.qa/${engine}-1123-solid-home-icons.png`,Buffer.from(icons.image.split(',')[1],'base64'));
+  const homeLabel=await page.evaluate(async()=>{
+    const g=window.__game,{bodyPosition,visualRadius}=await import('/model.js'),earth=g.state.system.planets.find(p=>p.name==='Earth');
+    g.state.save.homePlanet=earth.id;g.state.camera=bodyPosition(earth,g.state.save.days,g.state.system);g.state.zoom=35/visualRadius(earth.diameter);g.select(earth);g.positionContext();
+    const label=document.getElementById('contextName').getBoundingClientRect(),iconTop=g.state.height/2-35-16;
+    g.backdrop(0);g.drawSystem(0);return {bottom:label.bottom,iconTop};
+  });assert.ok(homeLabel.bottom<homeLabel.iconTop,JSON.stringify(homeLabel));
+  await page.waitForTimeout(200);await page.screenshot({path:`.qa/${engine}-1123-home-world-selected.png`});
   return {camera,immediate,icons:icons.results};
 }
