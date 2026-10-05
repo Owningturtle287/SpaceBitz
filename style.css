@@ -1,4 +1,4 @@
-/* SpaceBitz 1.12.2 — pixel instruments and universal terminal. */
+/* SpaceBitz 1.12.3 — pixel instruments and universal terminal. */
 @font-face{font-family:SpaceBitz Pixel;src:url('./assets/spacebitz-pixel.woff') format('woff');font-display:swap}
 :root{
   color-scheme:dark;
@@ -406,7 +406,7 @@ body[data-reduced-motion=true] .terminal-cursor{animation:none}@media(prefers-re
 body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #targetCard.terminal{transition:none}
 .topbar,.top-actions,.mission-tools,.utility-stack{pointer-events:none}.topbar button,.topbar .flight-readout,.topbar .mission-content{pointer-events:auto}
 
-/* v1.12.2: readable inputs retain the browser's normal page-zoom controls. */
+/* v1.12.3: readable inputs retain the browser's normal page-zoom controls. */
 .create-row input,.inline-editor input,.scientific-defaults select,.inline-editor select,.setting-row select,input[type=text],textarea{font-size:16px}
 #welcome .welcome-card:has(.generation-stage:not([hidden])){width:min(1280px,100%)}
 .generation-stage{height:min(760px,calc(100dvh - 28px));padding:12px}

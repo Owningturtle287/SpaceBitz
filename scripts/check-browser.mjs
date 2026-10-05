@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {checkRelease112} from './check-release112.mjs';
 import {checkRelease1121} from './check-release1121.mjs';
 import {checkRelease1122} from './check-release1122.mjs';
+import {checkRelease1123} from './check-release1123.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
@@ -116,15 +117,18 @@ try{
   assert.ok(readout.small<readout.full);
   await page.evaluate(async()=>{
     const {SHIP_FOCUS_ZOOM}=await import('/scale.js');
-    const g=window.__game,s=g.state; s.followBody=null;s.camera={x:0,y:0};s.zoom=.00001;
-    document.getElementById('homeButton').click();
-    if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y||s.zoom!==.00001)throw new Error('Center must snap before zooming');
-    g.update(650,0);if(!(s.zoom>.00001&&s.zoom<SHIP_FOCUS_ZOOM))throw new Error('No intermediate zoom');
-    g.update(650,0);if(Math.abs(s.zoom-SHIP_FOCUS_ZOOM)>1e-9||s.centerZoom)throw new Error('Zoom did not finish');
-    s.zoom=.001;document.getElementById('homeButton').click();g.zoom(.5);
-    if(s.centerZoom)throw new Error('Manual zoom did not cancel animation');
-    g.settings.reducedMotion=true;document.getElementById('homeButton').click();
-    if(s.zoom!==SHIP_FOCUS_ZOOM||s.centerZoom)throw new Error('Reduced-motion zoom must be immediate');g.settings.reducedMotion=false;
+    const g=window.__game,s=g.state; s.followBody=null;s.centerReady=false;s.camera={x:0,y:0};s.zoom=.00001;
+    const origin={...s.camera};document.getElementById('homeButton').click();
+    if(s.camera.x!==origin.x||s.camera.y!==origin.y||s.zoom!==.00001||s.centerZoom?.centerAction!=='pan')throw new Error('Center must ease without changing zoom');
+    g.update(650,0);if(s.zoom!==.00001||s.camera.x===origin.x&&s.camera.y===origin.y||s.camera.x===s.save.ship.x&&s.camera.y===s.save.ship.y)throw new Error('Center has no intermediate pan');
+    g.update(650,0);if(s.zoom!==.00001||s.centerZoom||!s.centerReady||s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('First Center changed zoom or failed to finish');
+    document.getElementById('homeButton').click();g.update(650,0);if(!(s.zoom>.00001&&s.zoom<SHIP_FOCUS_ZOOM))throw new Error('Second Center has no intermediate zoom');
+    g.update(650,0);if(Math.abs(s.zoom-SHIP_FOCUS_ZOOM)>1e-9||s.centerZoom)throw new Error('Second Center zoom did not finish');
+    s.zoom=.001;document.getElementById('homeButton').click();document.getElementById('homeButton').click();g.zoom(.5);
+    if(s.centerZoom||s.centerReady)throw new Error('Manual zoom did not reset Center');
+    g.settings.reducedMotion=true;const z=s.zoom;document.getElementById('homeButton').click();
+    if(s.zoom!==z||s.centerZoom||!s.centerReady)throw new Error('Reduced-motion first Center changed zoom');
+    document.getElementById('homeButton').click();if(s.zoom!==SHIP_FOCUS_ZOOM||s.centerZoom)throw new Error('Reduced-motion second Center must zoom immediately');g.settings.reducedMotion=false;
     const earth=s.system.planets.find(p=>p.name==='Earth');g.showDetails(earth);
     g.updateTerminal(performance.now()+9000);
     if(!document.getElementById('terminalOutput').textContent.includes('12,742 km'))throw new Error('Diameter not kilometres');
@@ -134,8 +138,9 @@ try{
     g.showDetails(earth);g.updateTerminal(performance.now()+9000);const info=document.getElementById('terminalOutput');
     for(const fact of ['12,742 km','365.256 days','MOON COUNT','ROTATION'])if(!info.textContent.includes(fact))throw new Error('Missing terminal fact '+fact);
     s.zoom=.65;s.camera={x:999,y:999};document.getElementById('homeButton').click();
-    if(s.camera.x!==s.save.surface.x||s.centerZoom.duration!==1300)throw new Error('Surface center did not snap/start');
-    g.update(650,0);if(!(s.zoom>.65&&s.zoom<2.4))throw new Error('Surface zoom has no intermediate frame');
+    if(s.camera.x!==999||s.centerZoom?.centerAction!=='pan')throw new Error('Surface Center snapped');
+    g.update(1300,0);if(s.zoom!==.65||s.camera.x!==s.save.surface.x||!s.centerReady)throw new Error('Surface Center changed zoom');
+    document.getElementById('homeButton').click();g.update(650,0);if(!(s.zoom>.65&&s.zoom<2.4))throw new Error('Surface second press has no intermediate zoom');
     g.update(650,0);if(Math.abs(s.zoom-2.4)>1e-9||s.centerZoom)throw new Error('Surface zoom failed');
     if(/\d+\.\d+/.test(document.getElementById('coordsReadout').textContent))throw new Error('Fractional coordinates');
     const c=document.getElementById('sky'),ctx=c.getContext('2d');
@@ -177,11 +182,12 @@ try{
     if(Math.abs(Math.hypot(s.save.ship.x-before.x,s.save.ship.y-before.y)/SYSTEM_UNIT-.1*.016)>1e-7)throw new Error('Orbit Drive speed wrong');
     g.zoom(.5);const manualZoom=s.zoom;g.update(16,16);
     if(s.zoom!==manualZoom)throw new Error('Travel overrides manual zoom');
-    for(let i=0;i<4000&&s.autopilot;i++){g.update(16,16);if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('Orbit Drive camera lost ship');}
+    const travelCamera={...s.camera};
+    for(let i=0;i<4000&&s.autopilot;i++){g.update(16,16);if(s.camera.x!==travelCamera.x||s.camera.y!==travelCamera.y||s.zoom!==manualZoom)throw new Error('Orbit Drive moved the camera');}
     if(s.autopilot||s.followBody?.id!==moon.id)throw new Error('Moon transfer never arrived');
-    if(!s.centerZoom||s.centerZoom.to<1.3)throw new Error('Manual travel zoom prevented arrival close-up');
+    if(s.centerZoom)throw new Error('Arrival started an automatic camera animation');
     g.update(1300,1300);
-    if(s.zoom<1.3||s.centerZoom||s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('Arrival did not track moving ship into close-up');
+    if(s.zoom!==manualZoom||s.centerZoom||s.camera.x!==travelCamera.x||s.camera.y!==travelCamera.y)throw new Error('Arrival changed the camera');
     g.backdrop(1000);g.drawSystem(1000);
   });
   await page.screenshot({path:`.qa/${engine}-moon-arrival.png`});
@@ -195,14 +201,14 @@ try{
   await page.evaluate(async()=>{
     const g=window.__game,s=g.state;g.launch();
     const {visualRadius}=await import('/model.js'),r=visualRadius(s.system.star.diameter);
-    g.select(s.system.star);document.getElementById('primaryAction').click();
+    const camera={...s.camera},zoom=s.zoom;g.select(s.system.star);document.getElementById('primaryAction').click();
     if(s.autopilot?.type!=='stellar')throw new Error('Star travel unavailable');
     for(let i=0;i<3000&&s.autopilot;i++){
       g.update(16,0);if(Math.hypot(s.save.ship.x,s.save.ship.y)<r+38)throw new Error('Star approach entered the stellar disk');
     }
     if(s.autopilot||document.getElementById('primaryAction').textContent!=='HOLDING')throw new Error('Star travel did not arrive');
     const parked={...s.save.ship};g.update(1300,0);
-    if(s.zoom<1.3||s.centerZoom||s.camera.x!==parked.x||s.camera.y!==parked.y)throw new Error('Star arrival did not zoom onto ship');
+    if(s.zoom!==zoom||s.centerZoom||s.camera.x!==camera.x||s.camera.y!==camera.y)throw new Error('Star arrival changed the camera');
     if(s.save.ship.x!==parked.x||s.save.ship.y!==parked.y)throw new Error('Stellar stop drifts');
     g.backdrop(1000);g.drawSystem(1000);
   });
@@ -213,18 +219,18 @@ try{
     for(const [from,to,dt]of [[mercury,neptune,16],[neptune,mercury,100]]){
       const pos=bodyPosition(from,s.save.days,s.system);s.followBody=null;s.save.ship={x:pos.x+visualRadius(from.diameter)+60,y:pos.y};
       s.camera={x:0,y:0};s.zoom=.95;g.select(to);g.primary();
-      if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('Travel did not center on departure');
+      if(s.camera.x!==0||s.camera.y!==0||s.zoom!==.95)throw new Error('Departure changed the camera');
       let steps=0;
       while(s.autopilot&&steps++<7000){
         g.update(dt,dt);
-        if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('Far-travel camera lagged behind ship');
+        if(s.camera.x!==0||s.camera.y!==0||s.zoom!==.95)throw new Error('Far travel changed the camera');
       }
       if(s.autopilot||s.followBody?.id!==to.id)throw new Error('Long travel did not arrive');
       for(let i=0;i<82;i++){
         g.update(16,16);
-        if(s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw new Error('Arrival zoom let ship leave center');
+        if(s.camera.x!==0||s.camera.y!==0||s.zoom!==.95)throw new Error('Arrival changed the camera');
       }
-      if(s.centerZoom||s.zoom<1.3)throw new Error('Arrival close-up did not finish');
+      if(s.centerZoom)throw new Error('Arrival started camera motion');
     }
     g.backdrop(1000);g.drawSystem(1000);g.updateUI();
   });
@@ -237,11 +243,11 @@ try{
       const p=scene==='surface'?s.save.surface:scene==='chart'?s.save.chart:s.save.ship;
       s.camera={x:p.x+100,y:p.y+100};s.autopilot={type:'waypoint',x:p.x,y:p.y};
       g.update(16,0);if(s.autopilot)throw new Error('Waypoint not complete');
-      if(!reduced&&!s.centerZoom)throw new Error('Arrival animation missing');
+      if(s.centerZoom)throw new Error('Waypoint arrival started camera motion');
       g.update(1300,0);
-      if(s.zoom<(scene==='surface'?2.4:1.3)||s.camera.x!==p.x||s.camera.y!==p.y)throw new Error('Arrival framing failed in '+scene);
+      if(s.zoom!==(scene==='system'?.00001:.65)||s.camera.x!==p.x+100||s.camera.y!==p.y+100)throw new Error('Waypoint arrival changed the camera in '+scene);
     }
-    // A fresh manual zoom must still interrupt an arrival transition.
+    // An explicit manual zoom remains in place after arrival.
     s.scene='system';g.settings.reducedMotion=false;s.zoom=.00001;
     s.autopilot={type:'waypoint',...s.save.ship};g.update(16,0);g.zoom(.5);const z=s.zoom;g.update(100,0);
     if(s.centerZoom||s.zoom!==z)throw new Error('Arrival zoom cannot be interrupted');
@@ -497,5 +503,6 @@ try{
   const release112=await checkRelease112(page,engine);
   const release1121=await checkRelease1121(page,engine);
   const release1122=await checkRelease1122(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release1123=await checkRelease1123(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

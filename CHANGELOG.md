@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.12.3 — 2026-10-05
+
+- Replaced home outlines with small, solid green pixel house icons above the visible objects. Their fixed screen size stays small at every zoom; the home star remains marked only in Deep Space and the home planet in system view.
+- Removed automatic camera following and zoom changes during manual movement, routes and arrival. Station keeping, travel speeds and collision avoidance are preserved.
+- Center now smoothly pans to the ship/explorer at the current zoom over 1.3 seconds. After centering completes, another press smoothly zooms in. Center preserves an active route; camera gestures interrupt it and reset the two-step action. Reduced motion performs each step immediately.
+- Removed the half-second selection delay. Transparent pixel action/X panels begin their smooth reveal at the same time as the name.
+- Updated cache/version/docs and Chromium/WebKit regressions for unchanged travel views, two-step Center, route continuity, immediate actions and solid home icons.
+
 ## 1.12.2 — 2026-10-05
 
 - Balanced the doorless home outline proportions while keeping the star/planet visible. The home-star marker now appears only in Deep Space; the home-world marker remains in system view.

@@ -190,7 +190,7 @@ The local census also depends on which objects and systems are counted:
 Temperature drives stellar color, luminosity brightness and radius a compressed
 size contribution in Deep Space. The chart is symbolic rather than physical disk
 scale and does not simulate distance-dependent observed flux. **Home status has
-no size or brightness multiplier.** Balanced green pixel house outlines mark home; the home star is marked only in Deep Space, while its planet is marked in system view.
+no size or brightness multiplier.** Small solid green pixel houses sit above home objects; the home star is marked only in Deep Space, while its planet is marked in system view.
 Home System / Home World appears in selection telemetry without permanent labels.
 
 Photospheric animation uses radius-scaled convection, rotational circulation,
@@ -236,7 +236,9 @@ companion orbit apocenters, photospheres, planetary orbits and moon extents. Man
 minimum zoom is derived from that envelope too, with no fixed floor preventing
 wide systems from fitting. The spacecraft in system flight is **1 km** long;
 its original detailed sprite is retained, the locator handles subpixel sizes,
-and Center can zoom close enough to inspect it. Local surface landers remain
+and the second Center press can zoom close enough to inspect it. Travel and manual movement preserve camera position and zoom. Center first pans
+to the ship at the current zoom, then a subsequent press zooms in; active routes
+continue during these explicit camera moves. Local surface landers remain
 metre-scale shuttles; chart symbols are not physical body scale.
 
 New universes store **generation version 3** and their own validated settings.
