@@ -10,10 +10,10 @@ export async function checkRelease1122(page,engine){
     g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.state.panUntil=Infinity;
     g.updateUI();g.backdrop(0);g.drawSystem(0);
   });await page.waitForTimeout(350);
-  const opening=await page.evaluate(async()=>{
+  const opening=await page.evaluate(()=>{
     const g=window.__game,pocket=document.getElementById('terminalPocket'),log=document.getElementById('journalButton');
     const before=log.getBoundingClientRect().bottom;g.select(g.state.system.star);
-    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    // Capture before waiting for frames: a busy renderer can consume the whole transition.
     const animation=pocket.getAnimations().find(a=>a.transitionProperty==='height');
     if(!animation)throw Error('Terminal did not animate upward on selection');
     animation.pause();animation.currentTime=animation.effect.getTiming().duration/2;
@@ -56,9 +56,8 @@ export async function checkRelease1122(page,engine){
   }
   await page.setViewportSize({width:844,height:390});
   await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;g.applySettings();});
-  const closing=await page.evaluate(async()=>{
+  const closing=await page.evaluate(()=>{
     const g=window.__game,pocket=document.getElementById('terminalPocket'),before=pocket.getBoundingClientRect().height;g.cancelTarget();
-    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     const animation=pocket.getAnimations().find(a=>a.transitionProperty==='height');
     if(!animation)throw Error('Terminal did not animate downward on cancellation');
     animation.pause();animation.currentTime=animation.effect.getTiming().duration/2;
