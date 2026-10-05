@@ -37,7 +37,7 @@ export function terminalLines(object,system,context={}){
     add('SURFACE',object.solid?'Solid / landable':'No solid surface');
   }else {add('TARGET',object.kind==='lander'?'Local landing shuttle':object.kind==='sample'?'Surface sample':'Coordinate square');}
   rows.push('');add('COORDINATES',formatCoordinates(position,scene));add('DISTANCE FROM SHIP',formatDistance(Math.hypot(position.x-ship.x,position.y-ship.y),scene));
-  return ['SPACEBITZ / OBJECT TELEMETRY','',...rows,'','> END OF RECORD'].join('\n');
+  return ['Object Data','',...rows,'','> END OF RECORD'].join('\n');
 }
 // Each record starts independently; rendering is driven by elapsed time rather
 // than timers. Short pauses at section boundaries, at most six seconds per record.

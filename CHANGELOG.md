@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.1 — 2026-10-05
+
+- Prevented mobile input-focus zoom with readable 16px text controls, preserving browser page zoom. Camera pans now remain where placed until ship movement, travel or Center.
+- Added a faint temperature-dependent system-view glow to brown dwarfs. Doorless green home outlines frame the actual star/planet without covering its body or adding an interior roof line.
+- Expanded the fixed generation workstation; rarity names wrap, all decimal values remain visible, and scientific/custom pages fit available height instead of a fixed five-row limit. Saved voyages retain independent scrolling.
+- Docked the opaque Object Data terminal at the bottom, opening upward into a wider two-column record. Smaller Settings and Log controls; Log follows above the terminal’s top-right corner.
+- Replaced bulky projected actions with transparent framed names and a compact action/red × strip that slides up after 0.5 seconds. Coordinate squares use a green arrow/red ×; interstellar Jump is now Warp Drive.
+- Removed the floating Deep Space/light-years heading. Preserved generated systems, save geometry, science, bounded rendering and reduced-motion behavior; extended Chromium/WebKit regressions.
+
 ## 1.12.0 — 2026-10-05
 
 - Rebalanced Scientific Mode to the planned stellar-family census: 20% brown dwarfs, 5% white dwarfs and 0.1% neutron stars, with genuinely rare massive main-sequence and short-lived evolved stars. Pulsars/magnetars are conditional active neutron-star subtypes, with documented uncertain population estimates.

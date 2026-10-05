@@ -2,6 +2,15 @@ import {hash,TAU} from './model.js';
 import {noise} from './terrain.js';
 import {drawImageInView,lineInView} from './rendering.js';
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n)),frames=new Map();
+export function paintBrownGlow(ctx,body,x,y,r,width,height){
+  // A faint warm atmospheric halo, with no inflated physical disk or solar corona.
+  const warmth=clamp((body.temperature/2300)**2,.02,1),reach=Math.min(Math.max(4,r*1.65),Math.max(width,height)*.65);
+  if(r>reach||x+reach<0||y+reach<0||x-reach>width||y-reach>height)return;
+  const alpha=.025+.16*warmth,color=body.type[0]==='L'?'199,75,58':body.type[0]==='T'?'111,48,91':'58,39,70';
+  ctx.save();const glow=ctx.createRadialGradient(x,y,Math.max(0,r*.8),x,y,reach);
+  glow.addColorStop(0,`rgba(${color},${alpha})`);glow.addColorStop(.35,`rgba(${color},${alpha*.6})`);glow.addColorStop(1,`rgba(${color},0)`);
+  ctx.fillStyle=glow;ctx.fillRect(Math.max(0,x-reach),Math.max(0,y-reach),Math.min(width,x+reach)-Math.max(0,x-reach),Math.min(height,y+reach)-Math.max(0,y-reach));ctx.restore();
+}
 function brownFrame(body,time,size){
   const canvas=document.createElement('canvas');canvas.width=canvas.height=size;const g=canvas.getContext('2d'),image=g.createImageData(size,size),seed=hash(body.id);
   const cls=body.type[0],light=clamp((body.temperature/2000)**2.5,.06,1),contrast=body.cloudContrast||.5;

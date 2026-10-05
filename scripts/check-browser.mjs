@@ -1,6 +1,7 @@
 // Real browser regression gate. Test hooks exist only in the intercepted response.
 import assert from 'node:assert/strict';
 import {checkRelease112} from './check-release112.mjs';
+import {checkRelease1121} from './check-release1121.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
@@ -493,5 +494,6 @@ try{
     const save={...g.state.save,generation,currentSystem:seed,scene:'system',landed:null,homePlanet:null};g.start(save);g.enterSystem({seed,x:0,y:0});g.drawSystem(0);g.showDetails(system.star);g.closeModal();if(g.state.save.ship.x!==g.state.camera.x)throw Error('Barren entry not centered');return {seed,scene:g.state.scene};
   });
   const release112=await checkRelease112(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release1121=await checkRelease1121(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

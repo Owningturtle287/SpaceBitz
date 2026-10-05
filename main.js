@@ -3,7 +3,8 @@ import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash
 import {defaults,POPULATIONS,validateGeneration,checkedGeneration,percentUnits} from './universe.js';
 import {terminalLines,typedLength} from './terminal.js';
 import {contextPosition} from './target-ui.js';
-import {paintBrownAtmosphere,paintCompact} from './substellar.js';
+import {rarityPages} from './rarity-ui.js';
+import {paintBrownAtmosphere,paintBrownGlow,paintCompact} from './substellar.js';
 import {chartStyle,paintHomeMarker} from './presentation.js';
 import {DEFAULT_SETTINGS,normalizeSettings} from './settings.js';
 import {TerrainRenderer} from './terrain.js';
@@ -78,6 +79,14 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.12.1',items:[
+    'Typing retains the mobile viewport; panning holds the chosen view until movement, travel or Center.',
+    'Added subtle brown-dwarf glow and doorless home outlines around the visible star or world.',
+    'Expanded readable rarity tables with pages fitted to the available screen height.',
+    'Object Data opens upward from the bottom in two columns; the smaller Log button follows above it.',
+    'Target actions slide above transparent name frames after half a second, with a red ×; coordinates use a green arrow. Jump is now Warp Drive.',
+    'Removed the floating Deep Space/light-years heading. Existing voyages retain their generated systems.'
+  ]},
   {version:'1.12.0',items:[
     'Revised scientific stellar populations: 20% brown dwarfs, rare massive stars and conditional neutron-star active subtypes. New voyages use v3 generation; existing v2 and legacy worlds retain their original identities and orbits.',
     'New animated L/T/Y cloud atmospheres, rotation-driven pulsar beams and dipole loops, irregular magnetar bursts, scaled stellar spots/flares and cohesive giant convection.',
@@ -504,12 +513,32 @@ $('scientificMode').onchange=()=>{
 };
 $('generationOptions').onclick=showGenerationOptions;
 updateUniverseMode();
+function fitRarities(container,page){
+  const rows=[...container.children];for(const row of rows)row.hidden=false;
+  const pages=rarityPages(rows.map(row=>row.getBoundingClientRect().height),container.clientHeight||Infinity,parseFloat(getComputedStyle(container).rowGap)||0);
+  const active=rows.findIndex(row=>row.contains(document.activeElement));
+  page=active<0?Math.min(page,pages.length-1):pages.findIndex(([start,end])=>active>=start&&active<end);
+  page=Math.max(0,page);const [start,end]=pages[page]||[0,0];rows.forEach((row,index)=>row.hidden=index<start||index>=end);container.scrollTop=0;
+  return {page,count:pages.length};
+}
+let scientificPage=0;
+function layoutScientificValues(){
+  const result=fitRarities($('scientificValues'),scientificPage);scientificPage=result.page;
+  $('scientificPages').hidden=false;$('scientificPages').classList.toggle('single-page',result.count<=1);
+  $('scientificPage').textContent=`${scientificPage+1} / ${result.count||1}`;$('scientificPrev').disabled=scientificPage===0;$('scientificNext').disabled=scientificPage>=result.count-1;
+}
 function renderScientificValues(){
+  scientificPage=0;
   const key=$('scientificPool').value||'family',pool=defaults().pools[key];$('scientificValues').replaceChildren();
   for(const [id,label]of POPULATIONS[key].entries){const row=document.createElement('div');row.className='scientific-value';const name=document.createElement('span'),value=document.createElement('strong');name.textContent=label;name.title=label;value.textContent=pool[id].toFixed(6)+'%';row.append(name,value);$('scientificValues').append(row);}
+  layoutScientificValues();
 }
 for(const [key,group]of Object.entries(POPULATIONS)){const option=document.createElement('option');option.value=key;option.textContent=group.label;$('scientificPool').append(option);}
 $('scientificPool').value='family';$('scientificPool').onchange=renderScientificValues;renderScientificValues();
+new ResizeObserver(layoutScientificValues).observe($('scientificValues'));
+$('scientificDefaults').addEventListener('toggle',layoutScientificValues);
+$('scientificPrev').onclick=()=>{scientificPage--;layoutScientificValues();};$('scientificNext').onclick=()=>{scientificPage++;layoutScientificValues();};
+let generationObserver;
 function showGenerationOptions(){
   if(universePreset.scientific)return;
   const box=$('generationEditor');box.replaceChildren();box.hidden=false;$('generationFields').hidden=true;
@@ -520,19 +549,21 @@ function showGenerationOptions(){
   rows.id='rarityInputs';total.className='rarity-total';total.setAttribute('aria-live','polite');error.className='generation-error';pages.className='editor-pages';actions.className='editor-actions';
   const prev=document.createElement('button'),next=document.createElement('button'),pageLabel=document.createElement('span');prev.textContent='←';next.textContent='→';prev.setAttribute('aria-label','Previous rarity entries');next.setAttribute('aria-label','Next rarity entries');prev.className=next.className='button subtle';pages.append(prev,pageLabel,next);
   const apply=document.createElement('button'),restore=document.createElement('button'),cancel=document.createElement('button');apply.id='applyGeneration';apply.textContent='APPLY';restore.textContent='RESTORE SCIENTIFIC DEFAULTS';cancel.textContent='CANCEL';apply.className='button primary';restore.className=cancel.className='button subtle';actions.append(apply,restore,cancel);
-  box.append(category,rows,pages,total,error,actions);let page=0;
+  generationObserver?.disconnect();box.append(category,rows,pages,total,error,actions);let page=0;
   function validate(){
     const key=category.value,values=POPULATIONS[key].entries.map(([id])=>percentUnits(draft.pools[key][id])),sum=values.includes(null)?null:values.reduce((a,b)=>a+b,0)/1e6;
     total.textContent=sum===null?'TOTAL: INVALID':`TOTAL: ${sum.toFixed(6)}% / 100%`;total.classList.toggle('invalid',sum!==100);
     const errors=validateGeneration(draft);apply.disabled=errors.length>0;error.textContent=errors[0]||'Every table totals exactly 100%.';
   }
   function render(){
-    const key=category.value,entries=POPULATIONS[key].entries,pageCount=Math.ceil(entries.length/5);page=Math.min(page,pageCount-1);rows.replaceChildren();
-    for(const [id,label]of entries.slice(page*5,page*5+5)){const row=document.createElement('label');row.className='rarity-row';const name=document.createElement('span'),input=document.createElement('input'),unit=document.createElement('span');name.textContent=label;name.title=label;input.type='text';input.inputMode='decimal';input.maxLength=12;input.value=String(draft.pools[key][id]);input.dataset.pool=key;input.dataset.type=id;input.setAttribute('aria-label',label+' percentage');unit.textContent='%';input.oninput=()=>{draft.pools[key][id]=input.value;input.setAttribute('aria-invalid',String(percentUnits(input.value)===null));validate();};row.append(name,input,unit);rows.append(row);}
-    pageLabel.textContent=`${page+1} / ${pageCount}`;prev.disabled=page===0;next.disabled=page===pageCount-1;validate();
+    const key=category.value;rows.replaceChildren();
+    for(const [id,label]of POPULATIONS[key].entries){const row=document.createElement('label');row.className='rarity-row';const name=document.createElement('span'),input=document.createElement('input'),unit=document.createElement('span');name.textContent=label;name.title=label;input.type='text';input.inputMode='decimal';input.maxLength=12;input.value=String(draft.pools[key][id]);input.dataset.pool=key;input.dataset.type=id;input.setAttribute('aria-label',label+' percentage');unit.textContent='%';input.oninput=()=>{draft.pools[key][id]=input.value;input.setAttribute('aria-invalid',String(percentUnits(input.value)===null));validate();};row.append(name,input,unit);rows.append(row);}
+    layout();validate();
   }
-  category.onchange=()=>{page=0;render();};prev.onclick=()=>{page--;render();};next.onclick=()=>{page++;render();};
-  const close=()=>{box.hidden=true;$('generationFields').hidden=false;};
+  function layout(){const result=fitRarities(rows,page);page=result.page;pageLabel.textContent=`${page+1} / ${result.count||1}`;prev.disabled=page===0;next.disabled=page>=result.count-1;pages.classList.toggle('single-page',result.count<=1);}
+  category.onchange=()=>{page=0;render();};prev.onclick=()=>{page--;layout();};next.onclick=()=>{page++;layout();};
+  generationObserver=new ResizeObserver(layout);generationObserver.observe(rows);
+  const close=()=>{generationObserver.disconnect();box.hidden=true;$('generationFields').hidden=false;};
   cancel.onclick=close;restore.onclick=()=>{Object.assign(draft,defaults(false));draft.pools=structuredClone(defaults(true).pools);render();};
   apply.onclick=()=>{if(validateGeneration(draft).length)return;customPreset=checkedGeneration(draft);universePreset=structuredClone(customPreset);try{localStorage.setItem(GENERATION_KEY,JSON.stringify(customPreset));}catch{toast('Could not save generation preset.');}close();updateUniverseMode();};render();
 }
@@ -562,7 +593,12 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
   window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 }
 
-function select(object) { state.terminal=null;state.terminalExpanded=false;state.waypoint=null;state.hoverCell=null;state.selected=object; state.autopilot=null;updateUI(); }
+let contextTimer,selectionSerial=0;
+function beginSelection(){
+  const serial=++selectionSerial;clearTimeout(contextTimer);$('contextActions').classList.remove('ready');
+  contextTimer=setTimeout(()=>{if(serial===selectionSerial&&!$('contextActions').hidden){$('contextActions').classList.add('ready');positionContext();}},500);
+}
+function select(object) { beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=null;state.hoverCell=null;state.selected=object; state.autopilot=null;updateUI(); }
 function keepStationNearShip(){
   if(state.scene!=='system')return;
   const ship=state.save.ship;
@@ -782,7 +818,7 @@ function updateUI() {
   } else if(scene==='chart'){
     title=sel?starName(sel.seed):'';
     const distance=sel?Math.hypot(sel.x-state.save.chart.x,sel.y-state.save.chart.y):0;
-    action=!sel?'SELECT STAR':distance<38?'ENTER SYSTEM':'JUMP';
+    action=!sel?'SELECT STAR':distance<38?'ENTER SYSTEM':'WARP DRIVE';
     details=Boolean(sel);
   } else if(sel?.kind==='star'){
     const sp=bodyPosition(sel,state.save.days,sys);title=sel.name;action=state.autopilot?.type==='stellar'?'MOVING…':Math.hypot(state.save.ship.x-sp.x,state.save.ship.y-sp.y)<=visualRadius(sel.diameter)*1.08+151?'HOLDING':'TRAVEL';details=true;
@@ -808,7 +844,10 @@ function updateUI() {
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
   if(state.terminalExpanded&&!state.terminal)buildTerminal();
   $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
-  $('primaryAction').textContent=action;
+  $('primaryAction').textContent=state.waypoint?'↗':action;
+  $('primaryAction').setAttribute('aria-label',action==='GO HERE'?'Go Here':action);
+  $('contextName').textContent=title||'Target';$('contextActions').classList.toggle('coordinate',Boolean(state.waypoint));
+  document.body.classList.toggle('terminal-visible',!$('targetCard').hidden);
   $('secondaryAction').hidden=false;$('secondaryAction').textContent=state.terminalExpanded?'CLOSE INFO':'INFO';$('secondaryAction').setAttribute('aria-expanded',String(Boolean(state.terminalExpanded)));
   $('primaryAction').disabled=traveling||action==='NO SOLID SURFACE'||action==='HOLDING';
   const warp=$('mapButton');
@@ -856,7 +895,13 @@ function selectedRecord(){
 function buildTerminal(){
   if(!state.save)return;const record=selectedRecord();
   state.terminal={text:terminalLines(record.object,record.system,{days:state.save.days,scene:state.scene,position:record.position,ship:record.ship,homeSystem:state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.save.currentSystem===state.save.homeSeed&&record.object.kind==='star',homeWorld:record.object.id===state.save.homePlanet}),start:performance.now(),count:-1};
-  $('terminalOutput').textContent='';$('terminalScreen').scrollTop=0;
+  const output=$('terminalOutput');output.replaceChildren();let offset=0;
+  state.terminal.lines=state.terminal.text.split('\n').map((text,index)=>{
+    const node=document.createElement('div'),colon=text.indexOf(' : '),key=document.createElement('span'),value=document.createElement('span');
+    node.className=!text?'terminal-break':index===0?'terminal-title':colon<0?'terminal-note':'terminal-field';
+    key.className='terminal-key';value.className='terminal-value';node.append(key,value);node.hidden=true;output.append(node);
+    const row={text,offset,node,key,value,colon};offset+=text.length+1;return row;
+  });$('terminalScreen').scrollTop=0;
 }
 function showDetails(body){
   if(body&&body!==state.selected&&body.kind!=='coordinate')select(body);
@@ -873,7 +918,8 @@ function updateTerminal(now){
   if(!state.terminalExpanded||!state.terminal)return;
   const record=state.terminal,count=Math.max(record.count,typedLength(record.text,(now-record.start)/1000,settings.reducedMotion));
   if(count===record.count)return;record.count=count;const screen=$('terminalScreen'),atEnd=screen.scrollHeight-screen.scrollTop-screen.clientHeight<22;
-  $('terminalOutput').textContent=record.text.slice(0,count);if(atEnd)screen.scrollTop=screen.scrollHeight;
+  for(const row of record.lines){const visible=count>row.offset,text=row.text.slice(0,Math.max(0,count-row.offset)),split=row.colon<0?0:Math.min(text.length,row.colon+3);row.node.hidden=!visible;row.key.textContent=text.slice(0,split);row.value.textContent=text.slice(split)+(count>row.offset+row.text.length?'\n':'');}
+  if(atEnd)screen.scrollTop=screen.scrollHeight;
 }
 function positionContext(){
   if($('contextActions').hidden||!state.save)return;const record=selectedRecord(),target=screen(record.position.x,record.position.y),element=$('contextActions');
@@ -881,6 +927,10 @@ function positionContext(){
   const obstacles=['targetCard','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};});
   const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles);element.style.transform=`translate(${Math.round(place.x)}px,${Math.round(place.y)}px)`;
 }
+new ResizeObserver(()=>{
+  const height=$('targetCard').hidden?0:$('targetCard').getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--terminal-height',height+'px');applyCenterButtonLayout();
+}).observe($('targetCard'));
 function showJournal() {
   const box=document.createElement('div');const p=document.createElement('p');p.textContent=`${state.save.discoveries.length} discoveries recorded in ${state.save.name}.`;
   box.append(p);for(const entry of state.save.log.slice(0,30)){
@@ -1164,7 +1214,7 @@ function drawSelection(x,y,r,now) {
 function drawStar(x,y,r,color,now,body=null) {
   const w=state.width,h=state.height,maxDim=Math.max(w,h);
   if(['ns','magnetar','quark'].includes(body?.family)){paintCompact(ctx,body,x,y,r,state.stellarSeconds,settings.reducedMotion,w,h);return;}
-  if(body?.family==='brown'){paintBrownAtmosphere(ctx,body,x,y,r,state.stellarSeconds,settings.reducedMotion,w,h);if(r>=1)return;}
+  if(body?.family==='brown'){paintBrownGlow(ctx,body,x,y,r,w,h);paintBrownAtmosphere(ctx,body,x,y,r,state.stellarSeconds,settings.reducedMotion,w,h);if(r>=1)return;}
   if(r<1.5){ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(Math.round(x)-3,Math.round(y)-3,6,6);return;}
   const coreVisible=x+r>0&&x-r<w&&y+r>0&&y-r<h;
   const nearViewport=x>-maxDim*.7&&x<w+maxDim*.7&&y>-maxDim*.7&&y<h+maxDim*.7;
@@ -1222,11 +1272,11 @@ function drawPlanet(body,p,now,worldPos) {
   const extent=sr*(body.rings?body.rings.outerKm/(body.diameter/2):1);
   if(p.x<-extent-100||p.x>state.width+extent+100||p.y<-extent-100||p.y>state.height+extent+100)return;
   const r=sr;const selected=state.selected?.id===body.id;
-  if(body.id===state.save.homePlanet)paintHomeMarker(ctx,p.x+Math.min(12,r)+9,p.y-12,2);
   if(r<1.5){
     // Hollow navigation beacon, not a larger physical disk.
     ctx.strokeStyle=body.color;ctx.lineWidth=1;ctx.strokeRect(Math.round(p.x)-2,Math.round(p.y)-2,4,4);
-    if(selected){drawSelection(p.x,p.y,4,now);label(body.name,p.x,p.y-23,true);}return;
+    if(body.id===state.save.homePlanet)paintHomeMarker(ctx,p.x,p.y,3,state.width,state.height);
+    if(selected)drawSelection(p.x,p.y,4,now);return;
   }
   const rings=ringSprites(body,worldPos);
   paintRings(ctx,rings,'back',p.x,p.y,r,state.width,state.height);
@@ -1245,7 +1295,8 @@ function drawPlanet(body,p,now,worldPos) {
   ctx.restore();
   ctx.strokeStyle='#d9f8fb42';ctx.lineWidth=1;strokeEllipse(ctx,circleGeometry(p.x,p.y,r),state.width,state.height);
   paintRings(ctx,rings,'front',p.x,p.y,r,state.width,state.height);
-  if(selected){drawSelection(p.x,p.y,r,now);label(body.name,p.x,p.y-r-25,true);}
+  if(body.id===state.save.homePlanet)paintHomeMarker(ctx,p.x,p.y,r,state.width,state.height);
+  if(selected)drawSelection(p.x,p.y,r,now);
 }
 function drawSystem(now) {
   const sys=state.system,days=state.save.days,zone=habitableZone(sys.hostLuminosity||sys.star.luminosity),positions=stellarPositions(sys,days),host=positions[sys.hostId]||{x:0,y:0};
@@ -1277,8 +1328,9 @@ function drawSystem(now) {
   for(const star of systemStars()){
     const pos=positions[star.id]||{x:0,y:0},p=screen(pos.x,pos.y),r=visualRadius(star.diameter)*state.zoom;
     drawStar(p.x,p.y,r,star.color,now,star);
+    if(star.id===sys.star.id&&state.save.currentSystem===state.save.homeSeed)paintHomeMarker(ctx,p.x,p.y,Math.max(r,3),state.width,state.height);
     if(state.selected?.id===star.id)drawSelection(p.x,p.y,Math.max(r,4),now);
-    if(settings.labels&&p.x>-60&&p.x<state.width+60&&p.y>-60&&p.y<state.height+60)label(star.name,p.x,p.y-Math.max(r,4)-25,state.selected?.id===star.id);
+    if(settings.labels&&state.selected?.id!==star.id&&p.x>-60&&p.x<state.width+60&&p.y>-60&&p.y<state.height+60)label(star.name,p.x,p.y-Math.max(r,4)-25);
   }
   for(const planet of sys.planets){const pos=bodyPosition(planet,days,sys);drawPlanet(planet,screen(pos.x,pos.y),now,pos);
     for(const moon of planet.moons){const mp=bodyPosition(moon,days,sys);drawPlanet(moon,screen(mp.x,mp.y),now,mp);}}
@@ -1318,13 +1370,12 @@ function drawChart(now) {
     const radius=chartStyle(appearance).radius;
     drawChartStar(p.x,p.y,radius,starColor,now,star.seed,appearance);
     if(appearance.companionColors?.length){ctx.save();for(const [i,color]of appearance.companionColors.entries()){ctx.fillStyle=color;ctx.fillRect(Math.round(p.x+radius+4+i*4),Math.round(p.y-1),2,2);}ctx.restore();}
-    if(state.selected?.seed===star.seed){drawSelection(p.x,p.y,9,now);label(starName(star.seed),p.x,p.y-27,true);}
-    if(star.seed===state.save.homeSeed)paintHomeMarker(ctx,p.x,p.y,radius);
+    if(state.selected?.seed===star.seed)drawSelection(p.x,p.y,9,now);
+    if(star.seed===state.save.homeSeed)paintHomeMarker(ctx,p.x,p.y,radius*1.18,state.width,state.height);
   }
   if(state.autopilot?.type==='star'){const s=starAt(state.autopilot.id);const a=screen(state.save.chart.x,state.save.chart.y),b=screen(s.x,s.y);
     ctx.strokeStyle='#76dac680';ctx.lineWidth=1;ctx.setLineDash([5,7]);ctx.beginPath();lineInView(ctx,a,b,state.width,state.height);ctx.stroke();ctx.setLineDash([]);}
   const ship=screen(state.save.chart.x,state.save.chart.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,36,false,state.zoom);paintLocator(ctx,ship.x,ship.y,36*state.zoom,state.width,state.height);
-  ctx.font="9px 'SpaceBitz Pixel',monospace";ctx.fillStyle='#91b1be';ctx.fillText('DEEP SPACE  /  LIGHT-YEARS',state.width/2,Math.max(70,state.height*.14));
 }
 const chartAppearanceCache=new Map(),chartSystems=new Map();
 function chartSystem(seed){const key=seed+':'+JSON.stringify(state.save.generation||null);if(chartSystems.has(key))return chartSystems.get(key);const system=makeSystem(seed,state.save.generation);chartSystems.set(key,system);if(chartSystems.size>32)chartSystems.delete(chartSystems.keys().next().value);return system;}
@@ -1419,7 +1470,7 @@ canvas.addEventListener('pointermove',e=>{
     if(state.pinch)zoom(dist/state.pinch);state.hoverCell=null;state.pinch=dist;return;}
   if(gesture){if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>7)gesture.moved=true;
     if(gesture.moved){state.centerZoom=null;state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
-      state.panUntil=performance.now()+2500;}}
+      state.panUntil=Infinity;state.focusBody=null;}}
 });
 function pick(e){const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
   if(state.scene==='system'){
@@ -1435,7 +1486,7 @@ function pick(e){const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left
   if(state.scene==='surface'){const lander=screen(0,0);if(Math.hypot(x-lander.x,y-lander.y)<32*state.zoom){select({id:'lander',kind:'lander',name:'Lander',x:0,y:0});return;}for(const sample of surfaceSamples()){if(state.save.discoveries.includes(sample.id))continue;const p=screen(sample.x,sample.y);if(Math.hypot(x-p.x,y-p.y)<Math.max(15,10*state.zoom)){select({...sample,kind:'sample',name:'Surface sample'});return;}}}
   const cell=gridCell(world(x,y),state.scene);
   if(state.scene==='system'&&systemStars().some(s=>{const pos=bodyPosition(s,state.save.days,state.system);return Math.hypot(cell.x-pos.x,cell.y-pos.y)<visualRadius(s.diameter)+24;})){toast('Choose a coordinate outside the stars.');return;}
-  state.terminal=null;state.terminalExpanded=false;state.waypoint=cell;state.selected=null;state.autopilot=null;state.hoverCell=null;updateUI();
+  beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=cell;state.selected=null;state.autopilot=null;state.hoverCell=null;updateUI();
 }
 canvas.addEventListener('pointerleave',()=>{state.hoverCell=null;});
 canvas.addEventListener('pointerup',e=>{if(!pointers.has(e.pointerId))return;pointers.delete(e.pointerId);
