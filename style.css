@@ -414,7 +414,9 @@ body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #
 #generationFields{height:100%;display:flex;flex-direction:column;min-height:0}
 .generation-inputs,.universe-mode-row,.custom-warning,.generation-stage .welcome-actions{flex:none}
 .generation-stage .welcome-actions{margin-top:auto;padding-top:8px}
-.scientific-defaults[open]{display:flex;flex-direction:column;flex:1;min-height:0}
+.scientific-defaults[open]{position:relative;flex:1;min-height:0}
+.scientific-defaults summary{height:28px;box-sizing:border-box}
+.scientific-body{position:absolute;inset:28px 0 0;display:flex;flex-direction:column;min-height:0}
 .scientific-defaults summary,.scientific-defaults select,.scientific-defaults output,.scientific-defaults .editor-pages{flex:none}
 .scientific-defaults select,.inline-editor select{height:34px;padding:4px 6px;font-family:var(--mono)}
 #scientificValues{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;gap:0;margin:6px 0}
@@ -429,7 +431,7 @@ body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #
 .inline-editor input{width:100%;height:32px;font-size:16px;padding:3px 5px;box-sizing:border-box}
 .inline-editor .rarity-total{font-size:13px}.inline-editor .generation-error{min-height:28px;line-height:1.4;font-size:12px}
 .inline-editor .editor-actions{margin-top:0;flex-wrap:wrap}.inline-editor .editor-actions .button{min-height:32px;padding:6px}
-@media(max-width:600px) and (orientation:portrait){.generation-columns{grid-template-columns:1fr;grid-template-rows:minmax(310px,1.25fr) minmax(100px,.75fr);gap:10px}.generation-stage{padding:10px}.scientific-value{font-size:12px;gap:8px}.inline-editor .rarity-row{font-size:13px}}
+@media(max-width:600px) and (orientation:portrait){.generation-columns{grid-template-columns:1fr;grid-template-rows:minmax(310px,1.45fr) minmax(100px,.55fr);gap:10px}.generation-stage{padding:10px}.scientific-value{font-size:12px;gap:8px}.inline-editor .rarity-row{font-size:13px}}
 @media(orientation:landscape) and (max-height:500px){.generation-stage{padding:8px}.inline-editor{gap:3px}.inline-editor .rarity-row{min-height:36px;font-size:12px}.scientific-value{min-height:25px;padding:2px 0;font-size:12px}.scientific-defaults select,.inline-editor select{height:30px}.inline-editor .generation-error{min-height:18px;font-size:11px}}
 @media(max-height:560px) and (orientation:portrait){.generation-columns{grid-template-rows:minmax(190px,1fr) minmax(70px,.35fr)}}
 

@@ -919,7 +919,7 @@ function updateTerminal(now){
   const record=state.terminal,count=Math.max(record.count,typedLength(record.text,(now-record.start)/1000,settings.reducedMotion));
   if(count===record.count)return;record.count=count;const screen=$('terminalScreen'),atEnd=screen.scrollHeight-screen.scrollTop-screen.clientHeight<22;
   for(const row of record.lines){const visible=count>row.offset,text=row.text.slice(0,Math.max(0,count-row.offset)),split=row.colon<0?0:Math.min(text.length,row.colon+3);row.node.hidden=!visible;row.key.textContent=text.slice(0,split);row.value.textContent=text.slice(split)+(count>row.offset+row.text.length?'\n':'');}
-  if(atEnd)screen.scrollTop=screen.scrollHeight;
+  if(settings.reducedMotion)screen.scrollTop=0;else if(atEnd)screen.scrollTop=screen.scrollHeight;
 }
 function positionContext(){
   if($('contextActions').hidden||!state.save)return;const record=selectedRecord(),target=screen(record.position.x,record.position.y),element=$('contextActions');

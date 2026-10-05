@@ -11,8 +11,8 @@ export async function checkRelease1121(page,engine){
     const scientific=new Set();let sciencePages=0;
     do {
       const rows=await page.locator('.scientific-value:visible').evaluateAll(rows=>rows.map(row=>{
-        const r=row.getBoundingClientRect(),n=row.children[0],v=row.children[1],b=v.getBoundingClientRect(),list=row.parentElement.getBoundingClientRect();
-        if(r.bottom>list.bottom+1||b.right>list.right+1||n.scrollWidth>n.clientWidth+1||getComputedStyle(n).textOverflow==='ellipsis')throw Error('Clipped scientific rarity: '+row.textContent);
+        const r=row.getBoundingClientRect(),n=row.children[0],v=row.children[1],b=v.getBoundingClientRect(),list=row.parentElement.getBoundingClientRect(),buttons=document.querySelector('#generationFields .welcome-actions').getBoundingClientRect();
+        if(r.bottom>list.bottom+1||list.bottom>buttons.top+1||b.right>list.right+1||n.scrollWidth>n.clientWidth+1||getComputedStyle(n).textOverflow==='ellipsis')throw Error('Clipped scientific rarity: '+row.textContent+' '+JSON.stringify({bottom:r.bottom,listBottom:list.bottom,buttonsTop:buttons.top,viewport:[innerWidth,innerHeight]}));
         return n.textContent;
       }));rows.forEach(row=>scientific.add(row));sciencePages++;
       if(await page.locator('#scientificNext').isDisabled())break;await page.locator('#scientificNext').click();
@@ -28,7 +28,7 @@ export async function checkRelease1121(page,engine){
       }));rows.forEach(row=>custom.add(row));maxRows=Math.max(maxRows,rows.length);customPages++;
       const next=page.getByRole('button',{name:'Next rarity entries',exact:true});if(await next.isDisabled())break;await next.click();
     }while(customPages<20);
-    assert.equal(custom.size,12);if(viewport.height>=768)assert.ok(maxRows>5,`Unused space: ${maxRows} rows at ${viewport.width}`);
+    assert.equal(custom.size,12);if(viewport.width>=700&&viewport.height>=768)assert.ok(maxRows>5,`Unused space: ${maxRows} rows at ${viewport.width}`);
     const overflow=await page.evaluate(()=>({page:document.scrollingElement.scrollHeight-innerHeight,stage:document.getElementById('universeMenuStage').scrollHeight-document.getElementById('universeMenuStage').clientHeight}));assert.ok(overflow.page<=1&&overflow.stage<=1,JSON.stringify(overflow));
     await page.screenshot({path:`.qa/${engine}-1121-custom-${viewport.width}.png`});
     layouts.push({viewport,sciencePages,customPages,maxRows});await page.locator('#generationEditor').getByRole('button',{name:'CANCEL',exact:true}).click();await page.locator('#scientificMode').check();
