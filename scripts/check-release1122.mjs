@@ -14,8 +14,11 @@ export async function checkRelease1122(page,engine){
     const g=window.__game,pocket=document.getElementById('terminalPocket'),log=document.getElementById('journalButton');
     const before=log.getBoundingClientRect().bottom;g.select(g.state.system.star);
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-    await new Promise(r=>setTimeout(r,60));
-    return {before,after:log.getBoundingClientRect().bottom,height:pocket.getBoundingClientRect().height,full:document.getElementById('targetCard').getBoundingClientRect().height};
+    const animation=pocket.getAnimations().find(a=>a.transitionProperty==='height');
+    if(!animation)throw Error('Terminal did not animate upward on selection');
+    animation.pause();animation.currentTime=animation.effect.getTiming().duration/2;
+    const result={before,after:log.getBoundingClientRect().bottom,height:pocket.getBoundingClientRect().height,full:document.getElementById('targetCard').getBoundingClientRect().height};
+    animation.finish();return result;
   });
   assert.ok(Math.abs(opening.before-896)<1,JSON.stringify(opening));
   assert.ok(opening.height>0&&opening.height<opening.full&&opening.after<opening.before,JSON.stringify(opening));
@@ -56,8 +59,11 @@ export async function checkRelease1122(page,engine){
   const closing=await page.evaluate(async()=>{
     const g=window.__game,pocket=document.getElementById('terminalPocket'),before=pocket.getBoundingClientRect().height;g.cancelTarget();
     await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-    await new Promise(r=>setTimeout(r,60));
-    return {before,mid:pocket.getBoundingClientRect().height,cardHidden:document.getElementById('targetCard').hidden};
+    const animation=pocket.getAnimations().find(a=>a.transitionProperty==='height');
+    if(!animation)throw Error('Terminal did not animate downward on cancellation');
+    animation.pause();animation.currentTime=animation.effect.getTiming().duration/2;
+    const result={before,mid:pocket.getBoundingClientRect().height,cardHidden:document.getElementById('targetCard').hidden};
+    animation.finish();return result;
   });assert.ok(closing.cardHidden&&closing.mid>0&&closing.mid<closing.before,JSON.stringify(closing));await page.waitForTimeout(350);
   assert.ok(Math.abs(await page.locator('#journalButton').evaluate(e=>e.getBoundingClientRect().bottom)-386)<1);
   const directions=await page.evaluate(()=>{
