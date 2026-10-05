@@ -5,8 +5,14 @@ export function chartStyle(star){
   return {radius:size,brightness:star.family==='brown'?Math.max(.045,Math.min(.55,(star.temperature/2300)**2)):Math.max(.15,Math.min(1,.75+Math.log10(luminosity)*.09)),color:star.color};
 }
 export function paintHomeMarker(ctx,x,y,radius=6,width=ctx.canvas.width,height=ctx.canvas.height){
-  const r=Math.max(7,radius+5),points=[[-r,r],[-r,-r],[0,-r*1.6],[r,-r],[r,r],[-r,r]].map(([dx,dy])=>({x:Math.round(x+dx),y:Math.round(y+dy)}));
+  // The roof and walls have similar heights; the disk fits below both roof slopes.
+  const r=Math.max(5,radius+3),half=r*1.3,eave=-r*.3,points=[[-half,r],[-half,eave],[0,-r*1.62],[half,eave],[half,r],[-half,r]].map(([dx,dy])=>({x:Math.round(x+dx),y:Math.round(y+dy)}));
   ctx.save();ctx.strokeStyle='#75ee98';ctx.lineWidth=1;ctx.setLineDash([]);ctx.beginPath();
   for(let i=1;i<points.length;i++)lineInView(ctx,points[i-1],points[i],width,height);
   ctx.stroke();ctx.restore();
+}
+export function paintPixelFrame(ctx,x,y,width,height){
+  const left=Math.round(x)+.5,top=Math.round(y)+.5,right=left+Math.round(width)-1,bottom=top+Math.round(height)-1;
+  const points=[[left+4,top],[right-4,top],[right-4,top+2],[right-2,top+2],[right-2,top+4],[right,top+4],[right,bottom-4],[right-2,bottom-4],[right-2,bottom-2],[right-4,bottom-2],[right-4,bottom],[left+4,bottom],[left+4,bottom-2],[left+2,bottom-2],[left+2,bottom-4],[left,bottom-4],[left,top+4],[left+2,top+4],[left+2,top+2],[left+4,top+2]];
+  ctx.beginPath();ctx.moveTo(...points[0]);for(const point of points.slice(1))ctx.lineTo(...point);ctx.closePath();ctx.stroke();
 }

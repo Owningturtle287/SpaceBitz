@@ -1,5 +1,10 @@
 import {placeControls} from './hud.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+export function coordinateHeading(ship,target,fallback=-Math.PI/2){
+  const dx=target.x-ship.x,dy=target.y-ship.y;
+  // The pixel glyph points up; world +Y and CSS rotation both point down/clockwise.
+  return (Math.hypot(dx,dy)>1e-9?Math.atan2(dy,dx):fallback)*180/Math.PI+90;
+}
 export function contextPosition(target,radius,size,viewport,obstacles=[]){
   const margin=8,w=Math.min(size.width,viewport.width-margin*2),h=size.height;
   const x=clamp(target.x,margin,viewport.width-margin),y=clamp(target.y,margin,viewport.height-margin);

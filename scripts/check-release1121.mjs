@@ -37,7 +37,7 @@ export async function checkRelease1121(page,engine){
   await page.evaluate(()=>{const g=window.__game;globalThis.__qaPause=true;g.launch();g.state.autopilot=null;g.state.centerZoom=null;g.state.focusBody=null;g.state.panUntil=Infinity;g.state.camera={x:0,y:0};g.state.zoom=.1;g.select(g.state.system.star);g.frame(performance.now());});
   assert.equal(await page.locator('#contextActions').evaluate(e=>e.classList.contains('ready')),false);
   await page.waitForTimeout(600);assert.equal(await page.locator('#contextActions').evaluate(e=>e.classList.contains('ready')),true);
-  assert.equal(await page.locator('#cancelTravel').innerText(),'×');assert.equal(await page.locator('#contextName').innerText(),'Sol');
+  assert.equal(await page.locator('#cancelTravel svg').getAttribute('shape-rendering'),'crispEdges');assert.equal(await page.locator('#cancelTravel').getAttribute('aria-label'),'Cancel target');assert.equal(await page.locator('#contextName').innerText(),'Sol');
   assert.equal(await page.locator('#contextName').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
   await page.evaluate(()=>window.__game.positionContext());await page.screenshot({path:`.qa/${engine}-1121-actions.png`});
   for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667},{width:1440,height:900}]){
@@ -59,7 +59,7 @@ export async function checkRelease1121(page,engine){
   // Pick an empty square; its green arrow and red X remain compact and cancellable.
   await page.evaluate(()=>{const g=window.__game;g.state.camera={x:1e7,y:1e7};g.state.panUntil=Infinity;g.state.centerZoom=null;g.state.zoom=.1;});
   await page.mouse.click(420,190);await page.waitForTimeout(650);await page.evaluate(()=>{window.__game.frame(performance.now());window.__game.positionContext();});
-  assert.equal(await page.locator('#primaryAction').innerText(),'↗');assert.equal(await page.locator('#primaryAction').getAttribute('aria-label'),'Go Here');
+  assert.equal(await page.locator('#coordinateArrow').isVisible(),true);assert.equal(await page.locator('#coordinateArrow').getAttribute('shape-rendering'),'crispEdges');assert.equal(await page.locator('#primaryAction').getAttribute('aria-label'),'Go Here');
   const controls=await page.locator('#contextActions').boundingBox();assert.ok(controls.width<70&&controls.height<40);
   await page.screenshot({path:`.qa/${engine}-1121-coordinate.png`});await page.locator('#cancelTravel').click();assert.equal(await page.locator('#contextActions').isVisible(),false);
   const art=await page.evaluate(async()=>{

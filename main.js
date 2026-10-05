@@ -2,10 +2,10 @@ import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash
   habitableZone, makeSystem, bodyPosition, galaxyStars, starName, starAppearance, orbitPoint, orbitalElements,stellarPositions,orbitCenter} from './model.js';
 import {defaults,POPULATIONS,validateGeneration,checkedGeneration,percentUnits} from './universe.js';
 import {terminalLines,typedLength} from './terminal.js';
-import {contextPosition} from './target-ui.js';
+import {contextPosition,coordinateHeading} from './target-ui.js';
 import {rarityPages} from './rarity-ui.js';
 import {paintBrownAtmosphere,paintBrownGlow,paintCompact} from './substellar.js';
-import {chartStyle,paintHomeMarker} from './presentation.js';
+import {chartStyle,paintHomeMarker,paintPixelFrame} from './presentation.js';
 import {DEFAULT_SETTINGS,normalizeSettings} from './settings.js';
 import {TerrainRenderer} from './terrain.js';
 import {paintShip,paintAstronaut} from './sprites.js';
@@ -79,6 +79,12 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.12.2',items:[
+    'Balanced doorless home outlines frame the objects; the home-star marker appears only in Deep Space.',
+    'A narrower Object Data terminal reveals smoothly upward with a compact header and smaller distance readout. Log rests at bottom-right and follows the terminal edge.',
+    'Finished typed records scroll smoothly back to the beginning; manual reading interrupts that scroll and reduced motion remains immediate.',
+    'Stepped pixel borders preserve transparent target panels. Pixel red X and green coordinate arrows match the ship-to-target travel direction.'
+  ]},
   {version:'1.12.1',items:[
     'Typing retains the mobile viewport; panning holds the chosen view until movement, travel or Center.',
     'Added subtle brown-dwarf glow and doorless home outlines around the visible star or world.',
@@ -334,7 +340,7 @@ function applyCenterButtonLayout(){
         top=mode==='above'?r.top-bh-8:r.top+(r.height-bh)/2;
       }else{left=12;top=window.innerHeight-bh-12;}
     }
-    const obstacles=['joystick','targetCard','systemChart','systemFit','flightReadout','settingsOpen','journalButton','systemChartContent'].map(id=>$(id)).filter(el=>el&&!el.hidden).map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:r.left,y:r.top,width:r.width,height:r.height}));
+    const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','systemChartContent'].map(id=>$(id)).filter(el=>el&&!el.hidden).map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:r.left,y:r.top,width:r.width,height:r.height}));
     const placed=placeControls({x:left,y:top},{width,height:bh},{width:window.innerWidth,height:window.innerHeight},obstacles);
     group.style.left=placed.x+'px';group.style.top=placed.y+'px';
   });
@@ -844,10 +850,11 @@ function updateUI() {
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
   if(state.terminalExpanded&&!state.terminal)buildTerminal();
   $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
-  $('primaryAction').textContent=state.waypoint?'↗':action;
+  $('primaryActionLabel').textContent=state.waypoint?'':action;$('primaryActionLabel').hidden=Boolean(state.waypoint);$('coordinateArrow').hidden=!state.waypoint;
   $('primaryAction').setAttribute('aria-label',action==='GO HERE'?'Go Here':action);
   $('contextName').textContent=title||'Target';$('contextActions').classList.toggle('coordinate',Boolean(state.waypoint));
   document.body.classList.toggle('terminal-visible',!$('targetCard').hidden);
+  layoutTerminalDock();
   $('secondaryAction').hidden=false;$('secondaryAction').textContent=state.terminalExpanded?'CLOSE INFO':'INFO';$('secondaryAction').setAttribute('aria-expanded',String(Boolean(state.terminalExpanded)));
   $('primaryAction').disabled=traveling||action==='NO SOLID SURFACE'||action==='HOLDING';
   const warp=$('mapButton');
@@ -916,21 +923,34 @@ function focusSelected(){
 }
 function updateTerminal(now){
   if(!state.terminalExpanded||!state.terminal)return;
-  const record=state.terminal,count=Math.max(record.count,typedLength(record.text,(now-record.start)/1000,settings.reducedMotion));
-  if(count===record.count)return;record.count=count;const screen=$('terminalScreen'),atEnd=screen.scrollHeight-screen.scrollTop-screen.clientHeight<22;
+  const record=state.terminal,screen=$('terminalScreen');
+  if(record.rewind){
+    const progress=settings.reducedMotion?1:clamp((now-record.rewind.start)/600,0,1);
+    screen.scrollTop=record.rewind.from*(1-progress)**3;if(progress===1)record.rewind=null;
+  }
+  const count=Math.max(record.count,typedLength(record.text,(now-record.start)/1000,settings.reducedMotion));
+  if(count===record.count)return;record.count=count;const atEnd=screen.scrollHeight-screen.scrollTop-screen.clientHeight<22;
   for(const row of record.lines){const visible=count>row.offset,text=row.text.slice(0,Math.max(0,count-row.offset)),split=row.colon<0?0:Math.min(text.length,row.colon+3);row.node.hidden=!visible;row.key.textContent=text.slice(0,split);row.value.textContent=text.slice(split)+(count>row.offset+row.text.length?'\n':'');}
   if(settings.reducedMotion)screen.scrollTop=0;else if(atEnd)screen.scrollTop=screen.scrollHeight;
+  if(count===record.text.length&&!record.finished){record.finished=true;if(!settings.reducedMotion&&screen.scrollTop>0)record.rewind={from:screen.scrollTop,start:now};}
 }
 function positionContext(){
   if($('contextActions').hidden||!state.save)return;const record=selectedRecord(),target=screen(record.position.x,record.position.y),element=$('contextActions');
   const radius=state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10;
-  const obstacles=['targetCard','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};});
+  if(state.waypoint)$('coordinateArrow').style.transform=`rotate(${coordinateHeading(record.ship,record.position,state.shipMotion.heading)}deg)`;
+  const obstacles=['terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
   const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles);element.style.transform=`translate(${Math.round(place.x)}px,${Math.round(place.y)}px)`;
 }
+function layoutTerminalDock(){
+  const visible=!$('targetCard').hidden;$('terminalDock').classList.toggle('has-target',visible);
+  $('terminalPocket').style.height=(visible?$('targetCard').getBoundingClientRect().height:0)+'px';
+}
+new ResizeObserver(layoutTerminalDock).observe($('targetCard'));
 new ResizeObserver(()=>{
-  const height=$('targetCard').hidden?0:$('targetCard').getBoundingClientRect().height;
+  const height=$('terminalPocket').getBoundingClientRect().height;
   document.documentElement.style.setProperty('--terminal-height',height+'px');applyCenterButtonLayout();
-}).observe($('targetCard'));
+}).observe($('terminalPocket'));
+for(const event of ['wheel','touchstart','pointerdown','keydown'])$('terminalScreen').addEventListener(event,()=>{if(state.terminal)state.terminal.rewind=null;},{passive:true});
 function showJournal() {
   const box=document.createElement('div');const p=document.createElement('p');p.textContent=`${state.save.discoveries.length} discoveries recorded in ${state.save.name}.`;
   box.append(p);for(const entry of state.save.log.slice(0,30)){
@@ -1202,7 +1222,7 @@ function label(text,x,y) {
   ctx.font="10px 'SpaceBitz Pixel',monospace";
   ctx.textAlign='center';ctx.textBaseline='middle';const width=ctx.measureText(text).width+18;
   ctx.strokeStyle='#64829750';
-  ctx.beginPath();ctx.rect(Math.round(x-width/2),Math.round(y)-12,Math.round(width),23);ctx.stroke();
+  paintPixelFrame(ctx,x-width/2,y-12,width,23);
   ctx.fillStyle='#c3d5e2';ctx.fillText(text,x,y);
 }
 function drawSelection(x,y,r,now) {
@@ -1328,7 +1348,6 @@ function drawSystem(now) {
   for(const star of systemStars()){
     const pos=positions[star.id]||{x:0,y:0},p=screen(pos.x,pos.y),r=visualRadius(star.diameter)*state.zoom;
     drawStar(p.x,p.y,r,star.color,now,star);
-    if(star.id===sys.star.id&&state.save.currentSystem===state.save.homeSeed)paintHomeMarker(ctx,p.x,p.y,Math.max(r,3),state.width,state.height);
     if(state.selected?.id===star.id)drawSelection(p.x,p.y,Math.max(r,4),now);
     if(settings.labels&&state.selected?.id!==star.id&&p.x>-60&&p.x<state.width+60&&p.y>-60&&p.y<state.height+60)label(star.name,p.x,p.y-Math.max(r,4)-25);
   }
