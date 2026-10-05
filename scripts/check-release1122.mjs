@@ -34,7 +34,7 @@ export async function checkRelease1122(page,engine){
     return {width:r.width,header:screen.getBoundingClientRect().top-r.top,distance:parseFloat(getComputedStyle(document.getElementById('targetDistance')).fontSize),status:parseFloat(getComputedStyle(document.getElementById('targetStatus')).fontSize),overflow:screen.scrollWidth-screen.clientWidth,columns:getComputedStyle(document.getElementById('terminalOutput')).gridTemplateColumns.split(' ').length,logBottom:log.bottom,top:r.top};
   });
   assert.ok(layout.width<=600&&layout.header<64&&layout.distance<layout.status&&layout.overflow<=1&&layout.logBottom<layout.top,JSON.stringify(layout));assert.equal(layout.columns,2);
-  await page.evaluate(()=>{const g=window.__game;g.positionContext();document.getElementById('contextActions').classList.add('ready');});
+  await page.evaluate(()=>{const g=window.__game;g.positionContext();document.getElementById('contextActions').classList.add('ready');g.backdrop(0);g.drawSystem(0);});
   await page.screenshot({path:`.qa/${engine}-1122-terminal-desktop.png`});
   const reading=await page.evaluate(()=>{
     const g=window.__game,screen=document.getElementById('terminalScreen');g.showDetails(g.state.selected);const record=g.state.terminal;
@@ -74,19 +74,19 @@ export async function checkRelease1122(page,engine){
     if(!frame.borderImageSource.includes('svg')||getComputedStyle(document.getElementById('primaryAction')).backgroundColor!=='rgba(0, 0, 0, 0)'||button.width!==28||button.height!==28)throw Error('Pixel frame changed the coordinate content box');
     return directions;
   });
-  await page.screenshot({path:`.qa/${engine}-1122-coordinate.png`});
+  await page.waitForTimeout(350);await page.screenshot({path:`.qa/${engine}-1122-coordinate.png`});
   const markers=await page.evaluate(async()=>{
     const g=window.__game,{bodyPosition,visualRadius}=await import('/model.js'),ctx=document.getElementById('sky').getContext('2d'),stroke=ctx.stroke;let count=0;
     ctx.stroke=function(...args){if(this.strokeStyle==='#75ee98')count++;return stroke.apply(this,args);};
     try{
       g.cancelTarget();g.settings.labels=false;g.state.scene='system';g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.state.save.homePlanet=null;g.drawSystem(0);const system=count;
       g.enterChart();g.cancelTarget();g.state.camera={x:0,y:0};g.state.zoom=1;count=0;g.backdrop(0);g.drawChart(0);const chart=count;
-      g.state.scene='system';const earth=g.state.system.planets.find(b=>b.name==='Earth');g.state.save.homePlanet=earth.id;g.state.camera=bodyPosition(earth,g.state.save.days,g.state.system);g.state.zoom=30/visualRadius(earth.diameter);count=0;g.backdrop(0);g.drawSystem(0);
+      g.state.scene='system';const earth=g.state.system.planets.find(b=>b.name==='Earth');g.state.save.homePlanet=earth.id;g.state.camera=bodyPosition(earth,g.state.save.days,g.state.system);g.state.zoom=30/visualRadius(earth.diameter);g.updateUI();count=0;g.backdrop(0);g.drawSystem(0);
       return {system,chart,planet:count};
     }finally{ctx.stroke=stroke;}
   });assert.deepEqual(markers,{system:0,chart:1,planet:1});
-  await page.screenshot({path:`.qa/${engine}-1122-home-world.png`});
+  await page.waitForTimeout(350);await page.screenshot({path:`.qa/${engine}-1122-home-world.png`});
   await page.evaluate(()=>{const g=window.__game;g.enterChart();g.cancelTarget();g.state.camera={x:0,y:0};g.backdrop(0);g.drawChart(0);});
-  await page.screenshot({path:`.qa/${engine}-1122-home-star.png`});
+  await page.waitForTimeout(350);await page.screenshot({path:`.qa/${engine}-1122-home-star.png`});
   return {opening,typing,layout,reading,closing,directions,markers};
 }

@@ -945,11 +945,18 @@ function layoutTerminalDock(){
   const visible=!$('targetCard').hidden;$('terminalDock').classList.toggle('has-target',visible);
   $('terminalPocket').style.height=(visible?$('targetCard').getBoundingClientRect().height:0)+'px';
 }
-new ResizeObserver(layoutTerminalDock).observe($('targetCard'));
-new ResizeObserver(()=>{
-  const height=$('terminalPocket').getBoundingClientRect().height;
-  document.documentElement.style.setProperty('--terminal-height',height+'px');applyCenterButtonLayout();
-}).observe($('terminalPocket'));
+let terminalLayoutFrame=0;
+function scheduleTerminalLayout(){
+  if(terminalLayoutFrame)return;
+  // Defer ancestor sizing until the next frame, outside nested observer delivery.
+  terminalLayoutFrame=requestAnimationFrame(()=>{
+    terminalLayoutFrame=0;layoutTerminalDock();
+    const height=$('terminalPocket').getBoundingClientRect().height;
+    document.documentElement.style.setProperty('--terminal-height',height+'px');applyCenterButtonLayout();
+  });
+}
+const terminalObserver=new ResizeObserver(scheduleTerminalLayout);
+terminalObserver.observe($('targetCard'));terminalObserver.observe($('terminalPocket'));
 for(const event of ['wheel','touchstart','pointerdown','keydown'])$('terminalScreen').addEventListener(event,()=>{if(state.terminal)state.terminal.rewind=null;},{passive:true});
 function showJournal() {
   const box=document.createElement('div');const p=document.createElement('p');p.textContent=`${state.save.discoveries.length} discoveries recorded in ${state.save.name}.`;
