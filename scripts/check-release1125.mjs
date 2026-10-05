@@ -23,6 +23,8 @@ export async function checkRelease1125(page,engine){
     g.zoom(.7);g.update(500,500);if(!s.followShip||s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw Error('Zoom disabled Follow');
     return {deviation,zoom:s.zoom,following:s.followShip};
   });
+  await page.mouse.move(1000,220);await page.mouse.wheel(0,300);await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(()=>window.__game.state.followShip),true,'Wheel zoom disabled Follow');
   // Drag with real input; the last move restarts the entire inspection window.
   await page.mouse.move(1000,220);await page.mouse.down();await page.mouse.move(1080,250,{steps:4});await page.mouse.up();
   const inspection=await page.evaluate(()=>{
@@ -46,6 +48,10 @@ export async function checkRelease1125(page,engine){
     const base=document.getElementById('dashboardBase').getBoundingClientRect();return {x:innerWidth/2,y:base.top+12};
   });await page.mouse.click(deck.x,deck.y);
   assert.equal(await page.evaluate(()=>Boolean(window.__game.state.selected||window.__game.state.waypoint)),false,'Dashboard tap selected space');
+  await page.evaluate(()=>{const g=window.__game;g.settings.centerButton='custom';g.settings.centerX=72;g.settings.centerY=22;g.applyCenterButtonLayout();});await page.waitForTimeout(150);
+  assert.equal(await page.locator('#dashboardControls').evaluate(e=>e.hidden),true,'Separated controls created an oversized blocking plate');
+  await page.mouse.click(700,250);assert.equal(await page.evaluate(()=>Boolean(window.__game.state.selected||window.__game.state.waypoint)),true,'A custom control plate blocked the open scene');
+  await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.centerButton='right';g.applyCenterButtonLayout();});await page.waitForTimeout(350);
   await page.locator('#terminalButton').click();await page.waitForTimeout(400);await page.locator('#terminalInput').focus();await page.waitForTimeout(400);
   for(const mode of ['Shift','CapsLock'])if(await page.locator(`[data-key="${mode}"]`).getAttribute('aria-pressed')==='true')await page.locator(`[data-key="${mode}"]`).click();
   await page.locator('[data-key="Clear"]').click();
@@ -71,7 +77,7 @@ export async function checkRelease1125(page,engine){
   const top=await page.locator('#terminalResizeTop').boundingBox();await page.mouse.move(top.x+top.width/2,top.y+top.height/2);await page.mouse.down();await page.mouse.move(top.x+top.width/2,top.y+top.height/2+90,{steps:6});await page.mouse.up();await page.waitForTimeout(400);
   const shorter=await page.locator('#targetCard').boundingBox();assert.ok(Math.abs(shorter.height-narrower.height+90)<2,'Height handle did not slide');
   const layouts=[];
-  for(const viewport of [{width:1440,height:900},{width:844,height:390},{width:390,height:844},{width:375,height:667}]){
+  for(const viewport of [{width:1440,height:900},{width:844,height:390},{width:667,height:375},{width:390,height:844},{width:375,height:667}]){
     await page.setViewportSize(viewport);await page.evaluate(()=>{const g=window.__game;g.state.terminalSize=null;document.getElementById('terminalDock').style.removeProperty('--terminal-width');document.getElementById('terminalDock').style.removeProperty('--terminal-user-height');g.updateUI();g.updateTerminal(g.state.terminal.start+14000);});
     await page.locator('#terminalInput').focus();await page.waitForTimeout(500);
     const fit=await page.evaluate(()=>{

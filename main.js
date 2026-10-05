@@ -1034,8 +1034,9 @@ $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden
 // Resizing is bounded to the viewport and applies only to the expanded device.
 let terminalResize=null;
 function terminalLimits(){
-  const reserve=$('mapButton').hidden?32:80;
-  return {minWidth:Math.min(264,innerWidth-reserve),maxWidth:Math.max(100,innerWidth-reserve),maxHeight:Math.max(170,innerHeight-(innerWidth<700?220:115))};
+  const portrait=innerWidth<700&&innerHeight>innerWidth,joyRect=$('joystick').getBoundingClientRect();
+  const reserve=portrait?($('mapButton').hidden?32:80):Math.max(innerWidth<700?300:330,joyRect.width?joyRect.right+178:0);
+  return {minWidth:Math.min(264,innerWidth-reserve),maxWidth:Math.max(264,innerWidth-reserve),maxHeight:Math.max(170,innerHeight-(portrait?220:115))};
 }
 function applyTerminalSize(){
   const dock=$('terminalDock'),limits=terminalLimits();
@@ -1060,13 +1061,19 @@ for(const [id,axis] of [['terminalResizeTop','height'],['terminalResizeLeft','wi
 }
 function layoutDashboard(){
   const rects=[$('joystick'),$('navigationControls')].filter(e=>e&&!e.hidden).map(e=>e.getBoundingClientRect()).filter(r=>r.width&&r.height);
+  const panelIds=['dashboardControls','dashboardJoystick','dashboardNavigation'];
+  for(const id of panelIds)$(id).hidden=true;
   if(!rects.length)return;
-  const x=Math.min(...rects.map(r=>r.left))-7,y=Math.min(...rects.map(r=>r.top))-7;
-  const panel=$('dashboardControls');panel.style.left=Math.max(0,x)+'px';panel.style.top=Math.max(0,y)+'px';panel.style.width=(Math.max(...rects.map(r=>r.right))-x+7)+'px';panel.style.height=(Math.max(...rects.map(r=>r.bottom))-y+7)+'px';
+  const x=Math.min(...rects.map(r=>r.left)),y=Math.min(...rects.map(r=>r.top));
+  const width=Math.max(...rects.map(r=>r.right))-x,height=Math.max(...rects.map(r=>r.bottom))-y;
+  const plate=(id,r)=>{const panel=$(id);panel.hidden=false;panel.style.left=Math.max(0,r.x-7)+'px';panel.style.top=Math.max(0,r.y-7)+'px';panel.style.width=(r.width+14)+'px';panel.style.height=(r.height+14)+'px';};
+  // Adjacent controls share a plate. Custom positions never create a wall across the scene.
+  if(width*height<=rects.reduce((n,r)=>n+r.width*r.height,0)*1.75)plate('dashboardControls',{x,y,width,height});
+  else rects.forEach((r,i)=>plate(panelIds[i+1],r));
 }
 function onDashboard(x,y){
   if($('app').hidden)return false;
-  return ['dashboardBase','dashboardControls','terminalDock'].some(id=>{const r=$(id).getBoundingClientRect();return r.width&&r.height&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;});
+  return ['dashboardBase','dashboardControls','dashboardJoystick','dashboardNavigation','terminalDock'].some(id=>{const element=$(id);if(element.hidden)return false;const r=element.getBoundingClientRect();return r.width&&r.height&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;});
 }
 function focusSelected(){
   if(!state.save)return;const {object,position}=selectedRecord();state.centerZoom=null;state.centerReady=false;state.followShip=false;
@@ -1093,7 +1100,7 @@ function positionContext(){
   const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
   const radius=(state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10)+(homeIcon?16:0);
   if(state.waypoint)$('coordinateArrow').style.transform=`rotate(${coordinateHeading(record.ship,record.position,state.shipMotion.heading)}deg)`;
-  const obstacles=['terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','joystick','navigationControls','mapButton','dashboardBase','dashboardControls'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
+  const obstacles=['terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','joystick','navigationControls','mapButton','dashboardBase','dashboardControls','dashboardJoystick','dashboardNavigation'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
   const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles,state.contextPlacement);state.contextPlacement=place;element.style.transform=`translate(${place.x}px,${place.y}px)`;
 }
 function layoutTerminalDock(){
@@ -1678,7 +1685,7 @@ window.addEventListener('keydown',e=>{
       else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
     }return;
   }
-  if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName)||document.activeElement?.closest('#terminalScreen, #terminalKeyboard'))return;
+  if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName)||document.activeElement?.closest('#targetCard'))return;
   if(!state.save)return;
   const k=e.key.length===1?e.key.toLowerCase():e.key;
   if(k===' '&&['BUTTON','A'].includes(document.activeElement?.tagName))return;

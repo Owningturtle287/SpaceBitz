@@ -22,3 +22,11 @@ test('moving target keeps its side until it reaches an obstruction',async()=>{
   assert.notEqual(obstructed.side,1);
   assert.ok(obstructed.x>=8&&obstructed.x+100<=792&&obstructed.y>=8&&obstructed.y+50<=592);
 });
+
+
+test('an extreme-zoom fallback returns beside the object when the object fits again',async()=>{
+  const {contextPosition}=await import('../target-ui.js'),size={width:100,height:50},viewport={width:800,height:600};
+  const far=contextPosition({x:400,y:300},2000,size,viewport);assert.equal(far.side,-1);
+  const nearby=contextPosition({x:400,y:300},12,size,viewport,[],far);
+  assert.equal(nearby.side,0);assert.equal(nearby.y,226);
+});

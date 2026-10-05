@@ -546,3 +546,9 @@ body{font-size:9px;line-height:1.7}
 .inline-editor .rarity-row{grid-template-columns:minmax(0,1fr) 118px 10px;font-size:10px;line-height:1.6;gap:6px}
 .inline-editor .rarity-total{font-size:9px}.inline-editor .generation-error{font-size:9px;line-height:1.7}
 @media(max-width:600px){#clock{font-size:8px}#telemetry{font-size:7px}.terminal-data{column-gap:12px}.scientific-value,.scientific-value strong{font-size:9px}.inline-editor .rarity-row{font-size:9px}}
+
+@media(max-width:699px) and (orientation:landscape){
+  #targetCard.terminal.expanded,#targetCard.terminal.keyboard-open{height:var(--terminal-user-height,min(70dvh,calc(100dvh - 115px)))}
+  .terminal-visible #joystick{bottom:calc(6px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}
+}
+@media(orientation:landscape) and (max-height:500px){.terminal-keyboard{gap:2px}.keyboard-row .pixel-key{height:20px;min-height:20px}}

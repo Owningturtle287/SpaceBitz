@@ -13,7 +13,7 @@ export function contextPosition(target,radius,size,viewport,obstacles=[],previou
   const valid=p=>p&&p.x>=margin&&p.y>=margin&&p.x+w<=viewport.width-margin&&p.y+h<=viewport.height-margin&&!obstacles.some(o=>p.x<o.x+o.width+4&&p.x+w>o.x-4&&p.y<o.y+o.height+4&&p.y+h>o.y-4);
   // Retain the chosen side as the object/camera moves. Reconsider only at an obstruction.
   const retained=previous?.side>=0?candidates[previous.side]:previous?{x:x+previous.dx,y:y+previous.dy,side:-1}:null;
-  const rect=valid(retained)?retained:candidates.find(valid);
+  const rect=previous?.side>=0&&valid(retained)?retained:candidates.find(valid)||(valid(retained)?retained:null);
   if(rect)return rect;
   const placed=placeControls({x:clamp(candidates[0].x,margin,viewport.width-w-margin),y:clamp(candidates[0].y,margin,viewport.height-h-margin)},{width:w,height:h},viewport,obstacles);
   return {...placed,side:-1,dx:placed.x-x,dy:placed.y-y};
