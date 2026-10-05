@@ -91,12 +91,12 @@ export async function checkRelease1125(page,engine){
     await page.locator('[data-key="Enter"]').click();
   }
   await page.setViewportSize({width:1440,height:900});await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.select(g.state.system.star);g.updateUI();});await page.waitForTimeout(400);
-  const slide=await page.evaluate(async()=>{
+  const slide=await page.evaluate(()=>{
     const warp=document.getElementById('mapButton'),dock=document.getElementById('terminalDock'),start=warp.getBoundingClientRect().left;
     document.getElementById('secondaryAction').click();
-    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    // getAnimations flushes style; capture and pause before a frame wait can finish it.
     const animation=dock.getAnimations().find(a=>a.transitionProperty==='width');
-    if(!animation)throw Error('Terminal width did not animate');
+    if(!animation)throw Error('Terminal width did not animate '+JSON.stringify({start,end:warp.getBoundingClientRect().left,width:dock.getBoundingClientRect().width,expanded:window.__game.state.terminalExpanded,transition:getComputedStyle(dock).transition}));
     // Seek the browser's own transition so a busy headless runner cannot skip the sample.
     animation.pause();animation.currentTime=animation.effect.getComputedTiming().duration/2;
     const mid=warp.getBoundingClientRect().left;animation.finish();
