@@ -56,7 +56,7 @@ export async function checkRelease1125(page,engine){
   for(const mode of ['Shift','CapsLock'])if(await page.locator(`[data-key="${mode}"]`).getAttribute('aria-pressed')==='true')await page.locator(`[data-key="${mode}"]`).click();
   await page.locator('[data-key="Clear"]').click();
   await page.locator('[data-key="CapsLock"]').click();await page.locator('[data-key="A"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'A');
-  await page.locator('[data-key="Shift"]').click();await page.locator('[data-key="Q"]').click();await page.locator('[data-key="/"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'A!/');
+  await page.locator('[data-key="Shift"]').click();await page.locator('[data-key="Q"]').click();await page.locator('[data-key="/"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'A!/');await page.screenshot({path:`.qa/${engine}-1125-symbols.png`});
   await page.locator('#terminalDelete').click();assert.equal(await page.locator('#terminalInput').inputValue(),'A!');
   await page.locator('[data-key="Shift"]').click();await page.locator('[data-key="CapsLock"]').click();await page.locator('[data-key="Clear"]').click();
   const fast=await page.evaluate(()=>{
