@@ -1198,12 +1198,12 @@ function drawOrbit(x,y,r,color='#a3bed3') {
   strokeEllipse(ctx,circleGeometry(p.x,p.y,sr),state.width,state.height);ctx.restore();
 }
 
-function label(text,x,y,selected=false) {
+function label(text,x,y) {
   ctx.font="10px 'SpaceBitz Pixel',monospace";
   ctx.textAlign='center';ctx.textBaseline='middle';const width=ctx.measureText(text).width+18;
-  ctx.fillStyle=selected?'#264b59e8':'#0b1b30d9';ctx.strokeStyle=selected?'#6fe1cf80':'#64829750';
-  ctx.beginPath();ctx.rect(Math.round(x-width/2),Math.round(y)-12,Math.round(width),23);ctx.fill();ctx.stroke();
-  ctx.fillStyle=selected?'#e8fff9':'#c3d5e2';ctx.fillText(text,x,y);
+  ctx.strokeStyle='#64829750';
+  ctx.beginPath();ctx.rect(Math.round(x-width/2),Math.round(y)-12,Math.round(width),23);ctx.stroke();
+  ctx.fillStyle='#c3d5e2';ctx.fillText(text,x,y);
 }
 function drawSelection(x,y,r,now) {
   ctx.save();ctx.strokeStyle='#8ff5d9';ctx.lineWidth=1.5;

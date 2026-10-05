@@ -26,7 +26,7 @@ export async function checkRelease1121(page,engine){
         if(r.bottom>list.bottom+1||parseFloat(getComputedStyle(input).fontSize)<16||row.children[0].scrollWidth>row.children[0].clientWidth+1)throw Error('Clipped custom rarity: '+row.textContent+' '+JSON.stringify({bottom:r.bottom,listBottom:list.bottom,font:getComputedStyle(input).fontSize,label:[row.children[0].scrollWidth,row.children[0].clientWidth],viewport:[innerWidth,innerHeight]}));
         return row.children[0].textContent;
       }));rows.forEach(row=>custom.add(row));maxRows=Math.max(maxRows,rows.length);customPages++;
-      const next=page.getByRole('button',{name:'Next rarity entries',exact:true});if(await next.isDisabled())break;await next.click();
+      const next=page.locator('#generationEditor .editor-pages button[aria-label="Next rarity entries"]');if(await next.isDisabled())break;await next.click();
     }while(customPages<20);
     assert.equal(custom.size,12);if(viewport.width>=700&&viewport.height>=768)assert.ok(maxRows>5,`Unused space: ${maxRows} rows at ${viewport.width}`);
     const overflow=await page.evaluate(()=>({page:document.scrollingElement.scrollHeight-innerHeight,stage:document.getElementById('universeMenuStage').scrollHeight-document.getElementById('universeMenuStage').clientHeight}));assert.ok(overflow.page<=1&&overflow.stage<=1,JSON.stringify(overflow));
