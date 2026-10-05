@@ -4,6 +4,7 @@ import {checkRelease112} from './check-release112.mjs';
 import {checkRelease1121} from './check-release1121.mjs';
 import {checkRelease1122} from './check-release1122.mjs';
 import {checkRelease1123} from './check-release1123.mjs';
+import {checkRelease1125} from './check-release1125.mjs';
 import {checkRelease1124} from './check-release1124.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -99,7 +100,7 @@ try{
   assert.ok(!controls.thumb.startsWith('rgba'),controls.thumb);
   assert.ok(controls.joy.left<100&&390-controls.joy.bottom<=7);
   assert.equal(controls.warp.width,controls.center.width);assert.equal(controls.warp.height,controls.center.height);
-  assert.ok(Math.abs(controls.warp.left-controls.center.right-6)<1);
+  assert.ok(controls.warp.left>=0&&controls.warp.right<=844&&controls.warp.bottom<=390);
   assert.ok(controls.target.right<=844&&controls.target.bottom<=390&&controls.target.width<=430);
   await page.locator('#settingsOpen').click();
   assert.equal(await page.locator('.modal-card').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(16, 30, 50)');
@@ -506,5 +507,6 @@ try{
   const release1124=await checkRelease1124(page,engine);
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release1125=await checkRelease1125(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

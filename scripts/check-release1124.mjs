@@ -22,7 +22,7 @@ export async function checkRelease1124(page,engine){
     if(s.zoom!==z||s.followShip||!s.centerZoom)throw Error('Follow toggle changed zoom or skipped easing');g.update(650,650);g.update(500,500);
     if(!s.followShip||s.camera.x!==s.save.ship.x||s.zoom!==z)throw Error('Follow toggle failed to enable at the current zoom');
     g.zoom(.9);const zoomed=JSON.stringify(s.camera);g.update(500,500);
-    if(s.followShip||JSON.stringify(s.camera)!==zoomed)throw Error('Manual camera control did not stop following');
+    if(!s.followShip||s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y)throw Error('Zoom stopped following');document.getElementById('followShipButton').click();
     g.settings.reducedMotion=true;g.applySettings();document.getElementById('followShipButton').click();
     if(!s.followShip||s.centerZoom||s.camera.x!==s.save.ship.x)throw Error('Reduced-motion follow is not immediate');
     document.getElementById('followShipButton').click();g.settings.reducedMotion=false;g.settings.paused=true;g.applySettings();
@@ -33,8 +33,8 @@ export async function checkRelease1124(page,engine){
     const rect=id=>document.getElementById(id).getBoundingClientRect(),c=rect('homeButton'),w=rect('mapButton'),f=rect('followShipButton');
     return {center:c.toJSON(),warp:w.toJSON(),follow:f.toJSON(),centered:Math.abs((f.left+f.right-c.left-c.right)/2)};
   });
-  assert.ok(controls.follow.top>=controls.center.bottom&&controls.centered<1&&controls.follow.width<controls.center.width&&controls.follow.height<controls.center.height&&controls.follow.bottom<=390,JSON.stringify(controls));
-  assert.equal(controls.warp.left-controls.center.right,6);assert.equal(controls.warp.top,controls.center.top);
+  assert.ok(controls.follow.left>=controls.center.right&&controls.follow.width===controls.center.width/2&&controls.follow.height===controls.center.height/2&&controls.follow.bottom<=390,JSON.stringify(controls));
+  assert.equal(controls.follow.left-controls.center.right,6);assert.ok(controls.warp.bottom<=390&&controls.warp.left>=0);
   const immediate=await page.evaluate(()=>{
     const g=window.__game;g.select(g.state.system.star);g.positionContext();const row=document.querySelector('.context-action-row'),s=getComputedStyle(row);
     return {ready:document.getElementById('contextActions').classList.contains('ready'),delay:s.transitionDelay,duration:s.transitionDuration,offset:new DOMMatrix(s.transform).m42};
@@ -76,13 +76,13 @@ export async function checkRelease1124(page,engine){
     });
     assert.ok(fit.left>=0&&fit.right<=viewport.width&&fit.top>=60&&fit.bottom<=viewport.height&&fit.keyboardBottom<=fit.bottom&&fit.screenHeight>=35&&fit.scrolls&&fit.barFixed&&fit.contextClear&&fit.joyClear&&fit.utilitiesClear&&!fit.keyboardHidden&&fit.inputFont>=16&&fit.scale===1&&fit.overflow<=1&&fit.border==='2px',JSON.stringify({viewport,fit}));layouts.push({viewport,compactWidth:compact.width,...fit});
     await page.screenshot({path:`.qa/${engine}-1124-keyboard-${viewport.width}.png`});
-    await page.locator('[data-key="Done"]').click();assert.equal(await page.locator('#terminalKeyboard').isVisible(),false);
+    await page.locator('[data-key="Enter"]').click();assert.equal(await page.locator('#terminalKeyboard').isVisible(),false);
   }
   await page.locator('#terminalInput').fill('draft');await page.locator('#terminalInput').focus();
   await page.locator('[data-key="Space"]').click();await page.locator('[data-key="A"]').click();
   assert.equal(await page.locator('#terminalInput').inputValue(),'draft a');
-  await page.locator('[data-key="Shift"]').click();await page.locator('[data-key="B"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'draft aB');
-  await page.locator('[data-key="Backspace"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'draft a');
+  await page.locator('[data-key="CapsLock"]').click();await page.locator('[data-key="B"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'draft aB');
+  await page.locator('#terminalDelete').click();assert.equal(await page.locator('#terminalInput').inputValue(),'draft a');
   await page.locator('#terminalInput').evaluate(e=>e.setSelectionRange(0,5));await page.locator('[data-key="C"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'C a');
   await page.keyboard.type('wasd');assert.equal(await page.locator('#terminalInput').inputValue(),'Cwasd a');
   assert.equal(await page.evaluate(()=>window.__game.state.keys.size),0,'Typing also steered the ship');
@@ -93,7 +93,7 @@ export async function checkRelease1124(page,engine){
   await page.locator('[data-key="A"]').tap();await page.locator('[data-key="B"]').tap();await page.locator('[data-key="B"]').tap();
   assert.equal(await page.locator('#terminalInput').inputValue(),'ABB','Rapid touchscreen keys were suppressed');
   await page.locator('#terminalInput').fill('x'.repeat(128));await page.locator('[data-key="A"]').click();assert.equal((await page.locator('#terminalInput').inputValue()).length,128);
-  await page.locator('[data-key="Done"]').click();
+  await page.locator('[data-key="Enter"]').click();
   await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.reducedMotion=true;g.applySettings();document.getElementById('terminalButton').click();g.updateTerminal(performance.now());});
   const reduced=await page.evaluate(()=>({full:window.__game.state.terminal.count===window.__game.state.terminal.text.length,transition:getComputedStyle(document.getElementById('terminalButton')).transitionDuration}));assert.ok(reduced.full&&reduced.transition==='0s',JSON.stringify(reduced));
   return {tracking,controls,immediate,standalone,layouts,draftEditing:true,reduced};

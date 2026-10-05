@@ -79,6 +79,11 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.12.5',items:[
+    'Moving target names and actions track without overlay lag or unstable placement. Follow stays enabled through zoom and smoothly returns five seconds after the last pan at the existing zoom.',
+    'A larger Follow toggle sits beside Center; Warp Drive slides beside the terminal. Textured pixel-metal dashboard plates protect flight controls from accidental coordinate selection.',
+    'Pixel text throughout the UI, terminal resize arrows, a blinking input cursor, responsive press/repeat keys, Caps Lock, symbol Shift, slash, Enter and input-side Delete improve the terminal device.'
+  ]},
   {version:'1.12.4',items:[
     'The second Center press zooms in and follows the moving ship. A small tracking toggle below Center enables or stops following at the current zoom; manual camera gestures stop following.',
     'Target controls start immediately and glide upward more slowly. The collapsed terminal is narrower; its metallic pixel frame opens into the usual two-column data screen.',
@@ -321,7 +326,7 @@ const CHANGELOG=[
   ]}
 ];
 const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,y:0}, zoom:1,
-  panUntil:0, centerZoom:null, centerReady:false, followShip:false, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
+  panUntil:0, centerZoom:null, centerReady:false, followShip:false, followPanRemaining:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, fps:60, particles:[], textureCache:new Map(),
   waypoint:null,hoverCell:null,warpUntil:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
 const loadSaves = () => {
@@ -350,10 +355,10 @@ function applyCenterButtonLayout(){
         top=mode==='above'?r.top-bh-8:r.top+(r.height-bh)/2;
       }else{left=12;top=window.innerHeight-bh-12;}
     }
-    const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','systemChartContent'].map(id=>$(id)).filter(el=>el&&!el.hidden).map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:r.left,y:r.top,width:r.width,height:r.height}));
+    const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','mapButton','systemChartContent'].map(id=>$(id)).filter(el=>el&&!el.hidden).map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:r.left,y:r.top,width:r.width,height:r.height}));
     const placed=placeControls({x:left,y:top},{width,height:bh},{width:window.innerWidth,height:window.innerHeight},obstacles);
     group.style.left=placed.x+'px';group.style.top=placed.y+'px';
-    $('followShipButton').style.left=(btn.offsetLeft+bw/2)+'px';
+    layoutDashboard();
   });
 }
 function applySettings(){
@@ -455,7 +460,7 @@ function fit() {
   else if(state.stars.length<targetStarCount)state.stars.push(...Array.from({length:targetStarCount-state.stars.length},makeBackgroundStar));
   else if(state.stars.length>targetStarCount)state.stars.length=targetStarCount;
 }
-window.addEventListener('resize',()=>{fit();applyCenterButtonLayout();});
+window.addEventListener('resize',()=>{fit();applyTerminalSize();scheduleTerminalLayout();applyCenterButtonLayout();});
 window.addEventListener('orientationchange',()=>setTimeout(()=>{fit();updateUI();applyCenterButtonLayout();},120),{passive:true});
 globalThis.screen?.orientation?.addEventListener?.('change',()=>setTimeout(()=>{fit();updateUI();applyCenterButtonLayout();},80));
 applySettings();
@@ -470,7 +475,7 @@ function start(save) {
   if(settings.timeMode==='realtime')save.days=currentDays();
   migrateLayout(save,state.system);save.route||=[];
   if(state.scene==='surface' && !findBody(save.landed)?.solid){state.scene='system';save.scene='system';save.landed=null;}
-  state.terminal=null;state.terminalExpanded=false;state.selected=null;state.waypoint=null;state.hoverCell=null;state.warpUntil=0;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false; state.autopilot=null;state.followBody=null;state.panUntil=0;
+  state.terminal=null;state.terminalExpanded=false;state.selected=null;state.waypoint=null;state.hoverCell=null;state.warpUntil=0;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false;state.followPanRemaining=0; state.autopilot=null;state.followBody=null;state.panUntil=0;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.actorMotion={direction:'down',steps:0};
   state.zoom=state.scene==='chart'?1:state.scene==='surface'?1.3:.85;
   if(state.scene==='chart') state.camera={...save.chart};
@@ -613,6 +618,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
 }
 
 function beginSelection(){
+  state.contextPlacement=null;
   const row=$('contextActions').querySelector('.context-action-row');row.style.transition='none';
   $('contextActions').classList.remove('ready');
   $('contextActions').hidden=false;
@@ -634,14 +640,14 @@ function markDiscovery(body) {
   state.save.log.unshift({name:body.name,action:'First landing',days:state.save.days});
   toast(`First landing on ${body.name} · added to logbook`);persist();
 }
-function enterChart() {state.terminal=null;state.terminalExpanded=false;
+function enterChart() {state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   const star=currentStar();state.scene='chart';state.selected=star;
   state.save.scene='chart';state.save.chart={x:star.x+38,y:star.y+30};
   state.camera={...state.save.chart};state.zoom=1;state.autopilot=null;persist();updateUI();
 }
-function enterSystem(star) {state.terminal=null;state.terminalExpanded=false;
+function enterSystem(star) {state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   state.system=makeSystem(star.seed,state.save.generation);state.save.currentSystem=star.seed;
@@ -656,7 +662,7 @@ function enterSystem(star) {state.terminal=null;state.terminalExpanded=false;
   state.save.route=state.save.route.slice(-40);
   toast(`${state.system.name} · arriving at ${outer.name}`);persist();updateUI();
 }
-function enterSurface(body) {state.terminal=null;state.terminalExpanded=false;
+function enterSurface(body) {state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   if(!body.solid){toast('No solid surface here. Explore one of its moons.');return;}
   state.followBody=null;state.actorMotion={direction:'down',steps:0};
@@ -664,7 +670,7 @@ function enterSurface(body) {state.terminal=null;state.terminalExpanded=false;
   state.save.surface={x:50,y:35};state.camera={...state.save.surface};state.zoom=1.3;
   state.autopilot=null;markDiscovery(body);persist();updateUI();
 }
-function launch() {state.terminal=null;state.terminalExpanded=false;
+function launch() {state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.followBody=null;
   const body=findBody(state.save.landed);
@@ -752,7 +758,7 @@ $('homeButton').onclick=()=>{
   if(centerSuppressClick){centerSuppressClick=false;return;}
   if(!state.save||state.centerZoom?.centerAction)return;
   const zoomIn=state.centerReady,to=zoomIn?Math.max(state.zoom,state.scene==='system'?SHIP_FOCUS_ZOOM:2.4):state.zoom;
-  state.panUntil=Infinity;state.focusBody=null;state.centerReady=false;state.followShip=false;
+  state.panUntil=Infinity;state.focusBody=null;state.centerReady=false;state.followShip=false;state.followPanRemaining=0;
   const target=state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship;
   if(settings.reducedMotion||(!zoomIn&&Math.hypot(target.x-state.camera.x,target.y-state.camera.y)*state.zoom<.5)){state.centerZoom=null;state.camera={...target};state.zoom=to;state.centerReady=!zoomIn;state.followShip=zoomIn;}
   else state.centerZoom={from:state.zoom,to,fromCamera:{...state.camera},elapsed:0,duration:1300,centerAction:zoomIn?'zoom':'pan'};
@@ -761,7 +767,7 @@ $('homeButton').onclick=()=>{
 $('followShipButton').onclick=()=>{
   if(!state.save)return;
   const following=state.followShip||state.centerZoom?.centerAction==='follow';
-  state.centerZoom=null;state.centerReady=false;state.focusBody=null;state.panUntil=Infinity;state.followShip=false;
+  state.centerZoom=null;state.centerReady=false;state.focusBody=null;state.panUntil=Infinity;state.followShip=false;state.followPanRemaining=0;
   if(!following){
     const target=state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship;
     if(settings.reducedMotion){state.camera={...target};state.followShip=true;}
@@ -798,7 +804,7 @@ $('systemChartToggle').onclick=()=>{
   panel.classList.toggle('open',open);content.hidden=!open;
   $('systemChartToggle').setAttribute('aria-expanded',String(open));
 };
-function zoom(factor){state.centerZoom=null;state.centerReady=false;state.followShip=false;if(state.autopilot)state.autopilot.manualZoom=true;state.zoom=clamp(state.zoom*factor,state.scene==='system'?systemMinZoom(state.system,state.width,state.height,state.save.days):state.scene==='surface'?.65:.34,state.scene==='system'?SYSTEM_MAX_ZOOM:2.4);}
+function zoom(factor){const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(state.autopilot)state.autopilot.manualZoom=true;state.zoom=clamp(state.zoom*factor,state.scene==='system'?systemMinZoom(state.system,state.width,state.height,state.save.days):state.scene==='surface'?.65:.34,state.scene==='system'?SYSTEM_MAX_ZOOM:2.4);if(following&&!state.followPanRemaining)state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};}
 
 function addMetric(parent,label,value) {
   const div=document.createElement('div');div.className='metric';
@@ -957,35 +963,110 @@ function toggleTerminal(){
   else {$('terminalInput').blur();setTerminalKeyboard(false);}
   updateUI();
 }
-let terminalShift=false;
+let terminalShift=false,terminalCaps=false;
+const heldTerminalKeys=new Map();
+function stopTerminalKeys(){for(const press of heldTerminalKeys.values()){clearTimeout(press.delay);clearInterval(press.repeat);}heldTerminalKeys.clear();}
 function setTerminalKeyboard(visible){
+  if(!visible)stopTerminalKeys();
   $('terminalKeyboard').hidden=!visible;$('targetCard').classList.toggle('keyboard-open',visible);
   $('terminalKeyboardToggle').setAttribute('aria-expanded',String(visible));$('terminalKeyboardToggle').setAttribute('aria-label',visible?'Hide terminal keyboard':'Show terminal keyboard');
+  scheduleTerminalLayout();updateInputCaret();
 }
+const terminalSymbols={'Q':'!','W':'@','E':'#','R':'$','T':'%','Y':'^','U':'&','I':'*','O':'(','P':')','A':'-','S':'_','D':'=','F':'+','G':'[','H':']','J':'{','K':'}','L':'\\','Z':';','X':':','C':"'",'V':'"','B':',','N':'.','M':'?'};
+function terminalCharacter(key){return terminalShift?(terminalSymbols[key]||key):terminalCaps?key:key.toLowerCase();}
 function terminalKey(key){
   const input=$('terminalInput'),start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
-  if(key==='Shift'){terminalShift=!terminalShift;renderTerminalKeyboard();return;}
-  if(key==='Done'){setTerminalKeyboard(false);input.blur();return;}
-  if(key==='Clear'){input.value='';input.setSelectionRange(0,0);return;}
+  if(key==='Shift'||key==='CapsLock'){if(key==='Shift')terminalShift=!terminalShift;else terminalCaps=!terminalCaps;renderTerminalKeyboard();return;}
+  if(key==='Enter'){setTerminalKeyboard(false);input.blur();return;}
+  if(key==='Clear'){input.value='';input.setSelectionRange(0,0);input.dispatchEvent(new Event('input',{bubbles:true}));return;}
   const from=key==='Backspace'&&start===end?Math.max(0,start-1):start;
-  const text=key==='Backspace'?'':key==='Space'?' ':terminalShift?key:key.toLowerCase();
+  const text=key==='Backspace'?'':key==='Space'?' ':terminalCharacter(key);
   if(input.value.length-(end-from)+text.length>input.maxLength)return;
   input.setRangeText(text,from,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));
 }
+function bindTerminalKey(button,key){
+  button.onpointerdown=e=>{
+    if(e.button!==0)return;e.preventDefault();e.stopPropagation();if(e.isTrusted)button.setPointerCapture?.(e.pointerId);terminalKey(key);
+    if(['Shift','CapsLock','Enter','Clear'].includes(key))return;
+    const press={delay:setTimeout(()=>{press.repeat=setInterval(()=>terminalKey(key),55);terminalKey(key);},350)};
+    heldTerminalKeys.set(e.pointerId,press);
+  };
+  const release=e=>{const press=heldTerminalKeys.get(e.pointerId);if(press){clearTimeout(press.delay);clearInterval(press.repeat);heldTerminalKeys.delete(e.pointerId);}};
+  button.onpointerup=release;button.onpointercancel=release;button.onlostpointercapture=release;
+  // Assistive technology and physical keyboard activation have no preceding pointer press.
+  button.onclick=e=>{if(e.detail===0)terminalKey(key);};
+}
 function renderTerminalKeyboard(){
-  const keyboard=$('terminalKeyboard');keyboard.replaceChildren();
-  for(const keys of ['1234567890','QWERTYUIOP','ASDFGHJKL','ZXCVBNM',['Shift','Space','Backspace','Clear','Done']]){
+  const keyboard=$('terminalKeyboard');
+  if(!keyboard.childElementCount)for(const keys of ['1234567890','QWERTYUIOP','ASDFGHJKL',['CapsLock',...'ZXCVBNM','/'],['Shift','Space','Clear','Enter']]){
     const row=document.createElement('div');row.className='keyboard-row';
-    for(const key of keys){const button=document.createElement('button');button.type='button';button.className='pixel-key';button.dataset.key=key;button.textContent=key==='Backspace'?'DEL':key==='Space'?'SPACE':key==='Shift'?'SHIFT':key.length===1?(terminalShift?key:key.toLowerCase()):key.toUpperCase();
-      button.setAttribute('aria-label',key);if(key==='Shift')button.setAttribute('aria-pressed',String(terminalShift));if(key==='Space')button.classList.add('space-key');
-      button.onpointerdown=e=>e.preventDefault();button.onclick=()=>terminalKey(key);row.append(button);
+    for(const key of keys){const button=document.createElement('button');button.type='button';button.className='pixel-key';button.dataset.key=key;
+      if(key==='Space')button.classList.add('space-key');bindTerminalKey(button,key);row.append(button);
     }keyboard.append(row);
   }
+  for(const button of keyboard.querySelectorAll('button')){
+    const key=button.dataset.key;button.textContent=key==='CapsLock'?'CAPS':key==='Shift'?'SHIFT':key.length===1?terminalCharacter(key):key.toUpperCase();
+    button.setAttribute('aria-label',key==='Shift'?(terminalShift?'Switch to letters':'Switch to symbols'):key==='CapsLock'?'Caps Lock':key);
+    if(key==='Shift'||key==='CapsLock')button.setAttribute('aria-pressed',String(key==='Shift'?terminalShift:terminalCaps));
+  }
 }
-renderTerminalKeyboard();
+const inputMeasure=document.createElement('canvas').getContext('2d');
+function updateInputCaret(){
+  const input=$('terminalInput'),caret=$('terminalInputCaret');
+  caret.hidden=!state.terminalExpanded||document.activeElement!==input||input.selectionStart!==input.selectionEnd;
+  if(caret.hidden)return;
+  const style=getComputedStyle(input);inputMeasure.font=style.font;
+  const measured=inputMeasure.measureText(input.value.slice(0,input.selectionStart)).width;
+  const available=input.clientWidth-12;
+  if(measured-input.scrollLeft>available)input.scrollLeft=measured-available;
+  caret.style.left=(6+measured-input.scrollLeft)+'px';
+}
+renderTerminalKeyboard();bindTerminalKey($('terminalDelete'),'Backspace');
 $('terminalInput').onfocus=()=>{resetInput();setTerminalKeyboard(true);};
-$('terminalInput').onkeydown=e=>{if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();setTerminalKeyboard(false);$('terminalInput').blur();}};
+$('terminalInput').onblur=updateInputCaret;
+$('terminalInput').oninput=updateInputCaret;
+$('terminalInput').onkeydown=e=>{if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();setTerminalKeyboard(false);$('terminalInput').blur();}else requestAnimationFrame(updateInputCaret);};
+document.addEventListener('selectionchange',()=>{if(document.activeElement===$('terminalInput'))updateInputCaret();});
+window.addEventListener('blur',stopTerminalKeys);
 $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden;if(open)$('terminalInput').focus({preventScroll:true});setTerminalKeyboard(open);};
+
+// Resizing is bounded to the viewport and applies only to the expanded device.
+let terminalResize=null;
+function terminalLimits(){
+  const reserve=$('mapButton').hidden?32:80;
+  return {minWidth:Math.min(264,innerWidth-reserve),maxWidth:Math.max(100,innerWidth-reserve),maxHeight:Math.max(170,innerHeight-(innerWidth<700?220:115))};
+}
+function applyTerminalSize(){
+  const dock=$('terminalDock'),limits=terminalLimits();
+  dock.style.setProperty('--terminal-max-width',limits.maxWidth+'px');
+  if(state.terminalSize){
+    dock.style.setProperty('--terminal-width',clamp(state.terminalSize.width,limits.minWidth,limits.maxWidth)+'px');
+    dock.style.setProperty('--terminal-user-height',clamp(state.terminalSize.height,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight)+'px');
+  }
+  for(const id of ['terminalResizeTop','terminalResizeLeft'])$(id).hidden=!state.terminalExpanded;
+}
+function resizeTerminal(width,height){
+  const limits=terminalLimits();state.terminalSize={width:clamp(width,limits.minWidth,limits.maxWidth),height:clamp(height,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight)};
+  applyTerminalSize();scheduleTerminalLayout();updateInputCaret();
+}
+for(const [id,axis] of [['terminalResizeTop','height'],['terminalResizeLeft','width']]){
+  const handle=$(id);
+  handle.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();e.stopPropagation();handle.setPointerCapture(e.pointerId);const r=$('targetCard').getBoundingClientRect();terminalResize={id:e.pointerId,axis,x:e.clientX,y:e.clientY,width:r.width,height:r.height};$('terminalDock').classList.add('resizing');};
+  handle.onpointermove=e=>{if(!terminalResize||e.pointerId!==terminalResize.id)return;const r=terminalResize;resizeTerminal(r.width+(axis==='width'?r.x-e.clientX:0),r.height+(axis==='height'?r.y-e.clientY:0));};
+  const finish=e=>{if(e.pointerId!==terminalResize?.id)return;terminalResize=null;$('terminalDock').classList.remove('resizing');scheduleTerminalLayout();};
+  handle.onpointerup=finish;handle.onpointercancel=finish;
+  handle.onkeydown=e=>{const direction={ArrowLeft:1,ArrowUp:1,ArrowRight:-1,ArrowDown:-1}[e.key];if(!direction)return;e.preventDefault();e.stopPropagation();const r=$('targetCard').getBoundingClientRect();resizeTerminal(r.width+(axis==='width'?direction*12:0),r.height+(axis==='height'?direction*12:0));};
+}
+function layoutDashboard(){
+  const rects=[$('joystick'),$('navigationControls')].filter(e=>e&&!e.hidden).map(e=>e.getBoundingClientRect()).filter(r=>r.width&&r.height);
+  if(!rects.length)return;
+  const x=Math.min(...rects.map(r=>r.left))-7,y=Math.min(...rects.map(r=>r.top))-7;
+  const panel=$('dashboardControls');panel.style.left=Math.max(0,x)+'px';panel.style.top=Math.max(0,y)+'px';panel.style.width=(Math.max(...rects.map(r=>r.right))-x+7)+'px';panel.style.height=(Math.max(...rects.map(r=>r.bottom))-y+7)+'px';
+}
+function onDashboard(x,y){
+  if($('app').hidden)return false;
+  return ['dashboardBase','dashboardControls','terminalDock'].some(id=>{const r=$(id).getBoundingClientRect();return r.width&&r.height&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;});
+}
 function focusSelected(){
   if(!state.save)return;const {object,position}=selectedRecord();state.centerZoom=null;state.centerReady=false;state.followShip=false;
   if(state.scene==='chart'){state.zoom=2.4;state.focusBody=null;}
@@ -1011,11 +1092,13 @@ function positionContext(){
   const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
   const radius=(state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10)+(homeIcon?16:0);
   if(state.waypoint)$('coordinateArrow').style.transform=`rotate(${coordinateHeading(record.ship,record.position,state.shipMotion.heading)}deg)`;
-  const obstacles=['terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','joystick','navigationControls','followShipButton'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
-  const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles);element.style.transform=`translate(${Math.round(place.x)}px,${Math.round(place.y)}px)`;
+  const obstacles=['terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','joystick','navigationControls','mapButton','dashboardBase','dashboardControls'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
+  const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles,state.contextPlacement);state.contextPlacement=place;element.style.transform=`translate(${place.x}px,${place.y}px)`;
 }
 function layoutTerminalDock(){
   const visible=!$('targetCard').hidden;$('terminalDock').classList.toggle('has-target',visible);
+  $('terminalDock').classList.toggle('terminal-expanded',Boolean(state.terminalExpanded));
+  applyTerminalSize();
   $('terminalPocket').style.height=(visible?$('targetCard').getBoundingClientRect().height:0)+'px';
 }
 let terminalLayoutFrame=0;
@@ -1176,6 +1259,11 @@ function update(dt,clockDt=dt) {
   const motion=state.scene==='surface'?state.actorMotion:state.shipMotion;
   updateMotion(motion,p.x-before.x,p.y-before.y,dt);
   if(state.followBody && !manual && !state.autopilot){motion.thrust=0;motion.moving=false;}
+  if(state.followShip&&state.followPanRemaining>0){
+    const wait=state.followPanRemaining;
+    if(!gesture?.moved)state.followPanRemaining=Math.max(0,wait-dt);
+    if(!state.followPanRemaining)state.centerZoom={from:state.zoom,to:state.zoom,fromCamera:{...state.camera},elapsed:-Math.min(dt,wait),duration:1300,centerAction:'resume'};
+  }
   if(state.centerZoom){
     const animation=state.centerZoom;animation.elapsed+=dt;
     const progress=settings.reducedMotion?1:animation.elapsed/animation.duration;
@@ -1184,8 +1272,8 @@ function update(dt,clockDt=dt) {
       const view=cameraViewAt(animation.fromCamera,targetCamera,animation.from,animation.to,progress);
       state.zoom=view.zoom;state.camera=view.camera;
     }else {state.zoom=centerZoomAt(animation.from,animation.to,progress);state.camera={...targetCamera};}
-    if(progress>=1){state.centerZoom=null;if(animation.centerAction){state.centerReady=animation.centerAction==='pan';state.followShip=animation.centerAction==='zoom'||animation.centerAction==='follow';updateUI();}}
-  }else if(state.followShip){state.camera={...p};
+    if(progress>=1){state.centerZoom=null;if(animation.centerAction){state.centerReady=animation.centerAction==='pan';state.followShip=['zoom','follow','resume'].includes(animation.centerAction);state.followPanRemaining=0;updateUI();}}
+  }else if(state.followShip&&!state.followPanRemaining){state.camera={...p};
   }else if(state.scene==='system'&&state.focusBody&&state.panUntil===Infinity){
     const body=findBody(state.focusBody);
     if(body)state.camera=bodyPosition(body,state.save.days,state.system);
@@ -1541,7 +1629,7 @@ window.addEventListener('pagehide',()=>{stopMusic();persist();});
 
 // Pointer picking and camera panning. A tap selects; a drag pans; two fingers pinch.
 const pointers=new Map();let gesture=null;
-canvas.addEventListener('pointerdown',e=>{if(!state.save||$('modal').classList.contains('visible'))return;
+canvas.addEventListener('pointerdown',e=>{if(onDashboard(e.clientX,e.clientY)||!state.save||$('modal').classList.contains('visible'))return;
   canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pointers.size===1)gesture={x:e.clientX,y:e.clientY,moved:false};
   if(pointers.size===2){gesture=null;const [a,b]=[...pointers.values()];state.pinch=Math.hypot(a.x-b.x,a.y-b.y);}
@@ -1555,10 +1643,10 @@ canvas.addEventListener('pointermove',e=>{
   if(pointers.size===2){const [a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);
     if(state.pinch)zoom(dist/state.pinch);state.hoverCell=null;state.pinch=dist;return;}
   if(gesture){if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>7)gesture.moved=true;
-    if(gesture.moved){state.centerZoom=null;state.centerReady=false;state.followShip=false;state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
+    if(gesture.moved){const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(following)state.followPanRemaining=5000;state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
       state.panUntil=Infinity;state.focusBody=null;}}
 });
-function pick(e){const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+function pick(e){if(onDashboard(e.clientX,e.clientY))return;const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
   if(state.scene==='system'){
     const matches=allBodies().map(body=>{const pos=bodyPosition(body,state.save.days,state.system),p=screen(pos.x,pos.y);
       return {body,d:Math.hypot(x-p.x,y-p.y),radius:visualRadius(body.diameter,body.kind)*state.zoom};})

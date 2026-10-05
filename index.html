@@ -48,29 +48,9 @@
         </div>
       </div>
     </header>
+    <div id="dashboardBase" class="dashboard-metal dashboard-base" aria-hidden="true"></div>
+    <div id="dashboardControls" class="dashboard-metal dashboard-controls" aria-hidden="true"></div>
     <div class="terminal-dock" id="terminalDock">
-    <button id="terminalButton" class="icon-button utility-button" aria-label="Open Terminal" title="Open Terminal" aria-expanded="false"><svg class="terminal-glyph" viewBox="0 0 16 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="#8ee9d4" d="M1 1h14v10H1z"/><path fill="#071612" d="M3 3h10v6H3z"/><path fill="#b7ffd0" d="M4 4h1v1h1v1H5v1H4V6h1V5H4zm4 3h3v1H8z"/><path fill="#8dabb1" d="M6 12h4v1h3v1H3v-1h3z"/></svg><span class="utility-label">TERM</span></button>
-    <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
-    <div id="terminalPocket" class="terminal-pocket">
-    <section class="terminal" id="targetCard" aria-label="Object terminal" hidden>
-      <div class="terminal-head"><h2 id="targetName">Object</h2><button id="focusSelected" class="icon-button focus-object" aria-label="Focus View" title="Focus View"><span class="focus-glyph" aria-hidden="true"></span></button><button id="secondaryAction" class="button subtle" aria-expanded="false">Open Terminal</button></div>
-      <div class="terminal-meta"><p id="targetStatus" class="terminal-status"></p><p id="targetDistance" class="target-distance"></p></div>
-      <div id="terminalScreen" class="terminal-screen" hidden tabindex="0" aria-label="Object information"><div id="terminalOutput" class="terminal-data"></div><span class="terminal-cursor" aria-hidden="true">█</span></div>
-      <div id="terminalInputBar" class="terminal-input-bar" hidden><label for="terminalInput" class="terminal-prompt" aria-label="Terminal input">&gt;</label><input id="terminalInput" type="text" inputmode="none" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="128" placeholder="Type here…" aria-label="Terminal text input"><button id="terminalKeyboardToggle" class="pixel-key" type="button" aria-label="Show terminal keyboard" aria-expanded="false"><svg viewBox="0 0 18 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 1h18v10H0z"/><path fill="#081b17" d="M2 3h2v2H2zm3 0h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zm3 0h2v2h-2zM2 6h2v2H2zm3 0h8v2H5zm9 0h2v2h-2z"/></svg></button></div>
-      <div id="terminalKeyboard" class="terminal-keyboard" role="group" aria-label="Terminal keyboard" hidden></div>
-    </section>
-    </div>
-    </div>
-    <div id="contextActions" class="context-actions" hidden aria-label="Selected target actions"><div class="context-action-row"><button id="primaryAction" class="button primary"><span id="primaryActionLabel">GO HERE</span><svg id="coordinateArrow" class="pixel-arrow" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true" hidden><path fill="currentColor" d="M5 0h2v2h2v2h2v2H8v6H4V6H1V4h2V2h2z"/></svg></button><button id="cancelTravel" class="button subtle" aria-label="Cancel target" title="Cancel"><svg class="pixel-x" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h2v2H1z M3 3h2v2H3z M5 5h2v2H5z M7 7h2v2H7z M9 9h2v2H9z M9 1h2v2H9z M7 3h2v2H7z M3 7h2v2H3z M1 9h2v2H1z"/></svg></button></div><span id="contextName" class="context-name"></span></div>
-    <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
-    <div id="navigationControls" class="navigation-controls">
-    <button id="homeButton" class="center-button hud-float" type="button" aria-label="Recenter view">
-      <svg class="center-reticle" viewBox="0 0 24 24" aria-hidden="true" shape-rendering="crispEdges">
-        <path fill="#8ee9d4" d="M2 2h7v2H4v5H2zm13 0h7v7h-2V4h-5zM2 15h2v5h5v2H2zm18 0h2v7h-7v-2h5zM11 5h2v4h-2zm0 10h2v4h-2zM5 11h4v2H5zm10 0h4v2h-4z"/>
-        <path fill="#35556d" d="M9 9h6v6H9z"/><path fill="#eef9dc" d="M10 10h4v4h-4z"/>
-      </svg><span class="center-label">CENTER</span>
-    </button>
-    <button id="followShipButton" class="follow-ship-button" type="button" aria-label="Follow ship" title="Follow ship" aria-pressed="false"><svg viewBox="0 0 24 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M3 0h5v1H4v3H3zm13 0h5v4h-1V1h-4zM3 6h1v3h4v1H3zm17 0h1v4h-5V9h4zM11 2h2v2h2v3h-2V6h-2v1H9V4h2z"/><path class="follow-lamp" fill="currentColor" d="M0 4h2v2H0z"/></svg></button>
     <button id="mapButton" class="warp-drive-button" type="button" aria-label="Open Warp Drive to interstellar chart">
       <svg class="warp-mechanism" viewBox="0 0 48 52" aria-hidden="true" shape-rendering="crispEdges">
         <path fill="#080f20" d="M14 29h20v3h6v4h4v5h3v9H1v-9h3v-5h4v-4h6z"/>
@@ -96,12 +76,37 @@
       </svg>
       <span class="warp-label">Warp Drive</span>
     </button>
+    <button id="terminalButton" class="icon-button utility-button" aria-label="Open Terminal" title="Open Terminal" aria-expanded="false"><svg class="terminal-glyph" viewBox="0 0 16 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="#8ee9d4" d="M1 1h14v10H1z"/><path fill="#071612" d="M3 3h10v6H3z"/><path fill="#b7ffd0" d="M4 4h1v1h1v1H5v1H4V6h1V5H4zm4 3h3v1H8z"/><path fill="#8dabb1" d="M6 12h4v1h3v1H3v-1h3z"/></svg><span class="utility-label">TERM</span></button>
+    <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
+    <div id="terminalPocket" class="terminal-pocket">
+    <section class="terminal" id="targetCard" aria-label="Object terminal" hidden>
+      <button id="terminalResizeTop" class="terminal-resize resize-top" type="button" aria-label="Resize terminal height" hidden><svg viewBox="0 0 14 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M5 0h4v1h2v1h2v1H1V2h2V1h2zM1 4h12v1h-2v1H3V5H1z"/></svg></button>
+      <button id="terminalResizeLeft" class="terminal-resize resize-left" type="button" aria-label="Resize terminal width" hidden><svg viewBox="0 0 6 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 5h1V3h1V1h1v12H2v-2H1V9H0zM4 1h1v2h1v8H5v2H4z"/></svg></button>
+      <div class="terminal-head"><h2 id="targetName">Object</h2><button id="focusSelected" class="icon-button focus-object" aria-label="Focus View" title="Focus View"><span class="focus-glyph" aria-hidden="true"></span></button><button id="secondaryAction" class="button subtle" aria-expanded="false">Open Terminal</button></div>
+      <div class="terminal-meta"><p id="targetStatus" class="terminal-status"></p><p id="targetDistance" class="target-distance"></p></div>
+      <div id="terminalScreen" class="terminal-screen" hidden tabindex="0" aria-label="Object information"><div id="terminalOutput" class="terminal-data"></div><span class="terminal-cursor" aria-hidden="true">█</span></div>
+      <div id="terminalInputBar" class="terminal-input-bar" hidden><label for="terminalInput" class="terminal-prompt" aria-label="Terminal input">&gt;</label><span class="terminal-input-wrap"><input id="terminalInput" type="text" inputmode="none" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="128" placeholder="Type here…" aria-label="Terminal text input"><span id="terminalInputCaret" class="terminal-input-caret" aria-hidden="true" hidden></span></span><button id="terminalKeyboardToggle" class="pixel-key" type="button" aria-label="Show terminal keyboard" aria-expanded="false"><svg viewBox="0 0 18 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 1h18v10H0z"/><path fill="#081b17" d="M2 3h2v2H2zm3 0h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zm3 0h2v2h-2zM2 6h2v2H2zm3 0h8v2H5zm9 0h2v2h-2z"/></svg></button><button id="terminalDelete" class="pixel-key" type="button" aria-label="Backspace" title="Delete previous character"><svg viewBox="0 0 18 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M5 1h12v10H5V9H3V7H1V5h2V3h2z"/><path fill="#081b17" d="M7 3h2v2h2V3h2v2h-2v2h2v2h-2V7H9v2H7V7h2V5H7z"/></svg></button></div>
+      <div id="terminalKeyboard" class="terminal-keyboard" role="group" aria-label="Terminal keyboard" hidden></div>
+    </section>
+    </div>
+    </div>
+    <div id="contextActions" class="context-actions" hidden aria-label="Selected target actions"><div class="context-action-row"><button id="primaryAction" class="button primary"><span id="primaryActionLabel">GO HERE</span><svg id="coordinateArrow" class="pixel-arrow" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true" hidden><path fill="currentColor" d="M5 0h2v2h2v2h2v2H8v6H4V6H1V4h2V2h2z"/></svg></button><button id="cancelTravel" class="button subtle" aria-label="Cancel target" title="Cancel"><svg class="pixel-x" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h2v2H1z M3 3h2v2H3z M5 5h2v2H5z M7 7h2v2H7z M9 9h2v2H9z M9 1h2v2H9z M7 3h2v2H7z M3 7h2v2H3z M1 9h2v2H1z"/></svg></button></div><span id="contextName" class="context-name"></span></div>
+    <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
+    <div id="navigationControls" class="navigation-controls">
+    <button id="homeButton" class="center-button hud-float" type="button" aria-label="Recenter view">
+      <svg class="center-reticle" viewBox="0 0 24 24" aria-hidden="true" shape-rendering="crispEdges">
+        <path fill="#8ee9d4" d="M2 2h7v2H4v5H2zm13 0h7v7h-2V4h-5zM2 15h2v5h5v2H2zm18 0h2v7h-7v-2h5zM11 5h2v4h-2zm0 10h2v4h-2zM5 11h4v2H5zm10 0h4v2h-4z"/>
+        <path fill="#35556d" d="M9 9h6v6H9z"/><path fill="#eef9dc" d="M10 10h4v4h-4z"/>
+      </svg><span class="center-label">CENTER</span>
+    </button>
+    <button id="followShipButton" class="follow-ship-button" type="button" aria-label="Follow ship" title="Follow ship" aria-pressed="false"><svg viewBox="0 0 24 10" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M3 0h5v1H4v3H3zm13 0h5v4h-1V1h-4zM3 6h1v3h4v1H3zm17 0h1v4h-5V9h4zM11 2h2v2h2v3h-2V6h-2v1H9V4h2z"/><path class="follow-lamp" fill="currentColor" d="M0 4h2v2H0z"/></svg></button>
+
     </div>
   </div>
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.12.4</span>
+        <span class="version-chip main-menu-version">v1.12.5</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>

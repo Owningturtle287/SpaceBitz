@@ -12,3 +12,13 @@ test('coordinate arrow follows travel vectors in every quadrant and after ship m
   assert.equal(coordinateHeading(p,p),0);
   assert.equal(coordinateHeading(p,p,Math.PI/2),180);
 });
+
+test('moving target keeps its side until it reaches an obstruction',async()=>{
+  const {contextPosition}=await import('../target-ui.js'),size={width:100,height:50},viewport={width:800,height:600};
+  let target={x:400,y:40},previous=contextPosition(target,12,size,viewport);
+  assert.equal(previous.side,1);
+  for(let y=41;y<180;y+=.25){const next=contextPosition({x:400,y},12,size,viewport,[],previous);assert.equal(next.side,1);assert.ok(Math.abs(next.x-previous.x)<1e-9);assert.ok(Math.abs(next.y-previous.y-.25)<1e-9||y===41);previous=next;}
+  const obstructed=contextPosition({x:400,y:180},12,size,viewport,[{x:420,y:140,width:130,height:80}],previous);
+  assert.notEqual(obstructed.side,1);
+  assert.ok(obstructed.x>=8&&obstructed.x+100<=792&&obstructed.y>=8&&obstructed.y+50<=592);
+});
