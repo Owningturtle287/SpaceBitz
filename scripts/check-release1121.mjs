@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {writeFile} from 'node:fs/promises';
 export async function checkRelease1121(page,engine){
-  await page.evaluate(()=>localStorage.removeItem('spacebitz:field:v1'));await page.reload();await page.locator('#startGame').click();
+  await page.evaluate(()=>{window.__game.state.save=null;localStorage.removeItem('spacebitz:field:v1');});await page.reload();await page.locator('#startGame').click();
   const layouts=[];
   for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667},{width:1024,height:768},{width:1440,height:900}]){
     await page.setViewportSize(viewport);await page.waitForTimeout(150);
