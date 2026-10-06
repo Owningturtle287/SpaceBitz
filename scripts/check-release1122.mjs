@@ -12,15 +12,18 @@ export async function checkRelease1122(page,engine){
   });await page.waitForTimeout(350);
   const opening=await page.evaluate(()=>{
     const g=window.__game,pocket=document.getElementById('terminalPocket'),log=document.getElementById('journalButton');
-    const before=log.getBoundingClientRect().bottom;g.select(g.state.system.star);
+    const before=log.getBoundingClientRect().left;g.select(g.state.system.star);
     // Capture before waiting for frames: a busy renderer can consume the whole transition.
     const animation=pocket.getAnimations().find(a=>a.transitionProperty==='height');
     if(!animation)throw Error('Terminal did not animate upward on selection');
+    const horizontal=log.getAnimations().find(a=>a.transitionProperty==='right');
+    if(!horizontal)throw Error('Log did not slide beside Warp Drive');
+    horizontal.pause();horizontal.currentTime=horizontal.effect.getTiming().duration/2;
     animation.pause();animation.currentTime=animation.effect.getTiming().duration/2;
-    const result={before,after:log.getBoundingClientRect().bottom,height:pocket.getBoundingClientRect().height,full:document.getElementById('targetCard').getBoundingClientRect().height};
-    animation.finish();return result;
+    const result={before,after:log.getBoundingClientRect().left,height:pocket.getBoundingClientRect().height,full:document.getElementById('targetCard').getBoundingClientRect().height};
+    animation.finish();horizontal.finish();return result;
   });
-  assert.ok(Math.abs(opening.before-896)<1,JSON.stringify(opening));
+  assert.ok(opening.before>1200,JSON.stringify(opening));
   assert.ok(opening.height>0&&opening.height<opening.full&&opening.after<opening.before,JSON.stringify(opening));
   await page.waitForTimeout(350);
   await page.evaluate(()=>window.__game.showDetails(window.__game.state.selected));await page.waitForTimeout(350);
@@ -37,7 +40,7 @@ export async function checkRelease1122(page,engine){
     const card=document.getElementById('targetCard'),screen=document.getElementById('terminalScreen'),r=card.getBoundingClientRect(),log=document.getElementById('journalButton').getBoundingClientRect();
     return {width:r.width,header:screen.getBoundingClientRect().top-r.top,distance:parseFloat(getComputedStyle(document.getElementById('targetDistance')).fontSize),status:parseFloat(getComputedStyle(document.getElementById('targetStatus')).fontSize),overflow:screen.scrollWidth-screen.clientWidth,columns:getComputedStyle(document.getElementById('terminalOutput')).gridTemplateColumns.split(' ').length,logBottom:log.bottom,top:r.top};
   });
-  assert.ok(layout.width<=600&&layout.header<64&&layout.distance<layout.status&&layout.overflow<=1&&layout.logBottom<layout.top,JSON.stringify(layout));assert.equal(layout.columns,2);
+  assert.ok(layout.width<=264&&layout.header<64&&layout.distance<layout.status&&layout.overflow<=1&&layout.logBottom<=896,JSON.stringify(layout));assert.equal(layout.columns,2);
   await page.evaluate(()=>{const g=window.__game;g.positionContext();document.getElementById('contextActions').classList.add('ready');g.backdrop(0);g.drawSystem(0);});
   await page.screenshot({path:`.qa/${engine}-1122-terminal-desktop.png`});
   const reading=await page.evaluate(()=>{
@@ -51,7 +54,7 @@ export async function checkRelease1122(page,engine){
   for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667}]){
     await page.setViewportSize(viewport);await page.waitForTimeout(100);await page.evaluate(()=>{const g=window.__game;g.updateUI();g.positionContext();g.backdrop(0);g.drawSystem(0);});
     const fits=await page.evaluate(()=>{const r=document.getElementById('targetCard').getBoundingClientRect(),screen=document.getElementById('terminalScreen'),log=document.getElementById('journalButton').getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,log:log.bottom,overflow:screen.scrollWidth-screen.clientWidth};});
-    assert.ok(fits.left>=0&&fits.right<=viewport.width&&Math.abs(fits.bottom-viewport.height+4)<1&&fits.top>=60&&fits.log<fits.top&&fits.overflow<=1,JSON.stringify(fits));
+    assert.ok(fits.left>=0&&fits.right<=viewport.width&&Math.abs(fits.bottom-viewport.height+4)<1&&fits.top>=60&&fits.log<=viewport.height-4&&fits.overflow<=1,JSON.stringify(fits));
     await page.screenshot({path:`.qa/${engine}-1122-terminal-${viewport.width}.png`});
   }
   await page.setViewportSize({width:844,height:390});

@@ -2,7 +2,7 @@ import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash
   habitableZone, makeSystem, bodyPosition, galaxyStars, starName, starAppearance, orbitPoint, orbitalElements,stellarPositions,orbitCenter} from './model.js';
 import {defaults,POPULATIONS,validateGeneration,checkedGeneration,percentUnits} from './universe.js';
 import {terminalLines,typedLength} from './terminal.js';
-import {contextPosition,coordinateHeading} from './target-ui.js';
+import {contextPosition,coordinateHeading,isCoordinateDoubleTap} from './target-ui.js';
 import {rarityPages} from './rarity-ui.js';
 import {paintBrownAtmosphere,paintBrownGlow,paintCompact} from './substellar.js';
 import {chartStyle,paintHomeMarker,paintPixelFrame} from './presentation.js';
@@ -79,6 +79,11 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.12.6',items:[
+    'Lowered flight controls into one transparent dashboard with a stepped metal rim; portrait controls remain inside a compact second row.',
+    'A narrow terminal opens at its minimum width beside the screen edge. Larger Terminal/Log launchers swap corners; Log slides beside Warp Drive when a terminal is visible.',
+    'Empty space coordinates require a double tap and use an unfilled frame. Object picking, surface taps, Follow, keyboard input and saved voyages remain compatible.'
+  ]},
   {version:'1.12.5',items:[
     'Moving target names and actions track without overlay lag or unstable placement. Follow stays enabled through zoom and smoothly returns five seconds after the last pan at the existing zoom.',
     'A larger Follow toggle sits beside Center; Warp Drive slides beside the terminal. Textured pixel-metal dashboard plates protect flight controls from accidental coordinate selection.',
@@ -328,7 +333,7 @@ const CHANGELOG=[
 const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,y:0}, zoom:1,
   panUntil:0, centerZoom:null, centerReady:false, followShip:false, followPanRemaining:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, fps:60, particles:[], textureCache:new Map(),
-  waypoint:null,hoverCell:null,warpUntil:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
+  waypoint:null,hoverCell:null,coordinateTap:null,warpUntil:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
 const loadSaves = () => {
   const value=readJSON(SAVE_KEY, []);
   return Array.isArray(value)?value.filter(s=>s && s.id && s.seed):[];
@@ -342,6 +347,7 @@ function applyCenterButtonLayout(){
   btn.hidden=mode==='hidden';$('followShipButton').hidden=btn.hidden;btn.dataset.centerPosition=mode;
   btn.classList.toggle('center-custom',mode==='custom');
   requestAnimationFrame(()=>{
+    layoutDashboard();
     const bw=btn.hidden?0:btn.offsetWidth,bh=group.offsetHeight||48;
     const width=group.offsetWidth||54;
     let left,top;
@@ -351,12 +357,16 @@ function applyCenterButtonLayout(){
     }else{
       const r=$('joystick').getBoundingClientRect();
       if(r.width>0&&r.height>0){
-        left=mode==='above'?r.left+(r.width-width)/2:r.right+8;
-        top=mode==='above'?r.top-bh-8:r.top+(r.height-bh)/2;
+        const compact=document.body.classList.contains('deck-compact');
+        left=mode==='above'&&!compact?r.left+(r.width-width)/2:r.right+(compact?4:8);
+        top=mode==='above'&&!compact?r.top-bh-8:r.top+(r.height-bh)/2;
       }else{left=12;top=window.innerHeight-bh-12;}
     }
     const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','mapButton','systemChartContent'].map(id=>$(id)).filter(el=>el&&!el.hidden).map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:r.left,y:r.top,width:r.width,height:r.height}));
-    const placed=placeControls({x:left,y:top},{width,height:bh},{width:window.innerWidth,height:window.innerHeight},obstacles);
+    const deck=$('dashboardBase').getBoundingClientRect();
+    top=clamp(top,deck.top+4,window.innerHeight-bh-6);
+    const placed=placeControls({x:left,y:top},{width,height:bh},{width:window.innerWidth,height:window.innerHeight},[...obstacles,{x:0,y:0,width:window.innerWidth,height:deck.top-4}]);
+    placed.y=clamp(placed.y,deck.top+4,window.innerHeight-bh-6);
     group.style.left=placed.x+'px';group.style.top=placed.y+'px';
     layoutDashboard();
   });
@@ -475,7 +485,7 @@ function start(save) {
   if(settings.timeMode==='realtime')save.days=currentDays();
   migrateLayout(save,state.system);save.route||=[];
   if(state.scene==='surface' && !findBody(save.landed)?.solid){state.scene='system';save.scene='system';save.landed=null;}
-  state.terminal=null;state.terminalExpanded=false;state.selected=null;state.waypoint=null;state.hoverCell=null;state.warpUntil=0;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false;state.followPanRemaining=0; state.autopilot=null;state.followBody=null;state.panUntil=0;
+  state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.selected=null;state.waypoint=null;state.hoverCell=null;state.warpUntil=0;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false;state.followPanRemaining=0; state.autopilot=null;state.followBody=null;state.panUntil=0;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.actorMotion={direction:'down',steps:0};
   state.zoom=state.scene==='chart'?1:state.scene==='surface'?1.3:.85;
   if(state.scene==='chart') state.camera={...save.chart};
@@ -618,7 +628,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
 }
 
 function beginSelection(){
-  state.contextPlacement=null;
+  state.coordinateTap=null;state.contextPlacement=null;
   const row=$('contextActions').querySelector('.context-action-row');row.style.transition='none';
   $('contextActions').classList.remove('ready');
   $('contextActions').hidden=false;
@@ -640,14 +650,14 @@ function markDiscovery(body) {
   state.save.log.unshift({name:body.name,action:'First landing',days:state.save.days});
   toast(`First landing on ${body.name} · added to logbook`);persist();
 }
-function enterChart() {state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
+function enterChart() {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   const star=currentStar();state.scene='chart';state.selected=star;
   state.save.scene='chart';state.save.chart={x:star.x+38,y:star.y+30};
   state.camera={...state.save.chart};state.zoom=1;state.autopilot=null;persist();updateUI();
 }
-function enterSystem(star) {state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
+function enterSystem(star) {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   state.system=makeSystem(star.seed,state.save.generation);state.save.currentSystem=star.seed;
@@ -662,7 +672,7 @@ function enterSystem(star) {state.terminal=null;state.terminalExpanded=false;sta
   state.save.route=state.save.route.slice(-40);
   toast(`${state.system.name} · arriving at ${outer.name}`);persist();updateUI();
 }
-function enterSurface(body) {state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
+function enterSurface(body) {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   if(!body.solid){toast('No solid surface here. Explore one of its moons.');return;}
   state.followBody=null;state.actorMotion={direction:'down',steps:0};
@@ -670,7 +680,7 @@ function enterSurface(body) {state.terminal=null;state.terminalExpanded=false;st
   state.save.surface={x:50,y:35};state.camera={...state.save.surface};state.zoom=1.3;
   state.autopilot=null;markDiscovery(body);persist();updateUI();
 }
-function launch() {state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
+function launch() {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.followBody=null;
   const body=findBody(state.save.landed);
@@ -732,7 +742,7 @@ function primary() {
   if(distance<38){enterSystem(star);return;}
   state.autopilot={type:'star',id:star.seed};toast(`Jump course set for ${starName(star.seed)}`);updateUI();
 }
-function cancelTravel(){state.autopilot=null;state.warpUntil=0;state.waypoint=null;state.shipMotion.thrust=0;updateUI();}
+function cancelTravel(){state.coordinateTap=null;state.autopilot=null;state.warpUntil=0;state.waypoint=null;state.shipMotion.thrust=0;updateUI();}
 function cancelTarget(){cancelTravel();state.selected=null;state.terminal=null;state.terminalExpanded=false;updateUI();}
 $('cancelTravel').onclick=cancelTarget;
 $('primaryAction').onclick=primary;
@@ -804,7 +814,7 @@ $('systemChartToggle').onclick=()=>{
   panel.classList.toggle('open',open);content.hidden=!open;
   $('systemChartToggle').setAttribute('aria-expanded',String(open));
 };
-function zoom(factor){const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(state.autopilot)state.autopilot.manualZoom=true;state.zoom=clamp(state.zoom*factor,state.scene==='system'?systemMinZoom(state.system,state.width,state.height,state.save.days):state.scene==='surface'?.65:.34,state.scene==='system'?SYSTEM_MAX_ZOOM:2.4);if(following&&!state.followPanRemaining)state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};}
+function zoom(factor){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(state.autopilot)state.autopilot.manualZoom=true;state.zoom=clamp(state.zoom*factor,state.scene==='system'?systemMinZoom(state.system,state.width,state.height,state.save.days):state.scene==='surface'?.65:.34,state.scene==='system'?SYSTEM_MAX_ZOOM:2.4);if(following&&!state.followPanRemaining)state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};}
 
 function addMetric(parent,label,value) {
   const div=document.createElement('div');div.className='metric';
@@ -1042,14 +1052,17 @@ $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden
 let terminalResize=null;
 function terminalLimits(){
   const portrait=innerWidth<700&&innerHeight>innerWidth,joyRect=$('joystick').getBoundingClientRect();
-  const reserve=portrait?($('mapButton').hidden?32:80):Math.max(innerWidth<700?300:330,joyRect.width?joyRect.right+178:0);
-  return {minWidth:Math.min(264,innerWidth-reserve),maxWidth:Math.max(264,innerWidth-reserve),maxHeight:Math.max(170,innerHeight-(portrait?220:115))};
+  const reserve=portrait?124:Math.max(innerWidth<700?300:330,joyRect.width?joyRect.right+220:0),maxWidth=Math.max(200,innerWidth-reserve);
+  return {minWidth:Math.min(264,maxWidth),maxWidth,maxHeight:Math.max(170,innerHeight-(portrait?220:115))};
 }
 function applyTerminalSize(){
   const dock=$('terminalDock'),limits=terminalLimits();
   dock.style.setProperty('--terminal-max-width',limits.maxWidth+'px');
-  dock.style.setProperty('--terminal-collapsed-width',Math.min(280,limits.maxWidth)+'px');
-  dock.style.setProperty('--terminal-expanded-width',clamp(state.terminalSize?.width??600,limits.minWidth,limits.maxWidth)+'px');
+  dock.style.setProperty('--terminal-collapsed-width',Math.min(240,limits.maxWidth)+'px');
+  const expanded=clamp(state.terminalSize?.width??limits.minWidth,limits.minWidth,limits.maxWidth);
+  dock.style.setProperty('--terminal-expanded-width',expanded+'px');
+  const terminalWidth=$('targetCard').hidden?94:state.terminalExpanded?expanded:Math.min(240,limits.maxWidth);
+  document.documentElement.style.setProperty('--deck-joy-max',Math.max(8,innerWidth-terminalWidth-($('targetCard').hidden?190:260))+'px');
   if(state.terminalSize){
     dock.style.setProperty('--terminal-width',clamp(state.terminalSize.width,limits.minWidth,limits.maxWidth)+'px');
     dock.style.setProperty('--terminal-user-height',clamp(state.terminalSize.height,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight)+'px');
@@ -1069,20 +1082,16 @@ for(const [id,axis] of [['terminalResizeTop','height'],['terminalResizeLeft','wi
   handle.onkeydown=e=>{const direction={ArrowLeft:1,ArrowUp:1,ArrowRight:-1,ArrowDown:-1}[e.key];if(!direction)return;e.preventDefault();e.stopPropagation();const r=$('targetCard').getBoundingClientRect();resizeTerminal(r.width+(axis==='width'?direction*12:0),r.height+(axis==='height'?direction*12:0));};
 }
 function layoutDashboard(){
-  const rects=[$('joystick'),$('navigationControls')].filter(e=>e&&!e.hidden).map(e=>e.getBoundingClientRect()).filter(r=>r.width&&r.height);
-  const panelIds=['dashboardControls','dashboardJoystick','dashboardNavigation'];
-  for(const id of panelIds)$(id).hidden=true;
-  if(!rects.length)return;
-  const x=Math.min(...rects.map(r=>r.left)),y=Math.min(...rects.map(r=>r.top));
-  const width=Math.max(...rects.map(r=>r.right))-x,height=Math.max(...rects.map(r=>r.bottom))-y;
-  const plate=(id,r)=>{const panel=$(id);panel.hidden=false;panel.style.left=Math.max(0,r.x-7)+'px';panel.style.top=Math.max(0,r.y-7)+'px';panel.style.width=(r.width+14)+'px';panel.style.height=(r.height+14)+'px';};
-  // Adjacent controls share a plate. Custom positions never create a wall across the scene.
-  if(width*height<=rects.reduce((n,r)=>n+r.width*r.height,0)*1.75)plate('dashboardControls',{x,y,width,height});
-  else rects.forEach((r,i)=>plate(panelIds[i+1],r));
+  const card=$('targetCard'),compact=innerWidth<700&&innerHeight>innerWidth&&!card.hidden;
+  document.body.classList.toggle('deck-compact',compact);
+  let height=compact?124:settings.centerButton==='above'?128:72;
+  if(!compact)height+=Math.max(0,settings.joyOffset||0);
+  if(!card.hidden&&!state.terminalExpanded)height=Math.max(height,card.getBoundingClientRect().height+8);
+  document.documentElement.style.setProperty('--dashboard-height',height+'px');
 }
 function onDashboard(x,y){
   if($('app').hidden)return false;
-  return ['dashboardBase','dashboardControls','dashboardJoystick','dashboardNavigation','terminalDock'].some(id=>{const element=$(id);if(element.hidden)return false;const r=element.getBoundingClientRect();return r.width&&r.height&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;});
+  return ['dashboardBase','terminalDock'].some(id=>{const element=$(id);if(element.hidden)return false;const r=element.getBoundingClientRect();return r.width&&r.height&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;});
 }
 function focusSelected(){
   if(!state.save)return;const {object,position}=selectedRecord();state.centerZoom=null;state.centerReady=false;state.followShip=false;
@@ -1109,7 +1118,7 @@ function positionContext(){
   const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
   const radius=(state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10)+(homeIcon?16:0);
   if(state.waypoint)$('coordinateArrow').style.transform=`rotate(${coordinateHeading(record.ship,record.position,state.shipMotion.heading)}deg)`;
-  const obstacles=['terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','joystick','navigationControls','mapButton','dashboardBase','dashboardControls','dashboardJoystick','dashboardNavigation'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
+  const obstacles=['terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls','mapButton','dashboardBase'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
   const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles,state.contextPlacement);state.contextPlacement=place;element.style.transform=`translate(${place.x}px,${place.y}px)`;
 }
 function layoutTerminalDock(){
@@ -1315,12 +1324,10 @@ function drawCoordinateGrid(){
   for(let y=Math.ceil((top-unit/2)/step)*step+unit/2;y<top+halfH*2;y+=step){const p=screen(0,y);ctx.moveTo(0,Math.round(p.y)+.5);ctx.lineTo(state.width,Math.round(p.y)+.5);}
   ctx.stroke();
   }
-  const cell=state.waypoint||state.hoverCell;
+  const cell=state.waypoint||(scene==='surface'?state.hoverCell:null);
   if(cell){
     const p=screen(cell.x-unit/2,cell.y-unit/2),size=unit*state.zoom;
-    ctx.fillStyle=state.waypoint?'#ffcf6926':'#91e9d41a';ctx.strokeStyle=state.waypoint?'#ffcf69':'#8ee9d4';
-    const right=Math.min(state.width,p.x+size),bottom=Math.min(state.height,p.y+size),left=Math.max(0,p.x),top=Math.max(0,p.y);
-    if(right>left&&bottom>top)ctx.fillRect(left,top,right-left,bottom-top);
+    ctx.strokeStyle=state.waypoint?'#ffcf69':'#8ee9d4';
     const corners=[p,{x:p.x+size,y:p.y},{x:p.x+size,y:p.y+size},{x:p.x,y:p.y+size}];
     ctx.beginPath();for(let i=0;i<4;i++)lineInView(ctx,corners[i],corners[(i+1)%4],state.width,state.height);ctx.stroke();
     if(size<10){const c=screen(cell.x,cell.y);ctx.strokeRect(c.x-5,c.y-5,10,10);}
@@ -1644,12 +1651,13 @@ document.addEventListener('visibilitychange',()=>{
 });
 window.addEventListener('pagehide',()=>{stopMusic();persist();});
 
-// Pointer picking and camera panning. A tap selects; a drag pans; two fingers pinch.
+// Objects use one tap, empty space uses two; a drag pans and two fingers pinch.
+document.addEventListener('pointerdown',e=>{if(e.target!==canvas)state.coordinateTap=null;},{capture:true});
 const pointers=new Map();let gesture=null;
 canvas.addEventListener('pointerdown',e=>{if(onDashboard(e.clientX,e.clientY)||!state.save||$('modal').classList.contains('visible'))return;
   canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pointers.size===1)gesture={x:e.clientX,y:e.clientY,moved:false};
-  if(pointers.size===2){gesture=null;const [a,b]=[...pointers.values()];state.pinch=Math.hypot(a.x-b.x,a.y-b.y);}
+  if(pointers.size===2){state.coordinateTap=null;gesture=null;const [a,b]=[...pointers.values()];state.pinch=Math.hypot(a.x-b.x,a.y-b.y);}
 });
 canvas.addEventListener('pointermove',e=>{
   if(!pointers.has(e.pointerId)){
@@ -1660,7 +1668,7 @@ canvas.addEventListener('pointermove',e=>{
   if(pointers.size===2){const [a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);
     if(state.pinch)zoom(dist/state.pinch);state.hoverCell=null;state.pinch=dist;return;}
   if(gesture){if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>7)gesture.moved=true;
-    if(gesture.moved){const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(following)state.followPanRemaining=5000;state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
+    if(gesture.moved){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(following)state.followPanRemaining=5000;state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
       state.panUntil=Infinity;state.focusBody=null;}}
 });
 function pick(e){if(onDashboard(e.clientX,e.clientY))return;const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
@@ -1677,12 +1685,16 @@ function pick(e){if(onDashboard(e.clientX,e.clientY))return;const rect=canvas.ge
   if(state.scene==='surface'){const lander=screen(0,0);if(Math.hypot(x-lander.x,y-lander.y)<32*state.zoom){select({id:'lander',kind:'lander',name:'Lander',x:0,y:0});return;}for(const sample of surfaceSamples()){if(state.save.discoveries.includes(sample.id))continue;const p=screen(sample.x,sample.y);if(Math.hypot(x-p.x,y-p.y)<Math.max(15,10*state.zoom)){select({...sample,kind:'sample',name:'Surface sample'});return;}}}
   const cell=gridCell(world(x,y),state.scene);
   if(state.scene==='system'&&systemStars().some(s=>{const pos=bodyPosition(s,state.save.days,state.system);return Math.hypot(cell.x-pos.x,cell.y-pos.y)<visualRadius(s.diameter)+24;})){toast('Choose a coordinate outside the stars.');return;}
+  if(state.scene!=='surface'){
+    const tap={x,y,scene:state.scene,time:performance.now()},confirmed=isCoordinateDoubleTap(state.coordinateTap,tap);
+    state.coordinateTap=confirmed?null:tap;if(!confirmed)return;
+  }
   beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=cell;state.selected=null;state.autopilot=null;state.hoverCell=null;updateUI();
 }
 canvas.addEventListener('pointerleave',()=>{state.hoverCell=null;});
 canvas.addEventListener('pointerup',e=>{if(!pointers.has(e.pointerId))return;pointers.delete(e.pointerId);
   if(gesture&&!gesture.moved&&pointers.size===0)pick(e);gesture=null;state.pinch=null;});
-canvas.addEventListener('pointercancel',e=>{pointers.delete(e.pointerId);gesture=null;state.pinch=null;});
+canvas.addEventListener('pointercancel',e=>{state.coordinateTap=null;pointers.delete(e.pointerId);gesture=null;state.pinch=null;});
 canvas.addEventListener('wheel',e=>{if(!state.save)return;e.preventDefault();zoom(e.deltaY<0?1.12:1/1.12);},{passive:false});
 window.addEventListener('keydown',e=>{
   if(e.key==='Escape'){if($('modal').classList.contains('visible'))closeModal();else if(state.autopilot||state.warpUntil||state.waypoint||state.selected){cancelTarget();}else if(!$('universeMenuStage').hidden&&!state.save)showMenuStage('main');return;}

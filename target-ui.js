@@ -1,5 +1,8 @@
 import {placeControls} from './hud.js';
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+export function isCoordinateDoubleTap(previous,next){
+  return Boolean(previous&&previous.scene===next.scene&&next.time>=previous.time&&next.time-previous.time<=500&&Math.hypot(next.x-previous.x,next.y-previous.y)<=24);
+}
 export function coordinateHeading(ship,target,fallback=-Math.PI/2){
   const dx=target.x-ship.x,dy=target.y-ship.y;
   // The pixel glyph points up; world +Y and CSS rotation both point down/clockwise.

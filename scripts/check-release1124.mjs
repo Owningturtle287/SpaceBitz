@@ -48,9 +48,9 @@ export async function checkRelease1124(page,engine){
   await page.locator('#terminalButton').click();await page.waitForTimeout(350);
   const standalone=await page.evaluate(()=>{
     const g=window.__game;g.updateTerminal(g.state.terminal.start+12000);const card=document.getElementById('targetCard'),log=document.getElementById('journalButton').getBoundingClientRect(),launcher=document.getElementById('terminalButton').getBoundingClientRect();
-    return {name:document.getElementById('targetName').textContent,selected:g.state.selected,waypoint:g.state.waypoint,contextHidden:document.getElementById('contextActions').hidden,focusHidden:document.getElementById('focusSelected').hidden,expanded:card.classList.contains('expanded'),text:document.getElementById('terminalOutput').textContent,logLeft:log.left,launcherRight:launcher.right,launcherBottom:launcher.bottom,logBottom:log.bottom};
+    return {name:document.getElementById('targetName').textContent,selected:g.state.selected,waypoint:g.state.waypoint,contextHidden:document.getElementById('contextActions').hidden,focusHidden:document.getElementById('focusSelected').hidden,expanded:card.classList.contains('expanded'),text:document.getElementById('terminalOutput').textContent,logLeft:log.left,launcherHidden:getComputedStyle(document.getElementById('terminalButton')).visibility==='hidden',warpLeft:document.getElementById('mapButton').getBoundingClientRect().left,logBottom:log.bottom};
   });
-  assert.ok(standalone.expanded&&!standalone.selected&&!standalone.waypoint&&standalone.contextHidden&&standalone.focusHidden&&standalone.text.includes('READY')&&standalone.launcherRight<standalone.logLeft&&standalone.launcherBottom===standalone.logBottom,JSON.stringify(standalone));
+  assert.ok(standalone.expanded&&!standalone.selected&&!standalone.waypoint&&standalone.contextHidden&&standalone.focusHidden&&standalone.text.includes('READY')&&standalone.launcherHidden&&standalone.logLeft<standalone.warpLeft&&standalone.logBottom<=386,JSON.stringify(standalone));
   assert.equal(await page.locator('#secondaryAction').textContent(),'Close Terminal');
   await page.locator('#secondaryAction').click();await page.waitForTimeout(350);assert.equal(await page.locator('#targetCard').isVisible(),false);
   const layouts=[];
@@ -58,7 +58,7 @@ export async function checkRelease1124(page,engine){
     await page.setViewportSize(viewport);
     await page.evaluate(async()=>{const g=window.__game,{visualRadius}=await import('/model.js');g.cancelTarget();g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.select(g.state.system.star);g.positionContext();g.backdrop(0);g.drawSystem(0);});
     await page.waitForTimeout(600);
-    const compact=await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().toJSON());assert.ok(compact.width<=280&&compact.width>=260,JSON.stringify(compact));
+    const compact=await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().toJSON());assert.ok(compact.width<=240&&compact.width>=200,JSON.stringify(compact));
     assert.equal(await page.locator('#secondaryAction').textContent(),'Open Terminal');
     await page.screenshot({path:`.qa/${engine}-1124-collapsed-${viewport.width}.png`});
     await page.locator('#secondaryAction').click();await page.waitForTimeout(350);
@@ -87,7 +87,7 @@ export async function checkRelease1124(page,engine){
   await page.keyboard.type('wasd');assert.equal(await page.locator('#terminalInput').inputValue(),'Cwasd a');
   assert.equal(await page.evaluate(()=>window.__game.state.keys.size),0,'Typing also steered the ship');
   await page.keyboard.press('Enter');assert.equal(await page.locator('#terminalKeyboard').isVisible(),false);
-  await page.locator('#secondaryAction').click();await page.waitForTimeout(350);await page.locator('#terminalButton').click();await page.waitForTimeout(350);
+  await page.locator('#secondaryAction').click();await page.waitForTimeout(350);await page.locator('#secondaryAction').click();await page.waitForTimeout(350);
   assert.equal(await page.locator('#terminalInput').inputValue(),'Cwasd a','Closing lost the text draft');
   await page.locator('#terminalInput').focus();await page.locator('[data-key="Clear"]').click();assert.equal(await page.locator('#terminalInput').inputValue(),'');
   await page.locator('[data-key="A"]').tap();await page.locator('[data-key="B"]').tap();await page.locator('[data-key="B"]').tap();
