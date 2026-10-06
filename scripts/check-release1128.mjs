@@ -5,7 +5,7 @@ export async function checkRelease1128(page,engine){
     const g=window.__game,{makeSystem,visualRadius}=await import('/model.js');globalThis.__qaPause=true;
     g.cancelTarget();g.state.system=makeSystem('sol');g.state.save.currentSystem='sol';g.state.scene='system';
     g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.state.terminalSize=null;
-    Object.assign(g.settings,{dashboardHeight:74,terminalWidthScale:100,terminalHeightScale:100,joyOffset:0,joyX:16,controls:'touch',centerButton:'right',reducedMotion:false});g.applySettings();
+    Object.assign(g.settings,{dashboardHeight:68,terminalWidthScale:100,terminalHeightScale:100,joyOffset:0,joyX:16,controls:'touch',centerButton:'right',reducedMotion:false});g.applySettings();
   });
   const settle=async()=>{await page.waitForTimeout(400);await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','travelControls','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations({subtree:true}))if(Number.isFinite(a.effect.getComputedTiming().endTime))a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);window.__game.positionContext();});};
   const layouts=[];
@@ -20,14 +20,14 @@ export async function checkRelease1128(page,engine){
       });
       assert.ok(fit.clear&&fit.onScreen&&fit.nameOnly&&fit.pixel&&fit.red&&fit.radius>=36&&fit.lever.width<fit.warp.width&&fit.lever.height<fit.warp.height,JSON.stringify({viewport,expanded,fit}));
       if(expanded)assert.ok(fit.travel.right<fit.card.left&&fit.travel.bottom>fit.card.top,JSON.stringify(fit));
-      else assert.ok(Math.abs(fit.card.top-fit.deck.top)<1&&fit.travel.bottom<fit.card.top&&fit.deck.height===(viewport.width<700&&viewport.height>viewport.width?118:74),JSON.stringify(fit));
+      else assert.ok((viewport.width<620||Math.abs(fit.card.top-fit.deck.top)<1)&&fit.travel.bottom<fit.card.top&&fit.deck.height===(viewport.width<620?140:68),JSON.stringify(fit));
       layouts.push({viewport,expanded,deck:fit.deck.height,travel:fit.travel,terminal:fit.card});await page.screenshot({path:`.qa/${engine}-1128-${expanded?'open':'compact'}-${viewport.width}.png`});
     }
   }
   await page.setViewportSize({width:844,height:390});
   await page.evaluate(()=>{document.getElementById('terminalDock').style.setProperty('--deck-safe-right','47px');const g=window.__game;g.select(g.state.system.star);});await settle();
   const safe=await page.locator('#targetCard').evaluate(e=>({right:innerWidth-e.getBoundingClientRect().right,top:e.getBoundingClientRect().top,deck:document.getElementById('dashboardBase').getBoundingClientRect().top}));
-  assert.ok(safe.right<=8&&safe.right>=0&&Math.abs(safe.top-safe.deck)<1,JSON.stringify(safe));
+  assert.ok(safe.right<=12&&safe.right>=6&&Math.abs(safe.top-safe.deck)<1,JSON.stringify(safe));
   await page.evaluate(()=>document.getElementById('terminalDock').style.removeProperty('--deck-safe-right'));
   const slide=await page.evaluate(()=>{
     const g=window.__game,controls=document.getElementById('travelControls'),from=controls.getBoundingClientRect().left;g.showDetails(g.state.selected);void controls.offsetWidth;

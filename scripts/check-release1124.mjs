@@ -33,7 +33,7 @@ export async function checkRelease1124(page,engine){
     const rect=id=>document.getElementById(id).getBoundingClientRect(),c=rect('homeButton'),w=rect('mapButton'),f=rect('followShipButton');
     return {center:c.toJSON(),warp:w.toJSON(),follow:f.toJSON(),centered:Math.abs((f.left+f.right-c.left-c.right)/2)};
   });
-  assert.ok(controls.follow.left>=controls.center.right&&controls.follow.width===controls.center.width/2&&controls.follow.height===controls.center.height/2&&controls.follow.bottom<=390,JSON.stringify(controls));
+  assert.ok(controls.follow.left>=controls.center.right&&controls.follow.width===controls.center.width&&controls.follow.height===controls.center.height&&controls.follow.bottom<=390,JSON.stringify(controls));
   assert.equal(controls.follow.left-controls.center.right,6);assert.ok(controls.warp.bottom<=390&&controls.warp.left>=0);
   const immediate=await page.evaluate(()=>{
     const g=window.__game;g.select(g.state.system.star);g.positionContext();const row=document.querySelector('.context-action-row'),s=getComputedStyle(row);
@@ -58,6 +58,7 @@ export async function checkRelease1124(page,engine){
     await page.setViewportSize(viewport);
     await page.evaluate(async()=>{const g=window.__game,{visualRadius}=await import('/model.js');g.cancelTarget();g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.select(g.state.system.star);g.positionContext();g.backdrop(0);g.drawSystem(0);});
     await page.waitForTimeout(600);
+    await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations())a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
     const compact=await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().toJSON());assert.ok(compact.width<=240&&compact.width>=200,JSON.stringify(compact));
     assert.equal(await page.locator('#secondaryAction').textContent(),'Open Terminal');
     await page.screenshot({path:`.qa/${engine}-1124-collapsed-${viewport.width}.png`});

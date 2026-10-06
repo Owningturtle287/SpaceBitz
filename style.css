@@ -626,3 +626,32 @@ body[data-reduced-motion=true] #mapButton{transition:none}@media(prefers-reduced
 body[data-reduced-motion=true] .travel-controls,body[data-reduced-motion=true] .travel-handle{transition:none}
 body[data-reduced-motion=true] .travel-lamp{animation:none}
 @media(prefers-reduced-motion:reduce){.travel-controls,.travel-handle{transition:none}.travel-lamp{animation:none}}
+
+/* Full-size instruments center in a shallow row; narrow viewports wrap rows. */
+:root{--dashboard-row-height:68px;--dashboard-height:68px;--dashboard-corner:clamp(36px,14vmin,58px)}
+#dashboardBase{border-radius:0 0 var(--dashboard-corner) var(--dashboard-corner)}
+.terminal-dock{right:max(6px,min(12px,var(--deck-safe-right,env(safe-area-inset-right))))}
+#joystick,.terminal-visible #joystick{left:clamp(6px,calc(var(--joy-x,16%) - 16vw),var(--deck-joy-max,6px));width:96px;height:64px;bottom:calc((var(--dashboard-row-height) - 64px)/2 + env(safe-area-inset-bottom));clip-path:none;border-radius:4px 4px 4px calc(var(--dashboard-corner) - 6px);overflow:hidden}
+#joystick:before{inset:8px 16px;border-radius:3px 3px 3px 28px}#joystick #stick{width:32px;height:32px}
+.navigation-controls .center-button,.navigation-controls .follow-ship-button{position:relative;width:56px;height:52px;min-width:56px;min-height:52px;display:grid;align-content:center;justify-items:center;gap:3px;padding:4px;border:2px solid #6c8da3;background:rgb(28 51 76 / 25%);box-shadow:var(--frame);clip-path:var(--pixel-corners)}
+.navigation-controls .center-reticle{width:26px;height:26px}.navigation-controls .center-label,.follow-label{font:6px/1.4 var(--pixel)}
+.navigation-controls .follow-ship-button svg{width:28px;height:24px}.navigation-controls .follow-ship-button[aria-pressed=true]{background:rgb(32 78 55 / 25%);color:#a4ffbe;border-color:#a4e6b6}
+#mapButton{bottom:calc((var(--dashboard-row-height) - var(--deck-warp-height))/2 - 2px)}
+#terminalButton,#journalButton{bottom:calc((var(--dashboard-row-height) - 44px)/2 - 2px)}
+.terminal-dock.has-target #journalButton,.terminal-dock:has(#mapButton[hidden]).has-target #journalButton{bottom:calc((var(--dashboard-row-height) - 32px)/2 - 2px)}
+#targetCard.terminal:not(.expanded){border-radius:2px 2px calc(var(--dashboard-corner) - 10px) 2px;overflow:hidden}
+#targetCard.terminal.expanded{border-radius:2px}
+.travel-controls,.terminal-expanded .travel-controls{bottom:calc(var(--dashboard-row-height) + 4px);transition:right .24s cubic-bezier(.22,.7,.25,1)}
+body.deck-wrap .terminal-pocket{transition:height .24s cubic-bezier(.22,.7,.25,1),transform .24s cubic-bezier(.22,.7,.25,1)}
+body.deck-wrap .terminal-expanded .terminal-pocket{transform:translateY(calc(-1 * var(--dashboard-height)))}
+body.deck-wrap .terminal-dock.has-target #mapButton{right:40px}
+body.deck-wrap .terminal-dock.has-target #journalButton{right:4px}
+body.deck-wrap #mapButton,body.deck-wrap .terminal-dock.has-target #journalButton{bottom:calc(var(--dashboard-row-height) * 1.5 + 2px - var(--deck-warp-height)/2)}
+body.deck-wrap .terminal-dock.has-target #journalButton{bottom:calc(var(--dashboard-row-height) * 1.5 + 2px - 16px)}
+body.deck-wrap .travel-controls{bottom:calc(var(--dashboard-height) + 4px)}
+body[data-reduced-motion=true].deck-wrap .terminal-pocket{transition:none}
+@media(prefers-reduced-motion:reduce){body.deck-wrap .terminal-pocket{transition:none}}
+
+#targetCard.terminal:not(.expanded) .terminal-meta{padding-right:6px}
+
+body.deck-wrap .terminal-dock:has(#mapButton[hidden]).has-target #journalButton{right:4px;bottom:calc(var(--dashboard-row-height) * 1.5 + 2px - 16px)}

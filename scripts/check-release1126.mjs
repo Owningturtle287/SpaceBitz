@@ -20,7 +20,7 @@ export async function checkRelease1126(page,engine){
       await page.evaluate(async()=>{
         // The earlier gates verify the actual transitions. Settle this layout sample
         // explicitly so a busy WebKit renderer cannot leave it between widths.
-        for(const id of ['terminalDock','terminalPocket','journalButton'])for(const animation of document.getElementById(id).getAnimations())animation.finish();
+        for(const id of ['terminalDock','terminalPocket','journalButton','mapButton'])for(const animation of document.getElementById(id).getAnimations())animation.finish();
         await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
       });
       const fit=await page.evaluate(()=>{
@@ -32,11 +32,11 @@ export async function checkRelease1126(page,engine){
         return {base,card,joy,nav,warp,log,term,transparent:getComputedStyle(document.getElementById('dashboardBase')).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(document.getElementById('dashboardBase')).backgroundImage==='none',contained:controls.every(inside)&&(!visible||expanded||inside(card)),clear:controls.every((a,i)=>controls.slice(i+1).every(b=>!overlap(a,b)))&&(!visible||controls.every(a=>!overlap(a,card))),right:innerWidth-card.right,aux:document.querySelectorAll('.dashboard-controls').length,launcherHidden:getComputedStyle(document.getElementById('terminalButton')).visibility==='hidden'};
       });
       assert.ok(fit.transparent&&fit.aux===0&&fit.contained&&fit.clear,JSON.stringify({viewport,phase,fit}));
-      if(phase==='closed')assert.ok(fit.base.height<=84&&fit.term.width===44&&fit.log.width===44&&fit.term.left>fit.log.right&&viewport.width-fit.term.right<=4,JSON.stringify(fit));
+      if(phase==='closed')assert.ok(fit.base.height<=(viewport.width<620?144:84)&&fit.term.width===44&&fit.log.width===44&&fit.term.left>fit.log.right&&viewport.width-fit.term.right<=12,JSON.stringify(fit));
       else{
-        assert.ok(fit.right<=4&&fit.right>=0&&fit.warp.right<=fit.log.left&&Math.abs((fit.log.top+fit.log.bottom)/2-(fit.warp.top+fit.warp.bottom)/2)<1&&fit.launcherHidden,JSON.stringify(fit));
-        assert.equal(fit.card.width,phase==='collapsed'?240:Math.min(264,viewport.width-(viewport.width<700&&viewport.height>viewport.width?124:0)));
-        assert.ok(fit.base.height<130,JSON.stringify(fit));
+        assert.ok(fit.right<=12&&fit.right>=0&&fit.warp.right<=fit.log.left&&Math.abs((fit.log.top+fit.log.bottom)/2-(fit.warp.top+fit.warp.bottom)/2)<1&&fit.launcherHidden,JSON.stringify(fit));
+        assert.equal(fit.card.width,phase==='collapsed'?Math.min(240,Math.max(200,viewport.width-(viewport.width<620?116:330))):Math.min(264,Math.max(200,viewport.width-(viewport.width<620?102:330))));
+        assert.ok(fit.base.height<(viewport.width<620?145:130),JSON.stringify(fit));
       }
       layouts.push({viewport,phase,height:fit.base.height,width:fit.card.width});
       await page.screenshot({path:`.qa/${engine}-1126-${phase}-${viewport.width}.png`});

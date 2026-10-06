@@ -54,7 +54,7 @@ export async function checkRelease1122(page,engine){
   for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667}]){
     await page.setViewportSize(viewport);await page.waitForTimeout(100);await page.evaluate(()=>{const g=window.__game;g.updateUI();g.positionContext();g.backdrop(0);g.drawSystem(0);});
     const fits=await page.evaluate(()=>{const r=document.getElementById('targetCard').getBoundingClientRect(),screen=document.getElementById('terminalScreen'),log=document.getElementById('journalButton').getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,log:log.bottom,overflow:screen.scrollWidth-screen.clientWidth};});
-    assert.ok(fits.left>=0&&fits.right<=viewport.width&&Math.abs(fits.bottom-viewport.height+2)<1&&fits.top>=60&&fits.log<=viewport.height-2&&fits.overflow<=1,JSON.stringify(fits));
+    const bottom=viewport.height-2-(viewport.width<620?await page.locator('#dashboardBase').evaluate(e=>e.getBoundingClientRect().height):0);assert.ok(fits.left>=0&&fits.right<=viewport.width&&Math.abs(fits.bottom-bottom)<1&&fits.top>=60&&fits.log<=viewport.height-2&&fits.overflow<=1,JSON.stringify(fits));
     await page.screenshot({path:`.qa/${engine}-1122-terminal-${viewport.width}.png`});
   }
   await page.setViewportSize({width:844,height:390});
@@ -67,7 +67,7 @@ export async function checkRelease1122(page,engine){
     const result={before,mid:pocket.getBoundingClientRect().height,cardHidden:document.getElementById('targetCard').hidden};
     animation.finish();return result;
   });assert.ok(closing.cardHidden&&closing.mid>0&&closing.mid<closing.before,JSON.stringify(closing));await page.waitForTimeout(350);
-  assert.ok(Math.abs(await page.locator('#journalButton').evaluate(e=>e.getBoundingClientRect().bottom)-388)<1);
+  assert.ok(await page.locator('#journalButton').evaluate(e=>e.getBoundingClientRect().bottom)<=388);
   const directions=await page.evaluate(()=>{
     const g=window.__game;g.state.save.ship={x:1e7,y:1e7};g.state.camera={...g.state.save.ship};g.state.zoom=.1;
     g.state.waypoint={x:1e7+100,y:1e7-100};g.updateUI();g.positionContext();

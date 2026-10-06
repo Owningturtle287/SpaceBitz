@@ -52,10 +52,12 @@ test('grid starts hidden for new and legacy preferences and remembers an explici
 
 test('device sizing preferences migrate safely, bound dimensions and keep resize arrows opt-in',()=>{
   const legacy=normalizeSettings({version:10});
-  assert.equal(legacy.dashboardHeight,74);assert.equal(legacy.terminalWidthScale,100);assert.equal(legacy.terminalHeightScale,100);
+  assert.equal(legacy.dashboardHeight,68);assert.equal(legacy.terminalWidthScale,100);assert.equal(legacy.terminalHeightScale,100);
   assert.equal(legacy.dashboardResizeHandle,false);assert.equal(legacy.terminalResizeHandles,false);
-  assert.equal(normalizeSettings({version:11,dashboardHeight:80}).dashboardHeight,74);
+  assert.equal(normalizeSettings({version:11,dashboardHeight:80}).dashboardHeight,68);
   assert.equal(normalizeSettings({version:11,dashboardHeight:180}).dashboardHeight,180);
+  assert.equal(normalizeSettings({version:12,dashboardHeight:74}).dashboardHeight,68);
+  assert.equal(normalizeSettings({version:13,dashboardHeight:74}).dashboardHeight,74);
   assert.equal(normalizeSettings({version:12,dashboardHeight:80}).dashboardHeight,80);
   const saved=normalizeSettings({dashboardHeight:180,terminalWidthScale:125,terminalHeightScale:80,dashboardResizeHandle:true,terminalResizeHandles:true});
   assert.equal(saved.dashboardHeight,180);assert.equal(saved.terminalWidthScale,125);assert.equal(saved.terminalHeightScale,80);

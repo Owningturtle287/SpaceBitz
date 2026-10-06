@@ -79,6 +79,11 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.12.9',items:[
+    'A shorter 68px flight deck centers its instruments vertically, with a wider corner-fitted joystick and a full-size labeled Follow button. Narrow screens wrap full-size controls into two rows.',
+    'Terminal and Log sit slightly inward from the screen edge; the compact device follows the lower corner curve. Travel and Cancel slide straight horizontally when the terminal expands.',
+    'Follow returns smoothly two seconds after the last pan, preserving zoom. Custom device sizes and saved voyages remain compatible.'
+  ]},
   {version:'1.12.8',items:[
     'A smaller default flight deck and larger rounded lower corners fit phone screens. The compact terminal sits flush with the dashboard rim, closer to the landscape right edge.',
     'Travel and Cancel slide above the compact terminal and beside its expanded screen. A smaller green pixel lever moves forward/backward; object names remain beside objects.',
@@ -358,27 +363,20 @@ function applyCenterButtonLayout(){
   btn.classList.toggle('center-custom',mode==='custom');
   requestAnimationFrame(()=>{
     layoutDashboard();
-    const bw=btn.hidden?0:btn.offsetWidth,bh=group.offsetHeight||48;
-    const width=group.offsetWidth||54;
-    let left,top;
+    const bw=btn.hidden?0:btn.offsetWidth,bh=group.offsetHeight||52,width=group.offsetWidth||118;
+    const joyRect=$('joystick').getBoundingClientRect(),deck=$('dashboardBase').getBoundingClientRect();
+    const row=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-row-height'));
+    const safe=deck.height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
+    const wrap=document.body.classList.contains('deck-wrap');
+    let left=wrap?6:joyRect.width?joyRect.right+8:12;
+    let top=innerHeight-safe-(wrap?row*1.5+4:row/2)-bh/2;
+    if(mode==='above'&&!wrap){left=Math.max(6,joyRect.left+(joyRect.width-width)/2);top=joyRect.top-bh-8;}
     if(mode==='custom'){
-      left=window.innerWidth*settings.centerX/100-bw/2;
-      top=window.innerHeight*settings.centerY/100-bh/2;
-    }else{
-      const r=$('joystick').getBoundingClientRect();
-      if(r.width>0&&r.height>0){
-        const compact=document.body.classList.contains('deck-compact');
-        left=mode==='above'&&!compact?r.left+(r.width-width)/2:r.right+(compact?4:8);
-        top=mode==='above'&&!compact?r.top-bh-8:r.top+(r.height-bh)/2;
-      }else{left=12;top=window.innerHeight-bh-12;}
+      const desired={x:innerWidth*settings.centerX/100-bw/2,y:innerHeight*settings.centerY/100-bh/2};
+      const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','mapButton'].map($).filter(el=>el&&!el.hidden).map(el=>{const r=el.getBoundingClientRect();return {x:r.left,y:r.top,width:r.width,height:r.height};});
+      const placed=placeControls(desired,{width,height:bh},{width:innerWidth,height:innerHeight},[...obstacles,{x:0,y:0,width:innerWidth,height:deck.top-4}]);left=placed.x;top=clamp(placed.y,deck.top+4,innerHeight-safe-bh-4);
     }
-    const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','mapButton','systemChartContent'].map(id=>$(id)).filter(el=>el&&!el.hidden).map(el=>el.getBoundingClientRect()).filter(r=>r.width&&r.height).map(r=>({x:r.left,y:r.top,width:r.width,height:r.height}));
-    const deck=$('dashboardBase').getBoundingClientRect();
-    top=clamp(top,deck.top+4,window.innerHeight-bh-6);
-    const placed=placeControls({x:left,y:top},{width,height:bh},{width:window.innerWidth,height:window.innerHeight},[...obstacles,{x:0,y:0,width:window.innerWidth,height:deck.top-4}]);
-    placed.y=clamp(placed.y,deck.top+4,window.innerHeight-bh-6);
-    group.style.left=placed.x+'px';group.style.top=placed.y+'px';
-    layoutDashboard();
+    group.style.left=left+'px';group.style.top=top+'px';
   });
 }
 function applySettings(){
@@ -914,7 +912,7 @@ function updateUI() {
   if(!hasTarget)$('targetStatus').textContent='Ready · '+(scene==='chart'?'Deep Space':scene==='surface'?'Surface':'System');
   if(!state.terminalExpanded){setTerminalKeyboard(false);if(document.activeElement===$('terminalInput'))$('terminalInput').blur();}
   if(state.terminalExpanded&&!state.terminal)buildTerminal();
-  $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
+  $('targetDistance').textContent=destination?(state.terminalExpanded&&state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
   $('primaryActionLabel').textContent=action;$('primaryAction').classList.toggle('engaged',traveling);
   $('primaryAction').setAttribute('aria-busy',String(traveling));
   $('primaryAction').setAttribute('aria-label',action==='GO HERE'?'Go Here':action);
@@ -1071,9 +1069,10 @@ $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden
 // Resizing is bounded to the viewport and applies only to the expanded device.
 let terminalResize=null;
 function terminalLimits(){
-  const portrait=innerWidth<700&&innerHeight>innerWidth,joyRect=$('joystick').getBoundingClientRect();
-  const reserve=portrait?124:Math.max(innerWidth<700?300:330,joyRect.width?joyRect.right+220:0),maxWidth=Math.max(200,innerWidth-reserve);
-  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,innerHeight-(portrait?220:115))};
+  const wrap=innerWidth<620,joyRect=$('joystick').getBoundingClientRect();
+  const reserve=wrap?(state.terminalExpanded?102:116):Math.max(330,joyRect.width?joyRect.right+242:0);
+  const maxWidth=Math.max(200,innerWidth-reserve),row=Math.max(68,Math.min(settings.dashboardHeight+(settings.joyOffset||0),innerHeight*.25));
+  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,innerHeight-(wrap?row*2+74:115))};
 }
 function applyTerminalSize(){
   const dock=$('terminalDock'),limits=terminalLimits();
@@ -1083,7 +1082,7 @@ function applyTerminalSize(){
   const expanded=clamp(state.terminalSize?.width??264*settings.terminalWidthScale/100,limits.minWidth,limits.maxWidth);
   dock.style.setProperty('--terminal-expanded-width',expanded+'px');
   const terminalWidth=$('targetCard').hidden?94:state.terminalExpanded?expanded:collapsed;
-  document.documentElement.style.setProperty('--deck-joy-max',Math.max(8,innerWidth-terminalWidth-($('targetCard').hidden?205:265))+'px');
+  document.documentElement.style.setProperty('--deck-joy-max',Math.max(6,innerWidth-terminalWidth-($('targetCard').hidden?302:338))+'px');
   const height=clamp(state.terminalSize?.height??innerHeight*.7*settings.terminalHeightScale/100,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight);
   dock.style.setProperty('--terminal-user-height',height+'px');
   for(const id of ['terminalResizeTop','terminalResizeLeft'])$(id).hidden=!state.terminalExpanded||!settings.terminalResizeHandles;
@@ -1104,18 +1103,18 @@ for(const [id,axis] of [['terminalResizeTop','height'],['terminalResizeLeft','wi
 let dashboardResize=null;
 const dashboardHandle=$('dashboardResize');
 dashboardHandle.onpointerdown=e=>{if(e.button!==0||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();dashboardHandle.setPointerCapture(e.pointerId);dashboardResize={id:e.pointerId,y:e.clientY,height:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'))};};
-dashboardHandle.onpointermove=e=>{if(e.pointerId!==dashboardResize?.id)return;settings.dashboardHeight=clamp(dashboardResize.height+dashboardResize.y-e.clientY,74,260);layoutDashboard();applyCenterButtonLayout();};
+dashboardHandle.onpointermove=e=>{if(e.pointerId!==dashboardResize?.id)return;settings.dashboardHeight=clamp(dashboardResize.height+dashboardResize.y-e.clientY,68,260);layoutDashboard();applyCenterButtonLayout();};
 const finishDashboardResize=e=>{if(e.pointerId!==dashboardResize?.id)return;dashboardResize=null;saveSettings();};
 dashboardHandle.onpointerup=finishDashboardResize;dashboardHandle.onpointercancel=finishDashboardResize;
-dashboardHandle.onkeydown=e=>{const direction={ArrowUp:1,ArrowDown:-1}[e.key];if(!direction||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();settings.dashboardHeight=clamp(settings.dashboardHeight+direction*12,74,260);saveSettings();layoutDashboard();applyCenterButtonLayout();};
+dashboardHandle.onkeydown=e=>{const direction={ArrowUp:1,ArrowDown:-1}[e.key];if(!direction||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();settings.dashboardHeight=clamp(settings.dashboardHeight+direction*12,68,260);saveSettings();layoutDashboard();applyCenterButtonLayout();};
 function layoutDashboard(){
-  const card=$('targetCard'),compact=innerWidth<700&&innerHeight>innerWidth&&!card.hidden;
-  document.body.classList.toggle('deck-compact',compact);
-  let height=compact?118:settings.centerButton==='above'?136:74;
-  if(!compact)height+=Math.max(0,settings.joyOffset||0);
-  height=Math.max(height,Math.min(settings.dashboardHeight,Math.max(height,innerHeight*.5)));
+  const wrap=innerWidth<620;
+  document.body.classList.remove('deck-compact');document.body.classList.toggle('deck-wrap',wrap);
+  const row=Math.max(68,Math.min(settings.dashboardHeight+(settings.joyOffset||0),innerHeight*(wrap ? .25 : .5)));
+  const height=wrap?row*2+4:Math.max(row,settings.centerButton==='above'?136:68);
+  document.documentElement.style.setProperty('--dashboard-row-height',row+'px');
   document.documentElement.style.setProperty('--dashboard-height',height+'px');
-  $('terminalDock').style.setProperty('--terminal-compact-height',(height-2)+'px');
+  $('terminalDock').style.setProperty('--terminal-compact-height',(row-2)+'px');
   dashboardHandle.hidden=!settings.dashboardResizeHandle;
 }
 function onDashboard(x,y){
@@ -1233,12 +1232,12 @@ function openSettings(){
   control('flightMode','System flight speed','select',[['maneuver','Maneuver · precise'],['cruise','Cruise · 20 ls/s']]);
   control('controls','Input mode','select',[['auto','Automatic'],['touch','Touch joystick'],['desktop','Keyboard / mouse']]);
   control('orientation','Screen orientation','select',[['landscape','Landscape · preferred'],['portrait','Portrait · lock'],['auto','Follow device']]);
-  control('joyX','Joystick position (%)','range',[8,92,1]);control('joyOffset','Joystick height (px)','range',[-70,120,1]);
+  control('joyX','Joystick position (%)','range',[8,92,1]);control('joyOffset','Control row height offset (px)','range',[-70,120,1]);
   control('centerButton','Center button','select',[['right','Right of joystick'],['above','Above joystick'],['custom','Custom · drag in game'],['hidden','Hidden']]);
   control('cheats','Instant travel','checkbox');
 
   heading('Dashboard & terminal');
-  control('dashboardHeight','Dashboard height (px)','range',[74,260,2]);
+  control('dashboardHeight','Dashboard height (px)','range',[68,260,2]);
   control('dashboardResizeHandle','Show dashboard resize arrow','checkbox');
   control('terminalWidthScale','Terminal width (%)','range',[60,240,5]);
   control('terminalHeightScale','Terminal height (%)','range',[40,130,5]);
@@ -1705,7 +1704,7 @@ canvas.addEventListener('pointermove',e=>{
   if(pointers.size===2){const [a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);
     if(state.pinch)zoom(dist/state.pinch);state.hoverCell=null;state.pinch=dist;return;}
   if(gesture){if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>7)gesture.moved=true;
-    if(gesture.moved){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(following)state.followPanRemaining=5000;state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
+    if(gesture.moved){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(following)state.followPanRemaining=2000;state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
       state.panUntil=Infinity;state.focusBody=null;}}
 });
 function pick(e){if(onDashboard(e.clientX,e.clientY))return;const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
@@ -1754,8 +1753,9 @@ window.addEventListener('blur',resetInput);
 const joy=$('joystick'),stick=$('stick');let joyPointer=null;
 function resetInput(){state.keys.clear();state.joy={x:0,y:0};joyPointer=null;stick.style.setProperty('--jx','0px');stick.style.setProperty('--jy','0px');}
 function moveJoy(e){const r=joy.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;
-  const limit=r.width*.33,d=Math.hypot(x,y),scale=d>limit?limit/d:1;
-  state.joy={x:x*scale/limit,y:y*scale/limit};stick.style.setProperty('--jx',x*scale+'px');stick.style.setProperty('--jy',y*scale+'px');}
+  const rx=Math.max(1,(r.width-stick.offsetWidth)/2-5),ry=Math.max(1,(r.height-stick.offsetHeight)/2-5);
+  const nx=x/rx,ny=y/ry,d=Math.hypot(nx,ny),scale=d>1?1/d:1;
+  state.joy={x:nx*scale,y:ny*scale};stick.style.setProperty('--jx',nx*scale*rx+'px');stick.style.setProperty('--jy',ny*scale*ry+'px');}
 joy.addEventListener('pointerdown',e=>{if(joyPointer!==null)return;joyPointer=e.pointerId;joy.setPointerCapture(e.pointerId);moveJoy(e);});
 joy.addEventListener('pointermove',e=>{if(e.pointerId===joyPointer)moveJoy(e);});
 function releaseJoy(e){if(e.pointerId!==joyPointer)return;joyPointer=null;state.joy={x:0,y:0};stick.style.setProperty('--jx','0px');stick.style.setProperty('--jy','0px');}

@@ -8,6 +8,7 @@ import {checkRelease1125} from './check-release1125.mjs';
 import {checkRelease1126} from './check-release1126.mjs';
 import {checkRelease1127} from './check-release1127.mjs';
 import {checkRelease1128} from './check-release1128.mjs';
+import {checkRelease1129} from './check-release1129.mjs';
 import {checkRelease1124} from './check-release1124.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -515,5 +516,6 @@ try{
   const release1126=await checkRelease1126(page,engine);
   const release1127=await checkRelease1127(page,engine);
   const release1128=await checkRelease1128(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,release1127,release1128,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release1129=await checkRelease1129(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,release1127,release1128,release1129,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}
