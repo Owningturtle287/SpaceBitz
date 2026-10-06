@@ -634,6 +634,7 @@ body[data-reduced-motion=true] .travel-lamp{animation:none}
 /* Fill the instrument row, keeping the casing and its highlights inside the rim. */
 #joystick,.terminal-visible #joystick{left:clamp(6px,calc(var(--joy-x,16%) - 16vw),var(--deck-joy-max,6px));width:96px;height:calc(var(--dashboard-row-height) + var(--dashboard-safe-bottom) - 7px);bottom:4px;clip-path:none;border-radius:4px 4px 4px calc(var(--dashboard-corner) - 6px) / 4px 4px 4px calc(var(--dashboard-corner) - 4px);box-shadow:inset 2px 2px #41627a,inset -2px -2px #080f20;overflow:hidden}
 #joystick:before{inset:8px 16px;border-radius:3px 3px 3px 28px}#joystick #stick{width:32px;height:32px}
+body:has(#homeButton[data-center-position=above]):not(.deck-wrap) #joystick{height:calc(min(var(--dashboard-row-height),max(68px,calc(var(--dashboard-height) - 68px))) + var(--dashboard-safe-bottom) - 7px)}
 .navigation-controls .center-button,.navigation-controls .follow-ship-button{position:relative;width:56px;height:52px;min-width:56px;min-height:52px;display:grid;align-content:center;justify-items:center;gap:3px;padding:4px;border:2px solid #6c8da3;background:rgb(28 51 76 / 25%);box-shadow:var(--frame);clip-path:var(--pixel-corners)}
 .navigation-controls .center-reticle{width:26px;height:26px}.navigation-controls .center-label,.follow-label{font:6px/1.4 var(--pixel)}
 .navigation-controls .follow-ship-button svg{width:28px;height:24px}.navigation-controls .follow-ship-button[aria-pressed=true]{background:rgb(32 78 55 / 25%);color:#a4ffbe;border-color:#a4e6b6}

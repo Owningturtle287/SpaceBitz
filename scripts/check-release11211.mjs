@@ -41,6 +41,8 @@ export async function checkRelease11211(page,engine){
       const restored=await page.locator('#targetCard').boundingBox();assert.ok(Math.abs(restored.width-before.width)<.1&&Math.abs(restored.height-before.height)<.1,'Phone inset accumulated during terminal resizing');
     }
   }
-  await page.evaluate(()=>{document.documentElement.style.removeProperty('--dashboard-safe-bottom');document.getElementById('terminalDock').style.removeProperty('--deck-safe-right');const g=window.__game;g.cancelTarget();g.state.terminalSize=null;g.settings.terminalResizeHandles=false;g.applySettings();});
-  return {layouts};
+  await page.setViewportSize({width:844,height:390});await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.dashboardHeight=160;g.settings.centerButton='above';g.applySettings();});await settle();
+  const above=await page.evaluate(()=>{const r=id=>document.getElementById(id).getBoundingClientRect(),deck=r('dashboardBase'),joy=r('joystick'),nav=r('navigationControls');return {deck:deck.toJSON(),joy:joy.toJSON(),nav:nav.toJSON(),clear:nav.bottom+8<=joy.top&&nav.top>=deck.top&&joy.bottom<=deck.bottom-4};});assert.ok(above.clear,JSON.stringify(above));
+  await page.evaluate(()=>{document.documentElement.style.removeProperty('--dashboard-safe-bottom');document.getElementById('terminalDock').style.removeProperty('--deck-safe-right');const g=window.__game;g.cancelTarget();g.state.terminalSize=null;Object.assign(g.settings,{terminalResizeHandles:false,centerButton:'right',dashboardHeight:68});g.applySettings();});
+  return {layouts,above};
 }
