@@ -35,7 +35,7 @@ export async function checkRelease1126(page,engine){
       if(phase==='closed')assert.ok(fit.base.height<=(viewport.width<620?144:84)&&fit.term.width===44&&fit.log.width===44&&fit.term.left>fit.log.right&&viewport.width-fit.term.right<=12,JSON.stringify(fit));
       else{
         assert.ok(fit.right<=12&&fit.right>=0&&fit.warp.right<=fit.log.left&&Math.abs((fit.log.top+fit.log.bottom)/2-(fit.warp.top+fit.warp.bottom)/2)<1&&fit.launcherHidden,JSON.stringify(fit));
-        assert.equal(fit.card.width,phase==='collapsed'?Math.min(240,Math.max(200,viewport.width-(viewport.width<620?116:330))):Math.min(264,Math.max(200,viewport.width-(viewport.width<620?102:330))));
+        assert.equal(fit.card.width,phase==='collapsed'?Math.min(240,Math.max(200,viewport.width-(viewport.width<620?116:330)))+3:Math.min(264,Math.max(200,viewport.width-(viewport.width<620?102:330))));
         assert.ok(fit.base.height<(viewport.width<620?145:130),JSON.stringify(fit));
       }
       layouts.push({viewport,phase,height:fit.base.height,width:fit.card.width});

@@ -27,7 +27,7 @@ export async function checkRelease1128(page,engine){
   await page.setViewportSize({width:844,height:390});
   await page.evaluate(()=>{document.getElementById('terminalDock').style.setProperty('--deck-safe-right','47px');const g=window.__game;g.select(g.state.system.star);});await settle();
   const safe=await page.locator('#targetCard').evaluate(e=>({right:innerWidth-e.getBoundingClientRect().right,top:e.getBoundingClientRect().top,deck:document.getElementById('dashboardBase').getBoundingClientRect().top}));
-  assert.ok(safe.right<=12&&safe.right>=6&&Math.abs(safe.top-safe.deck)<1,JSON.stringify(safe));
+  assert.ok(Math.abs(safe.right-3)<.1&&Math.abs(safe.top-safe.deck)<1,JSON.stringify(safe));
   await page.evaluate(()=>document.getElementById('terminalDock').style.removeProperty('--deck-safe-right'));
   const slide=await page.evaluate(()=>{
     const g=window.__game,controls=document.getElementById('travelControls'),from=controls.getBoundingClientRect().left;g.showDetails(g.state.selected);void controls.offsetWidth;

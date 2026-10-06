@@ -79,6 +79,10 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.12.10',items:[
+    'The joystick sits lower against the dashboard corner, with concentric curves instead of a gap above the phone inset.',
+    'The compact terminal casing extends down and right to follow the dashboard rim. Its text and neighboring controls remain above the phone home indicator; the expanded terminal keeps its normal layout.'
+  ]},
   {version:'1.12.9',items:[
     'A shorter 68px flight deck centers its instruments vertically, with a wider corner-fitted joystick and a full-size labeled Follow button. Narrow screens wrap full-size controls into two rows.',
     'Terminal and Log sit slightly inward from the screen edge; the compact device follows the lower corner curve. Travel and Cancel slide straight horizontally when the terminal expands.',
