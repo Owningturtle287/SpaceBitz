@@ -4,7 +4,7 @@ import {SAVE_KEY,readVoyages,writeVoyages,persistVoyage,saveBeforeExit} from '..
 import {importVoyage,restoreVoyage,MAX_GAME_DAYS} from '../saves.js';
 import {collectSample} from '../exploration.js';
 import {bodyKind,bodyCounts,RECOGNIZED_DWARF_PLANETS} from '../body-classification.js';
-import {makeSystem,bodyPosition} from '../model.js';
+import {makeSystem,bodyPosition,rng} from '../model.js';
 import {defaults} from '../universe.js';
 import {migrateLayout} from '../navigation.js';
 import {terminalLines} from '../terminal.js';
@@ -84,6 +84,18 @@ test('worker updates wait for a safe menu and reload only once',()=>{
   update.waiting({waiting:{postMessage:message=>{assert.equal(message.type,'SKIP_WAITING');activated++;}}});assert.equal(activated,0);update.changed();assert.equal(reloads,0);
   safe=true;assert.equal(update.apply(),true);assert.equal(reloads,1);update.apply();assert.equal(reloads,1);
   safe=false;const waiting=createUpdateCoordinator({isSafe:()=>safe,reload:()=>reloads++});waiting.waiting({waiting:{postMessage:()=>activated++}});assert.equal(activated,0);safe=true;waiting.apply();assert.equal(activated,1);
+});
+test('cached surface scenery retains its original seeded placement and has bounded storage',()=>{
+  const terrain=new TerrainRenderer(),body=makeSystem('sol').planets[2],sample=createTerrainSampler(body);
+  for(let cy=-5;cy<=5;cy++)for(let cx=-8;cx<=8;cx++){
+    const r=rng(`props:${body.id}:${cx},${cy}`);let expected=null;
+    if(r()>=.38){const x=(cx+r())*110,y=(cy+r())*110,t=sample(x,y);if(!t.water&&Math.hypot(x,y)>=85){const tree=t.biome==='forest'&&r()<.65;expected={x,y,tree,size:tree?null:3+Math.floor(r()*5)};}}
+    assert.deepEqual(terrain.prop(body,cx,cy),expected);
+  }
+  let samples=0;terrain.sampler=()=>()=>{samples++;return {water:false,biome:'plain'};};terrain.props.clear();
+  for(let i=0;i<5000;i++)terrain.prop(body,i,0);assert.equal(terrain.props.size,2048);
+  const cold=samples;for(let i=4000;i<5000;i++)terrain.prop(body,i,0);assert.equal(samples,cold);
+  terrain.clear();assert.equal(terrain.props.size,0);
 });
 test('native music pauses on hiding, resumes without rewinding and respects mute',async()=>{
   const document={hidden:false,addEventListener(){},removeEventListener(){}},settings={music:true,volume:.4},audio={paused:true,currentTime:9,play(){this.paused=false;return Promise.resolve();},pause(){this.paused=true;}};

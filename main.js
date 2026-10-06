@@ -1108,16 +1108,14 @@ function drawGround(now) {
   const body=findBody(state.save.landed);if(!body)return;
   terrain.draw(ctx,body,state.camera,state.zoom,state.width,state.height,settings.pixelSize);
   drawCoordinateGrid();
-  const sampleTerrain=terrain.sampler(body),cell=110;
+  const cell=110;
   const hw=state.width/state.zoom/2,hh=state.height/state.zoom/2;
   // Sparse, independently placed vegetation and rocks. Placement is keyed to
   // world space, not to the terrain cache or the visible screen.
   for(let cy=Math.floor((state.camera.y-hh)/cell)-1;cy<=Math.floor((state.camera.y+hh)/cell)+1;cy++)
     for(let cx=Math.floor((state.camera.x-hw)/cell)-1;cx<=Math.floor((state.camera.x+hw)/cell)+1;cx++){
-      const rand=rng(`props:${body.id}:${cx},${cy}`);if(rand()<.38)continue;
-      const wx=(cx+rand())*cell,wy=(cy+rand())*cell,t=sampleTerrain(wx,wy);
-      if(t.water||Math.hypot(wx,wy)<85)continue;
-      const p=screen(wx,wy),z=state.zoom,tree=t.biome==='forest'&&rand()<.65;
+      const prop=terrain.prop(body,cx,cy,cell);if(!prop)continue;
+      const p=screen(prop.x,prop.y),z=state.zoom,tree=prop.tree;
       ctx.save();ctx.translate(Math.round(p.x),Math.round(p.y));ctx.scale(z,z);
       ctx.fillStyle='#0d243447';ctx.fillRect(-5,2,14,4);
       if(tree){
@@ -1126,7 +1124,7 @@ function drawGround(now) {
         ctx.fillStyle='#4d8054';ctx.fillRect(-6,-17,9,9);ctx.fillRect(-9,-11,10,5);
         ctx.fillStyle='#83a868';ctx.fillRect(-4,-16,5,3);
       }else{
-        const size=3+Math.floor(rand()*5);ctx.fillStyle='#414d53';ctx.fillRect(-size,-size,size*2,size+4);
+        const size=prop.size;ctx.fillStyle='#414d53';ctx.fillRect(-size,-size,size*2,size+4);
         ctx.fillStyle=body.type==='desert'?'#bf9466':'#a5b1b2';ctx.fillRect(-size,-size,size+3,3);
         ctx.fillStyle=body.type==='desert'?'#86634f':'#687f88';ctx.fillRect(-size+2,-size+3,size*2-2,size-1);
       }

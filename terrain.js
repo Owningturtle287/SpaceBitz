@@ -1,4 +1,4 @@
-import {hash,clamp} from './model.js';
+import {hash,clamp,rng} from './model.js';
 import {bodyCacheKey} from './body-cache.js';
 
 // All samples use global world coordinates. Cache chunks never determine terrain,
@@ -68,11 +68,22 @@ export function createTerrainSampler(body) {
   };
 }
 export class TerrainRenderer {
-  constructor(){this.cache=new Map();this.samplers=new Map();this.chunkSize=192;}
+  constructor(){this.cache=new Map();this.samplers=new Map();this.props=new Map();this.chunkSize=192;}
   sampler(body){const key=bodyCacheKey(body);if(!this.samplers.has(key)){
     if(this.samplers.size>=8)this.samplers.delete(this.samplers.keys().next().value);
     this.samplers.set(key,createTerrainSampler(body));}return this.samplers.get(key);}
-  clear(){this.cache.clear();this.samplers.clear();}
+  clear(){this.cache.clear();this.samplers.clear();this.props.clear();}
+  prop(body,cx,cy,cell=110){
+    const key=`${bodyCacheKey(body)}:${cx},${cy}:${cell}`;
+    if(this.props.has(key))return this.props.get(key);
+    const rand=rng(`props:${body.id}:${cx},${cy}`);let prop=null;
+    if(rand()>=.38){
+      const x=(cx+rand())*cell,y=(cy+rand())*cell,t=this.sampler(body)(x,y);
+      if(!t.water&&Math.hypot(x,y)>=85){const tree=t.biome==='forest'&&rand()<.65;prop={x,y,tree,size:tree?null:3+Math.floor(rand()*5)};}
+    }
+    this.props.set(key,prop);if(this.props.size>2048)this.props.delete(this.props.keys().next().value);
+    return prop;
+  }
   chunk(body,cx,cy,pixel,span=this.chunkSize) {
     const key=`${bodyCacheKey(body)}:${cx},${cy}:${pixel}:${span}`;
     if(this.cache.has(key))return this.cache.get(key);

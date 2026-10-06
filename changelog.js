@@ -4,7 +4,7 @@ export const CHANGELOG=[
     "version": "1.12.12",
     "items": [
       "Voyage storage never evicts older saves. Failed saves keep the session open, corrupt stored records are protected, and imports/restoration validate dates and coordinates before use.",
-      "Planet, terrain, weather and ring caches distinguish different voyages with matching seeded IDs. Adaptive surface tiles retain a bounded working set at wide viewport sizes.",
+      "Planet, terrain, weather and ring caches distinguish different voyages with matching seeded IDs. Adaptive surface tiles retain a bounded working set at wide viewport sizes; cached rock/vegetation placements avoid resampling unchanged scenery every frame.",
       "Surface samples can be collected only once. Legacy barren-system saves migrate safely, and focused terminal header buttons no longer block keyboard flight.",
       "Dwarf planets have an explicit classification and separate terminal/chart counts. Pluto is identified consistently; Charon and other satellites remain moons. The model does not infer dwarf status from diameter alone.",
       "Service-worker updates wait until Save & Main Menu. Audio respects visibility, the checked-in full soundtrack is available in local development, and updates preserve active gameplay.",
