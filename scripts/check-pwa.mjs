@@ -34,7 +34,8 @@ try{
   let navigations=0;page.on('framenavigated',frame=>{if(frame===page.mainFrame())navigations++;});
   revision=1;await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update();});
   await page.waitForFunction(async()=>Boolean((await navigator.serviceWorker.getRegistration())?.waiting));
-  assert.equal(navigations,0);assert.equal(await page.locator('#app').isVisible(),true);
+  assert.equal(navigations,0);assert.equal(await page.evaluate(()=>!document.getElementById('app').hidden),true);
+  assert.equal(await page.locator('#joystick').isVisible(),true);
   await page.evaluate(()=>{window.__pwaBeforeUpdate=true;});
   await page.locator('#settingsOpen').click();await page.getByRole('button',{name:'SAVE & MAIN MENU',exact:true}).click();
   await page.waitForFunction(()=>window.__pwaBeforeUpdate===undefined&&document.getElementById('app').hidden);
