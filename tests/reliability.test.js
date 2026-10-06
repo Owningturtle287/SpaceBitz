@@ -10,7 +10,7 @@ import {migrateLayout} from '../navigation.js';
 import {terminalLines} from '../terminal.js';
 import {TerrainRenderer,createTerrainSampler} from '../terrain.js';
 import {celestialSprite} from '../celestial.js';
-import {createUpdateCoordinator} from '../pwa.js';
+import {createUpdateCoordinator,registerAppWorker} from '../pwa.js';
 import {createMusicController} from '../audio.js';
 const storage=()=>({data:new Map(),getItem(key){return this.data.get(key)??null;},setItem(key,text){if(this.full)throw Object.assign(Error('full'),{name:'QuotaExceededError'});this.data.set(key,text);}});
 const voyage=(id='id')=>({id,name:'Voyage',seed:id,homeSeed:'sol',currentSystem:'sol',days:123,layoutVersion:4,scene:'system',ship:{x:1234,y:2345},surface:{x:3,y:4},chart:{x:5,y:6},route:['sol'],discoveries:[],log:[]});
@@ -89,4 +89,12 @@ test('native music pauses on hiding, resumes without rewinding and respects mute
   const document={hidden:false,addEventListener(){},removeEventListener(){}},settings={music:true,volume:.4},audio={paused:true,currentTime:9,play(){this.paused=false;return Promise.resolve();},pause(){this.paused=true;}};
   const music=createMusicController(audio,settings,document);music.beginMusic();await Promise.resolve();audio.currentTime=17;document.hidden=true;music.setVisibility(true);assert.equal(audio.paused,true);assert.equal(audio.currentTime,17);
   document.hidden=false;music.setVisibility(false);assert.equal(audio.paused,false);assert.equal(audio.currentTime,17);settings.music=false;music.applyMusicSetting();music.setVisibility(false);assert.equal(audio.paused,true);
+});
+test('a first worker claim is quiet and a later same-session update is deferred safely',async()=>{
+  let safe=false,reloads=0;const listeners={},registration={addEventListener(){}};
+  const sw={controller:null,addEventListener:(name,fn)=>{listeners[name]=fn;},register:()=>Promise.resolve(registration)};
+  const apply=registerAppWorker({serviceWorker:sw,isSafe:()=>safe,reload:()=>reloads++});await Promise.resolve();
+  sw.controller={version:1};listeners.controllerchange();assert.equal(reloads,0);
+  sw.controller={version:2};listeners.controllerchange();assert.equal(reloads,0);
+  safe=true;apply();assert.equal(reloads,1);
 });

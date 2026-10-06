@@ -34,7 +34,7 @@ const browser=await ({chromium,webkit}[engine]).launch({headless:true,...(proces
 try{
   const page=await browser.newPage({viewport:{width:844,height:390},deviceScaleFactor:2,hasTouch:true,serviceWorkers:'block'});
   page.setDefaultTimeout(15000);
-  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  const errors=[];page.on('pageerror',error=>{errors.push(error.message);console.error('Game error:',error.message);});
   await page.addInitScript(()=>localStorage.setItem('spacebitz:field:settings',JSON.stringify({music:false,paused:true,controls:'touch',resolution:'2',showCoords:true})));
   await page.route('**/main.js',async route=>{
     const response=await route.fetch();let source=await response.text();

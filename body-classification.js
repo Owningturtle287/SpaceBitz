@@ -3,7 +3,8 @@
 export const RECOGNIZED_DWARF_PLANETS=Object.freeze(['Ceres','Pluto','Haumea','Makemake','Eris']);
 export function bodyKind(body){
   if(body.kind==='moon'||body.parent)return 'moon';
-  if(body.id?.startsWith('sol:')&&RECOGNIZED_DWARF_PLANETS.includes(body.name))return 'dwarf-planet';
+  if(['star','binary'].includes(body.kind))return body.kind;
+  if(body.id==='sol:'+body.name&&RECOGNIZED_DWARF_PLANETS.includes(body.name))return 'dwarf-planet';
   // For synthetic extrasolar bodies this is a model analogue, not an IAU designation.
   if(body.classification?.round===true&&body.classification?.orbitsStar===true&&body.classification?.clearedOrbit===false)return 'dwarf-planet';
   return body.kind;

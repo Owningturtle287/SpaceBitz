@@ -16,8 +16,10 @@ export function createUpdateCoordinator({isSafe,reload,onReady=()=>{}}){
 }
 export function registerAppWorker({serviceWorker,url='./sw.js',isSafe,reload,onReady}){
   const update=createUpdateCoordinator({isSafe,reload,onReady});
-  const controlled=Boolean(serviceWorker.controller);
-  serviceWorker.addEventListener('controllerchange',()=>{if(controlled)update.changed();});
+  let controlled=Boolean(serviceWorker.controller);
+  serviceWorker.addEventListener('controllerchange',()=>{
+    if(controlled)update.changed();else controlled=Boolean(serviceWorker.controller);
+  });
   serviceWorker.register(url).then(registration=>{
     if(registration.waiting)update.waiting(registration);
     registration.addEventListener('updatefound',()=>{
