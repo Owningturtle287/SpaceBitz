@@ -224,12 +224,17 @@ distance. Info expands upward and types telemetry with brief section pauses;
 its own screen scrolls and smoothly returns to the beginning when typing finishes.
 Manual wheel, touch or keyboard reading interrupts this return. The narrower
 terminal reveals upward from the bottom, with a compact header and two columns;
-Log rests at bottom-right when closed and follows above its edge when open.
+The compact device is flush with the smaller dashboard rim. Terminal rests at
+bottom-right with Log to its left; Warp Drive and Log slide along the baseline
+when the device opens. Larger lower dashboard curves fit rounded phone screens.
 Stellar output includes physical, evolutionary, magnetic,
 radiation, habitable-zone and orbital data. Planet/moon data uses the same framework
-without adding the deferred environment overhaul. Actions plus Cancel follow
-selected targets, avoid HUD controls and clamp inside the viewport. Coordinates,
-surface samples and the lander share this selection flow. Voyage logs are opaque.
+without adding the deferred environment overhaul. Names track selected objects.
+A smaller green travel lever and red Cancel button slide above the compact
+terminal or beside its expanded screen, leaving selected views clear. The lever
+moves forward/backward. Coordinate travel in both space layers and on planet/moon
+surfaces requires two nearby taps; samples, landers and celestial objects retain
+single-tap selection. Voyage logs are opaque.
 
 System Fit uses a conservative all-phase envelope: hierarchical stellar offsets,
 companion orbit apocenters, photospheres, planetary orbits and moon extents. Manual
@@ -250,7 +255,7 @@ fingerprint test compares 60 systems with results from the original v1.11 code.
 Start a new voyage to see the new population model. Barren systems remain valid.
 
 Node and Chromium/WebKit checks cover the tables, forced rare families/subtypes,
-restoration, wide hierarchies, projected actions, terminal typing/scrolling,
+restoration, wide hierarchies, stable projected names, docked travel controls, terminal typing/scrolling,
 opaque panels, reduced motion, 1 km scale, mobile portrait/landscape layouts and
 render/cache stress. Desktop engine tests do not establish real-device battery,
 thermal, audio-policy or GPU behavior; the README retains physical-device checks.

@@ -69,20 +69,12 @@ export async function checkRelease1122(page,engine){
   });assert.ok(closing.cardHidden&&closing.mid>0&&closing.mid<closing.before,JSON.stringify(closing));await page.waitForTimeout(350);
   assert.ok(Math.abs(await page.locator('#journalButton').evaluate(e=>e.getBoundingClientRect().bottom)-388)<1);
   const directions=await page.evaluate(()=>{
-    const g=window.__game,arrow=document.getElementById('coordinateArrow'),directions=[];
-    g.state.save.ship={x:1e7,y:1e7};g.state.camera={...g.state.save.ship};g.state.zoom=.1;
-    for(const [dx,dy]of [[0,-100],[100,0],[0,100],[-100,0],[100,-100],[-100,-100],[100,100],[-100,100]]){
-      g.state.waypoint={x:g.state.save.ship.x+dx,y:g.state.save.ship.y+dy};g.updateUI();g.positionContext();
-      const matrix=new DOMMatrix(getComputedStyle(arrow).transform),length=Math.hypot(dx,dy);
-      if(Math.abs(-matrix.c-dx/length)>.00001||Math.abs(-matrix.d-dy/length)>.00001)throw Error('Coordinate arrow points away from travel vector '+[dx,dy]);
-      directions.push([-matrix.c,-matrix.d]);
-    }
-    g.state.save.ship.y+=200;g.positionContext();const matrix=new DOMMatrix(getComputedStyle(arrow).transform),target=g.state.waypoint,dx=target.x-g.state.save.ship.x,dy=target.y-g.state.save.ship.y,length=Math.hypot(dx,dy);
-    if(Math.abs(-matrix.c-dx/length)>.00001||Math.abs(-matrix.d-dy/length)>.00001)throw Error('Arrow did not update with ship movement');
-    document.getElementById('contextActions').classList.add('ready');g.backdrop(0);g.drawSystem(0);
-    const frame=getComputedStyle(document.getElementById('primaryAction'),'::before'),button=document.getElementById('primaryAction').getBoundingClientRect();
-    if(!frame.borderImageSource.includes('svg')||getComputedStyle(document.getElementById('primaryAction')).backgroundColor!=='rgba(0, 0, 0, 0)'||button.width!==28||button.height!==28)throw Error('Pixel frame changed the coordinate content box');
-    return directions;
+    const g=window.__game;g.state.save.ship={x:1e7,y:1e7};g.state.camera={...g.state.save.ship};g.state.zoom=.1;
+    g.state.waypoint={x:1e7+100,y:1e7-100};g.updateUI();g.positionContext();
+    const button=document.getElementById('primaryAction'),cancel=document.getElementById('cancelTravel');
+    if(button.parentElement.parentElement.id!=='travelControls'||button.getBoundingClientRect().width!==48||cancel.getBoundingClientRect().width!==30)throw Error('Travel lever is not docked');
+    if(document.getElementById('contextActions').contains(button))throw Error('Travel still overlays the target');
+    g.backdrop(0);g.drawSystem(0);return {dockedLever:true};
   });
   await page.waitForTimeout(350);await page.screenshot({path:`.qa/${engine}-1122-coordinate.png`});
   const markers=await page.evaluate(async()=>{

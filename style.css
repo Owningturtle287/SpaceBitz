@@ -456,7 +456,7 @@ body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #
 #journalButton{position:absolute;right:0;bottom:calc(100% + var(--log-gap,0px));pointer-events:auto;transition:bottom .24s cubic-bezier(.22,.7,.25,1)}
 @media(max-width:699px){.terminal-dock:has(.expanded:not([hidden])){width:calc(100vw - 32px)}#targetCard.terminal.expanded{height:min(70dvh,calc(100dvh - 220px))}.terminal-data{font-size:11px;column-gap:14px}.terminal-visible #joystick{bottom:calc(var(--terminal-height,84px) + 16px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}
 
-/* Names remain framed; only the slim action strip slides up after a tap. */
+/* Framed object names track their targets; travel controls live at the device. */
 .context-actions{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:min(320px,calc(100vw - 16px));transition:transform 75ms linear;pointer-events:none}
 .context-action-row{display:flex;align-items:center;gap:4px;opacity:0;transform:translateY(14px);transition:opacity .4s ease,transform .55s cubic-bezier(.22,.7,.25,1);pointer-events:none}
 .context-actions.ready .context-action-row{opacity:1;transform:translateY(0);pointer-events:auto}
@@ -592,7 +592,7 @@ body[data-reduced-motion=true] #terminalButton,body[data-reduced-motion=true] #j
 .top-actions{margin-left:0;flex:none}
 @media(max-width:600px){.top-actions .mission-tools{flex:none;width:162px}}
 @media(max-width:360px){.top-actions .mission-tools{width:136px}}
-#dashboardBase{clip-path:none;border-radius:0 0 clamp(18px,5vw,30px) clamp(18px,5vw,30px)}
+#dashboardBase{clip-path:none;border-radius:0 0 clamp(36px,14vmin,58px) clamp(36px,14vmin,58px)}
 .dashboard-resize{position:fixed;z-index:5;left:calc(50% - 14px);bottom:calc(var(--dashboard-height,80px) - 4px + env(safe-area-inset-bottom));width:28px;height:8px;pointer-events:auto;cursor:ns-resize}
 .dashboard-resize svg{width:14px;height:6px}
 #joystick,.terminal-visible #joystick{width:64px;height:64px;left:clamp(8px,calc(var(--joy-x,16%) - 32px - 6vw),var(--deck-joy-max,calc(100vw - 205px)))}
@@ -605,3 +605,24 @@ body[data-reduced-motion=true] #terminalButton,body[data-reduced-motion=true] #j
 body.deck-compact #joystick{left:4px;width:44px;height:44px}body.deck-compact #joystick #stick{width:20px;height:20px}
 @media(max-width:350px){.deck-compact .navigation-controls .center-button{width:34px;height:34px;min-width:34px;min-height:34px}.deck-compact .follow-ship-button{width:17px;height:17px;min-width:17px;min-height:17px}}
 body[data-reduced-motion=true] #mapButton{transition:none}@media(prefers-reduced-motion:reduce){#mapButton{transition:none}}
+
+/* Small travel lever slides with the terminal, leaving the selected view clear. */
+#targetCard.terminal:not(.expanded){height:var(--terminal-compact-height,72px)}
+@media(orientation:landscape){.terminal-dock{right:max(1px,min(8px,var(--deck-safe-right,env(safe-area-inset-right))))}}
+.travel-controls{position:absolute;right:0;bottom:calc(100% + 6px);z-index:7;pointer-events:none;transition:right .32s cubic-bezier(.22,.7,.25,1),bottom .32s cubic-bezier(.22,.7,.25,1)}
+.travel-controls .context-action-row{gap:6px;align-items:center}
+.travel-controls.ready .context-action-row{opacity:1;transform:translateY(0);pointer-events:auto}
+.terminal-expanded .travel-controls{right:calc(100% + 6px);bottom:calc(var(--dashboard-height,74px) + 10px)}
+#primaryAction.travel-lever{box-sizing:border-box;width:48px;height:50px;min-width:48px;min-height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;border:2px solid #6ca088;border-radius:0;background:linear-gradient(#90bea1 0 2px,#143a2b 2px calc(100% - 3px),#082619 calc(100% - 3px));box-shadow:inset 1px 0 #aacdb0,inset -1px -1px #071b16;color:#adffbc;clip-path:var(--pixel-corners);touch-action:manipulation;cursor:pointer}
+#primaryAction .travel-mechanism{width:26px;height:31px;flex:none;overflow:visible}
+#primaryActionLabel{font:5px/1.35 var(--pixel);text-transform:uppercase;text-align:center;white-space:normal}
+.travel-handle{transform:translateY(2px);transform-origin:16px 30px;transition:transform .28s cubic-bezier(.22,.7,.25,1)}
+#primaryAction:hover:not(:disabled) .travel-handle{transform:translateY(0)}
+#primaryAction:active:not(:disabled) .travel-handle,#primaryAction.engaged .travel-handle{transform:translateY(-4px) scaleY(.9)}
+#primaryAction.engaged .travel-lamp{animation:terminal-blink .6s steps(1) infinite}
+#primaryAction:disabled{opacity:.65;cursor:default}
+#cancelTravel.cancel-target-button{box-sizing:border-box;width:30px;height:30px;min-width:30px;min-height:30px;border:2px solid #b46868;background:linear-gradient(#d29286 0 2px,#581e2b 2px calc(100% - 3px),#2b111b calc(100% - 3px));box-shadow:inset 1px 0 #d6a393,inset -1px -1px #301420;color:#ffb1a3;clip-path:var(--pixel-corners);touch-action:manipulation}
+#cancelTravel.cancel-target-button:hover{background:#773241}#cancelTravel.cancel-target-button:active{background:#9c4852}
+body[data-reduced-motion=true] .travel-controls,body[data-reduced-motion=true] .travel-handle{transition:none}
+body[data-reduced-motion=true] .travel-lamp{animation:none}
+@media(prefers-reduced-motion:reduce){.travel-controls,.travel-handle{transition:none}.travel-lamp{animation:none}}

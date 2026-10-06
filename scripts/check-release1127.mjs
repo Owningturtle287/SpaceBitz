@@ -7,7 +7,7 @@ export async function checkRelease1127(page,engine){
     g.cancelTarget();g.state.scene='system';g.state.system=makeSystem('sol');g.state.save.currentSystem='sol';g.state.terminalSize=null;
     g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);
     document.getElementById('terminalInput').value='';
-    Object.assign(g.settings,{controls:'touch',centerButton:'right',joyX:16,joyOffset:0,dashboardHeight:80,terminalWidthScale:100,terminalHeightScale:100,dashboardResizeHandle:false,terminalResizeHandles:false,reducedMotion:false});
+    Object.assign(g.settings,{controls:'touch',centerButton:'right',joyX:16,joyOffset:0,dashboardHeight:74,terminalWidthScale:100,terminalHeightScale:100,dashboardResizeHandle:false,terminalResizeHandles:false,reducedMotion:false});
     g.applySettings();g.select(g.state.system.star);g.showDetails(g.state.selected);
   });await page.waitForTimeout(400);
   assert.equal(await page.locator('#terminalResizeTop').isVisible(),false);assert.equal(await page.locator('#terminalResizeLeft').isVisible(),false);assert.equal(await page.locator('#dashboardResize').isVisible(),false);
@@ -48,7 +48,7 @@ export async function checkRelease1127(page,engine){
     await page.setViewportSize(viewport);
     for(const expanded of [false,true]){
       await page.evaluate(expanded=>{
-        const g=window.__game;Object.assign(g.settings,{dashboardHeight:80,terminalWidthScale:100,terminalHeightScale:100});g.state.terminalSize=null;g.cancelTarget();g.select(g.state.system.star);if(expanded)g.showDetails(g.state.selected);g.applySettings();
+        const g=window.__game;Object.assign(g.settings,{dashboardHeight:74,terminalWidthScale:100,terminalHeightScale:100});g.state.terminalSize=null;g.cancelTarget();g.select(g.state.system.star);if(expanded)g.showDetails(g.state.selected);g.applySettings();
         if(expanded){g.updateTerminal(g.state.terminal.start+12000);g.updateTerminal(g.state.terminal.start+14000);}g.backdrop(0);g.drawSystem(0);
       },expanded);await page.waitForTimeout(400);
       await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations())a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);window.__game.positionContext();});
@@ -68,6 +68,6 @@ export async function checkRelease1127(page,engine){
   const extreme=await page.evaluate(()=>({card:document.getElementById('targetCard').getBoundingClientRect().toJSON(),screen:document.getElementById('terminalScreen').clientHeight,keyboard:document.getElementById('terminalKeyboard').getBoundingClientRect().bottom}));
   assert.ok(extreme.card.left>=0&&extreme.card.right<=390&&extreme.screen>=35&&extreme.keyboard<=extreme.card.bottom,JSON.stringify(extreme));
   await page.screenshot({path:`.qa/${engine}-1127-scaled-keyboard.png`});
-  await page.locator('[data-key="Enter"]').click();await page.evaluate(()=>{const g=window.__game;g.cancelTarget();Object.assign(g.settings,{dashboardHeight:80,terminalWidthScale:100,terminalHeightScale:100});g.state.terminalSize=null;g.applySettings();});
+  await page.locator('[data-key="Enter"]').click();await page.evaluate(()=>{const g=window.__game;g.cancelTarget();Object.assign(g.settings,{dashboardHeight:74,terminalWidthScale:100,terminalHeightScale:100});g.state.terminalSize=null;g.applySettings();});
   return {defaultHandlesHidden:true,mutuallyExclusivePanels:true,initial,resized,layouts,extreme};
 }
