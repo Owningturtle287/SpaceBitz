@@ -41,8 +41,18 @@ try{
   await page.waitForFunction(async()=> (await caches.keys()).some(k=>k.endsWith('-pwa-update')));
   assert.ok(navigations>=1,'Menu must apply the deferred update');
   const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('spacebitz:field:v1')));assert.equal(saved.length,1);assert.equal(saved[0].homePlanet,'sol:Earth');
-  await context.setOffline(true);await page.reload();await page.locator('#startGame').click();await page.locator('.load-save').click();
+  // WebKit's offline flag rejects even cache-only service-worker responses
+  // (https://github.com/microsoft/playwright/issues/42775). Stop the origin in
+  // both engines; Chromium additionally exercises the network-offline flag.
+  const origin=page.url();
+  await new Promise(done=>{server.close(done);server.closeAllConnections();});
+  assert.equal(server.listening,false);
+  await assert.rejects(fetch(origin),'The origin must be unavailable');
+  if(engine==='chromium')await context.setOffline(true);
+  const offlineResponse=await page.reload();
+  assert.equal(offlineResponse.status(),200);assert.equal(offlineResponse.fromServiceWorker(),true);
+  await page.locator('#startGame').click();await page.locator('.load-save').click();
   await page.waitForFunction(()=>!document.getElementById('app').hidden);assert.equal(await page.locator('#targetName').count(),1);
   assert.equal(await page.locator('#universeName').count(),1);assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({engine,audio,offlineAssets:cache.length,updateDeferred:true,offlineRestored:true}));await context.close();
+  console.log(JSON.stringify({engine,audio,offlineAssets:cache.length,updateDeferred:true,originUnavailable:true,offlineRestored:true}));await context.close();
 }finally{await browser.close();server.close();}
