@@ -30,16 +30,16 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright@1.58.2
           npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Check startup, zoom, clearing and warp in a real browser
-        timeout-minutes: 5
-        env:
-          BROWSER: ${{ matrix.browser }}
-        run: node scripts/check-browser.mjs
       - name: Check native audio, offline shell and safe app updates
         timeout-minutes: 3
         env:
           BROWSER: ${{ matrix.browser }}
         run: npm run test:pwa
+      - name: Check startup, zoom, clearing and warp in a real browser
+        timeout-minutes: 5
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: node scripts/check-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

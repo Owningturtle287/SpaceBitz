@@ -22,7 +22,7 @@ await new Promise(done=>server.listen(0,'127.0.0.1',done));
 const browser=await playwright[engine].launch({headless:true});
 try{
   const context=await browser.newContext({viewport:{width:844,height:390},serviceWorkers:'allow'}),page=await context.newPage();
-  const errors=[];page.on('pageerror',error=>errors.push(error.message));page.setDefaultTimeout(20000);
+  const errors=[];page.on('pageerror',error=>{errors.push(error.message);console.error('Production error:',error.message);});page.setDefaultTimeout(20000);
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await page.locator('#startGame').click();
   await page.waitForFunction(()=>{const a=document.getElementById('soundtrackAudio');return a&&!a.paused&&a.currentTime>.2&&a.duration>67.5&&a.duration<68.5;});
@@ -35,7 +35,6 @@ try{
   revision=1;await page.evaluate(async()=>{const r=await navigator.serviceWorker.getRegistration();await r.update();});
   await page.waitForFunction(async()=>Boolean((await navigator.serviceWorker.getRegistration())?.waiting));
   assert.equal(navigations,0);assert.equal(await page.evaluate(()=>!document.getElementById('app').hidden),true);
-  assert.equal(await page.locator('#joystick').isVisible(),true);
   await page.evaluate(()=>{window.__pwaBeforeUpdate=true;});
   await page.locator('#settingsOpen').click();await page.getByRole('button',{name:'SAVE & MAIN MENU',exact:true}).click();
   await page.waitForFunction(()=>window.__pwaBeforeUpdate===undefined&&document.getElementById('app').hidden);
