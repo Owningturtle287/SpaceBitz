@@ -55,13 +55,16 @@ export async function checkRelease1126(page,engine){
     try{g.drawCoordinateGrid();return {strokes,fills};}finally{ctx.stroke=stroke;ctx.fillRect=fill;}
   });assert.ok(frame.strokes>=2&&frame.fills===0,JSON.stringify(frame));
   await page.evaluate(()=>window.__game.cancelTarget());
+  await page.touchscreen.tap(350,160);assert.equal(await picked(),false,'One touch selected a coordinate');
+  await page.touchscreen.tap(350,160);assert.equal(await picked(),true,'Touch release cleared the first tap');
+  await page.evaluate(()=>window.__game.cancelTarget());
   await page.mouse.click(350,160);await page.mouse.click(410,160);assert.equal(await picked(),false,'Separate taps confirmed a coordinate');
   await page.evaluate(()=>{window.__game.state.coordinateTap.time-=600;});await page.mouse.click(410,160);assert.equal(await picked(),false,'Expired tap confirmed a coordinate');
   await page.evaluate(()=>window.__game.zoom(1.1));await page.mouse.click(410,160);assert.equal(await picked(),false,'Zoom retained a pending tap');
   await page.mouse.move(410,160);await page.mouse.down();await page.mouse.move(430,170);await page.mouse.up();await page.mouse.click(430,170);assert.equal(await picked(),false,'Pan retained a pending tap');
   await page.evaluate(()=>window.__game.cancelTarget());
   const deck=await page.locator('#dashboardBase').boundingBox();await page.mouse.click(600,deck.y+8);await page.mouse.click(600,deck.y+8);assert.equal(await picked(),false,'Transparent dashboard allowed coordinate picking');
-  await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.state.camera={x:0,y:0};g.state.zoom=.001;g.updateUI();});
+  await page.evaluate(async()=>{const g=window.__game,{visualRadius}=await import('/model.js');g.cancelTarget();g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.updateUI();});
   await page.mouse.click(422,195);assert.equal(await page.evaluate(()=>window.__game.state.selected?.kind),'star','Object required two taps');
   await page.evaluate(()=>{const g=window.__game;g.enterChart();g.cancelTarget();g.state.camera={x:0,y:0};g.state.zoom=1;g.drawChart(0);});await page.waitForTimeout(350);
   const empty=await page.evaluate(()=>{
