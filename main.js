@@ -466,6 +466,7 @@ function applyOrientationPreference(){
 }
 function fit() {
   const rect = canvas.getBoundingClientRect();
+  if(rect.width!==state.width||rect.height!==state.height)state.terminalSize=null;
   state.width=rect.width; state.height=rect.height;
   state.dpr=settings.resolution==='auto'?Math.min(window.devicePixelRatio||1,2):Number(settings.resolution);
   canvas.width=Math.round(rect.width*state.dpr); canvas.height=Math.round(rect.height*state.dpr);

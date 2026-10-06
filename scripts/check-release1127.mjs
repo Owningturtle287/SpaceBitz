@@ -30,6 +30,9 @@ export async function checkRelease1127(page,engine){
   const resized=await page.evaluate(()=>({deck:document.getElementById('dashboardBase').getBoundingClientRect().height,terminal:document.getElementById('targetCard').getBoundingClientRect().toJSON(),saved:JSON.parse(localStorage.getItem('spacebitz:field:settings'))}));
   assert.ok(Math.abs(resized.deck-188)<1&&Math.abs(resized.terminal.width-364.8)<1&&Math.abs(resized.terminal.height-540)<1,JSON.stringify(resized));
   assert.ok(resized.saved.terminalWidthScale>initial.saved.terminalWidthScale&&resized.saved.terminalHeightScale>initial.saved.terminalHeightScale&&resized.saved.dashboardHeight===188);
+  await page.setViewportSize({width:844,height:390});await page.waitForTimeout(400);
+  assert.ok(Math.abs((await page.locator('#targetCard').boundingBox()).height-390*.7*resized.saved.terminalHeightScale/100)<1,'Rotation did not apply the saved height scale');
+  await page.setViewportSize({width:1440,height:900});await page.waitForTimeout(400);
   await page.locator('#settingsOpen').click();await page.locator('#setting-terminalResizeHandles').uncheck();await page.locator('#setting-dashboardResizeHandle').uncheck();await page.locator('#modalClose').click();
   for(const id of ['terminalResizeTop','terminalResizeLeft','dashboardResize'])assert.equal(await page.locator('#'+id).isVisible(),false);
   await page.evaluate(()=>{const g=window.__game;g.state.terminalSize=null;g.applySettings();});await page.waitForTimeout(350);
