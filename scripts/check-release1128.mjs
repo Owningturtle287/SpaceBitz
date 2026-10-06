@@ -7,7 +7,7 @@ export async function checkRelease1128(page,engine){
     g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.state.terminalSize=null;
     Object.assign(g.settings,{dashboardHeight:74,terminalWidthScale:100,terminalHeightScale:100,joyOffset:0,joyX:16,controls:'touch',centerButton:'right',reducedMotion:false});g.applySettings();
   });
-  const settle=async()=>{await page.waitForTimeout(400);await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','travelControls','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations({subtree:true}))a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);window.__game.positionContext();});};
+  const settle=async()=>{await page.waitForTimeout(400);await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','travelControls','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations({subtree:true}))if(Number.isFinite(a.effect.getComputedTiming().endTime))a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);window.__game.positionContext();});};
   const layouts=[];
   for(const viewport of [{width:1440,height:900},{width:844,height:390},{width:667,height:375},{width:390,height:844},{width:375,height:667},{width:320,height:568}]){
     await page.setViewportSize(viewport);

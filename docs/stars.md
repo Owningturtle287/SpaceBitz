@@ -224,12 +224,17 @@ distance. Info expands upward and types telemetry with brief section pauses;
 its own screen scrolls and smoothly returns to the beginning when typing finishes.
 Manual wheel, touch or keyboard reading interrupts this return. The narrower
 terminal reveals upward from the bottom, with a compact header and two columns;
-Log rests at bottom-right when closed and follows above its edge when open.
+The compact device is flush with the smaller dashboard rim. Terminal rests at
+bottom-right with Log to its left; Warp Drive and Log slide along the baseline
+when the device opens. Larger lower dashboard curves fit rounded phone screens.
 Stellar output includes physical, evolutionary, magnetic,
 radiation, habitable-zone and orbital data. Planet/moon data uses the same framework
-without adding the deferred environment overhaul. Actions plus Cancel follow
-selected targets, avoid HUD controls and clamp inside the viewport. Coordinates,
-surface samples and the lander share this selection flow. Voyage logs are opaque.
+without adding the deferred environment overhaul. Names track selected objects.
+A smaller green travel lever and red Cancel button slide above the compact
+terminal or beside its expanded screen, leaving selected views clear. The lever
+moves forward/backward. Coordinate travel in both space layers and on planet/moon
+surfaces requires two nearby taps; samples, landers and celestial objects retain
+single-tap selection. Voyage logs are opaque.
 
 System Fit uses a conservative all-phase envelope: hierarchical stellar offsets,
 companion orbit apocenters, photospheres, planetary orbits and moon extents. Manual
