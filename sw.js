@@ -1,4 +1,4 @@
-const CACHE='spacebitz-field-v1.12.6-transparent-flight-dashboard';
+const CACHE='spacebitz-field-v1.12.7-adjustable-flight-dashboard';
 const SHELL=['./','./index.html','./main.js','./model.js','./universe.js','./universe-v2.js','./terminal.js','./target-ui.js','./rarity-ui.js','./substellar.js','./presentation.js','./star-info.js','./scale.js','./navigation.js','./saves.js','./hud.js','./stellar.js','./giants.js','./weather.js','./rendering.js','./settings.js','./terrain.js','./motion.js','./sprites.js','./celestial.js','./style.css','./assets/spacebitz-pixel.woff','./assets/spacebitz-title.svg','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));

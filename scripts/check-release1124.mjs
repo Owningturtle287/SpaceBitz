@@ -50,7 +50,7 @@ export async function checkRelease1124(page,engine){
     const g=window.__game;g.updateTerminal(g.state.terminal.start+12000);const card=document.getElementById('targetCard'),log=document.getElementById('journalButton').getBoundingClientRect(),launcher=document.getElementById('terminalButton').getBoundingClientRect();
     return {name:document.getElementById('targetName').textContent,selected:g.state.selected,waypoint:g.state.waypoint,contextHidden:document.getElementById('contextActions').hidden,focusHidden:document.getElementById('focusSelected').hidden,expanded:card.classList.contains('expanded'),text:document.getElementById('terminalOutput').textContent,logLeft:log.left,launcherHidden:getComputedStyle(document.getElementById('terminalButton')).visibility==='hidden',warpLeft:document.getElementById('mapButton').getBoundingClientRect().left,logBottom:log.bottom};
   });
-  assert.ok(standalone.expanded&&!standalone.selected&&!standalone.waypoint&&standalone.contextHidden&&standalone.focusHidden&&standalone.text.includes('READY')&&standalone.launcherHidden&&standalone.logLeft<standalone.warpLeft&&standalone.logBottom<=386,JSON.stringify(standalone));
+  assert.ok(standalone.expanded&&!standalone.selected&&!standalone.waypoint&&standalone.contextHidden&&standalone.focusHidden&&standalone.text.includes('READY')&&standalone.launcherHidden&&standalone.logLeft>standalone.warpLeft&&standalone.logBottom<=386,JSON.stringify(standalone));
   assert.equal(await page.locator('#secondaryAction').textContent(),'Close Terminal');
   await page.locator('#secondaryAction').click();await page.waitForTimeout(350);assert.equal(await page.locator('#targetCard').isVisible(),false);
   const layouts=[];

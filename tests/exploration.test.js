@@ -49,3 +49,14 @@ test('grid starts hidden for new and legacy preferences and remembers an explici
   assert.equal(normalizeSettings({showGrid:true}).showGrid,true);
   assert.equal(normalizeSettings({showGrid:false}).showGrid,false);
 });
+
+test('device sizing preferences migrate safely, bound dimensions and keep resize arrows opt-in',()=>{
+  const legacy=normalizeSettings({version:10});
+  assert.equal(legacy.dashboardHeight,80);assert.equal(legacy.terminalWidthScale,100);assert.equal(legacy.terminalHeightScale,100);
+  assert.equal(legacy.dashboardResizeHandle,false);assert.equal(legacy.terminalResizeHandles,false);
+  const saved=normalizeSettings({dashboardHeight:180,terminalWidthScale:125,terminalHeightScale:80,dashboardResizeHandle:true,terminalResizeHandles:true});
+  assert.equal(saved.dashboardHeight,180);assert.equal(saved.terminalWidthScale,125);assert.equal(saved.terminalHeightScale,80);
+  assert.equal(saved.dashboardResizeHandle,true);assert.equal(saved.terminalResizeHandles,true);
+  const invalid=normalizeSettings({dashboardHeight:999,terminalWidthScale:NaN,terminalHeightScale:-3,dashboardResizeHandle:'true'});
+  assert.equal(invalid.dashboardHeight,260);assert.equal(invalid.terminalWidthScale,100);assert.equal(invalid.terminalHeightScale,40);assert.equal(invalid.dashboardResizeHandle,false);
+});

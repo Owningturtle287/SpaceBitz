@@ -47,7 +47,7 @@ export async function checkRelease1121(page,engine){
       const card=document.getElementById('targetCard'),r=card.getBoundingClientRect(),log=document.getElementById('journalButton').getBoundingClientRect(),screen=document.getElementById('terminalScreen'),out=document.getElementById('terminalOutput');
       return {bottom:r.bottom,right:r.right,top:r.top,width:r.width,logBottom:log.bottom,logRight:log.right,columns:getComputedStyle(out).gridTemplateColumns.split(' ').length,overflow:screen.scrollWidth-screen.clientWidth,fonts:parseFloat(getComputedStyle(out).fontSize),text:out.textContent};
     });
-    assert.ok(Math.abs(layout.bottom-(viewport.height-4))<=1);assert.ok(layout.top>=60&&layout.logBottom<=viewport.height-4&&layout.logRight<layout.right-layout.width,JSON.stringify({viewport,layout}));assert.equal(layout.columns,2);assert.ok(layout.overflow<=1);assert.ok(layout.text.startsWith('Object Data\n')&&!layout.text.includes('SPACEBITZ /'));assert.ok(layout.text.includes('DISTANCE FROM SHIP'));
+    assert.ok(Math.abs(layout.bottom-(viewport.height-2))<=1);assert.ok(layout.top>=60&&layout.logBottom<=viewport.height-2&&layout.logRight<layout.right-layout.width,JSON.stringify({viewport,layout}));assert.equal(layout.columns,2);assert.ok(layout.overflow<=1);assert.ok(layout.text.startsWith('Object Data\n')&&!layout.text.includes('SPACEBITZ /'));assert.ok(layout.text.includes('DISTANCE FROM SHIP'));
     await page.screenshot({path:`.qa/${engine}-1121-terminal-${viewport.width}.png`});
   }
   await page.setViewportSize({width:844,height:390});

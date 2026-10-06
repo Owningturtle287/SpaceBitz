@@ -32,9 +32,9 @@ export async function checkRelease1126(page,engine){
         return {base,card,joy,nav,warp,log,term,transparent:getComputedStyle(document.getElementById('dashboardBase')).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(document.getElementById('dashboardBase')).backgroundImage==='none',contained:controls.every(inside)&&(!visible||expanded||inside(card)),clear:controls.every((a,i)=>controls.slice(i+1).every(b=>!overlap(a,b)))&&(!visible||controls.every(a=>!overlap(a,card))),right:innerWidth-card.right,aux:document.querySelectorAll('.dashboard-controls').length,launcherHidden:getComputedStyle(document.getElementById('terminalButton')).visibility==='hidden'};
       });
       assert.ok(fit.transparent&&fit.aux===0&&fit.contained&&fit.clear,JSON.stringify({viewport,phase,fit}));
-      if(phase==='closed')assert.ok(fit.base.height<=76&&fit.term.width===44&&fit.log.width===44&&fit.term.left>fit.log.right&&viewport.width-fit.term.right<=4,JSON.stringify(fit));
+      if(phase==='closed')assert.ok(fit.base.height<=84&&fit.term.width===44&&fit.log.width===44&&fit.term.left>fit.log.right&&viewport.width-fit.term.right<=4,JSON.stringify(fit));
       else{
-        assert.ok(fit.right<=4&&fit.right>=0&&fit.log.right<=fit.warp.left&&Math.abs((fit.log.top+fit.log.bottom)/2-(fit.warp.top+fit.warp.bottom)/2)<1&&fit.launcherHidden,JSON.stringify(fit));
+        assert.ok(fit.right<=4&&fit.right>=0&&fit.warp.right<=fit.log.left&&Math.abs((fit.log.top+fit.log.bottom)/2-(fit.warp.top+fit.warp.bottom)/2)<1&&fit.launcherHidden,JSON.stringify(fit));
         assert.equal(fit.card.width,phase==='collapsed'?240:Math.min(264,viewport.width-(viewport.width<700&&viewport.height>viewport.width?124:0)));
         assert.ok(fit.base.height<130,JSON.stringify(fit));
       }

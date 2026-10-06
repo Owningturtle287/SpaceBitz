@@ -6,6 +6,7 @@ import {checkRelease1122} from './check-release1122.mjs';
 import {checkRelease1123} from './check-release1123.mjs';
 import {checkRelease1125} from './check-release1125.mjs';
 import {checkRelease1126} from './check-release1126.mjs';
+import {checkRelease1127} from './check-release1127.mjs';
 import {checkRelease1124} from './check-release1124.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -100,7 +101,7 @@ try{
   for(const fill of controls.panels)assert.match(fill,/, 0\.25\)$/,fill);
   assert.ok(!controls.thumb.startsWith('rgba'),controls.thumb);
   assert.ok(controls.joy.left<100&&390-controls.joy.bottom<=7);
-  assert.equal(controls.warp.width,controls.center.width);assert.equal(controls.warp.height,controls.center.height);
+  assert.ok(controls.warp.width>controls.center.width&&controls.warp.height>controls.center.height);
   assert.ok(controls.warp.left>=0&&controls.warp.right<=844&&controls.warp.bottom<=390);
   assert.ok(controls.target.right<=844&&controls.target.bottom<=390&&controls.target.width<=430);
   await page.locator('#settingsOpen').click();
@@ -510,5 +511,6 @@ try{
   const release1123=await checkRelease1123(page,engine);
   const release1125=await checkRelease1125(page,engine);
   const release1126=await checkRelease1126(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release1127=await checkRelease1127(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,release1127,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

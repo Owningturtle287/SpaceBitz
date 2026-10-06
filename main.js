@@ -79,6 +79,11 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.12.7',items:[
+    'Warp Drive and Log keep their left-to-right order while sliding beside the terminal, with larger flight controls and a lower dock near the right edge.',
+    'Dashboard height and terminal width/height scaling are saved in Settings. Dashboard and terminal resize arrows are independently opt-in and hidden by default.',
+    'Rounded lower dashboard corners respect phone safe areas. Date/time moves left; the system chart and its left-side Fit control move right beside Settings. Opening the chart or terminal closes the other.'
+  ]},
   {version:'1.12.6',items:[
     'Lowered flight controls into one transparent dashboard with a stepped metal rim; portrait controls remain inside a compact second row.',
     'A narrow terminal opens at its minimum width beside the screen edge. Larger Terminal/Log launchers swap corners; Log slides beside Warp Drive when a terminal is visible.',
@@ -461,6 +466,7 @@ function applyOrientationPreference(){
 }
 function fit() {
   const rect = canvas.getBoundingClientRect();
+  if(rect.width!==state.width||rect.height!==state.height)state.terminalSize=null;
   state.width=rect.width; state.height=rect.height;
   state.dpr=settings.resolution==='auto'?Math.min(window.devicePixelRatio||1,2):Number(settings.resolution);
   canvas.width=Math.round(rect.width*state.dpr); canvas.height=Math.round(rect.height*state.dpr);
@@ -628,7 +634,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
 }
 
 function beginSelection(){
-  state.coordinateTap=null;state.contextPlacement=null;
+  closeSystemChart();state.coordinateTap=null;state.contextPlacement=null;
   const row=$('contextActions').querySelector('.context-action-row');row.style.transition='none';
   $('contextActions').classList.remove('ready');
   $('contextActions').hidden=false;
@@ -808,11 +814,16 @@ $('homeButton').addEventListener('pointerup',finishCenterDrag);
 $('homeButton').addEventListener('pointercancel',finishCenterDrag);
 $('journalButton').onclick=showJournal;
 $('zoneToggle').onclick=()=>{settings.zone=!settings.zone;saveSettings();updateUI();};
+function closeSystemChart(){
+  $('systemChart').classList.remove('open');$('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');
+}
 $('systemChartToggle').onclick=()=>{
   if(state.scene==='surface'){select(findBody(state.save.landed));showDetails(state.selected);return;}
   const panel=$('systemChart'),content=$('systemChartContent'),open=!panel.classList.contains('open');
+  if(open){state.terminalExpanded=false;state.terminal=null;$('terminalInput').blur();setTerminalKeyboard(false);}
   panel.classList.toggle('open',open);content.hidden=!open;
   $('systemChartToggle').setAttribute('aria-expanded',String(open));
+  updateUI();
 };
 function zoom(factor){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(state.autopilot)state.autopilot.manualZoom=true;state.zoom=clamp(state.zoom*factor,state.scene==='system'?systemMinZoom(state.system,state.width,state.height,state.save.days):state.scene==='surface'?.65:.34,state.scene==='system'?SYSTEM_MAX_ZOOM:2.4);if(following&&!state.followPanRemaining)state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};}
 
@@ -888,7 +899,7 @@ function updateUI() {
   if(state.warpUntil){title='WARP DRIVE';action='ENGAGING';destination=null;}
   $('cancelTravel').hidden=false;
   const hasTarget=Boolean(sel||state.waypoint||traveling);
-  $('targetCard').hidden=!hasTarget&&!state.terminalExpanded;$('contextActions').hidden=!hasTarget||Boolean(state.warpUntil);
+  $('targetCard').hidden=$('systemChart').classList.contains('open')||(!hasTarget&&!state.terminalExpanded);$('contextActions').hidden=!hasTarget||Boolean(state.warpUntil);
   $('targetName').textContent=title||'Ship Terminal';$('focusSelected').hidden=!sel&&!state.waypoint;
   $('targetStatus').textContent=state.waypoint?'Coordinate selected':scene==='chart'&&sel?.seed===state.save.homeSeed||scene==='system'&&sel?.kind==='star'&&state.save.currentSystem===state.save.homeSeed?'Home System':sel?.id===state.save.homePlanet?'Home World':traveling?'Course active':sel?.familyLabel||sel?.kind||'Target selected';
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
@@ -963,13 +974,14 @@ function buildTerminal(){
   });$('terminalScreen').scrollTop=0;
 }
 function showDetails(body){
+  closeSystemChart();
   if(body&&body!==state.selected&&body.kind!=='coordinate')select(body);
   state.terminalExpanded=true;buildTerminal();updateUI();
 }
 function toggleTerminal(){
   if(!state.save)return;
   state.terminalExpanded=!state.terminalExpanded;
-  if(state.terminalExpanded)buildTerminal();
+  if(state.terminalExpanded){closeSystemChart();buildTerminal();}
   else {$('terminalInput').blur();setTerminalKeyboard(false);}
   updateUI();
 }
@@ -1053,41 +1065,50 @@ let terminalResize=null;
 function terminalLimits(){
   const portrait=innerWidth<700&&innerHeight>innerWidth,joyRect=$('joystick').getBoundingClientRect();
   const reserve=portrait?124:Math.max(innerWidth<700?300:330,joyRect.width?joyRect.right+220:0),maxWidth=Math.max(200,innerWidth-reserve);
-  return {minWidth:Math.min(264,maxWidth),maxWidth,maxHeight:Math.max(170,innerHeight-(portrait?220:115))};
+  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,innerHeight-(portrait?220:115))};
 }
 function applyTerminalSize(){
   const dock=$('terminalDock'),limits=terminalLimits();
   dock.style.setProperty('--terminal-max-width',limits.maxWidth+'px');
-  dock.style.setProperty('--terminal-collapsed-width',Math.min(240,limits.maxWidth)+'px');
-  const expanded=clamp(state.terminalSize?.width??limits.minWidth,limits.minWidth,limits.maxWidth);
+  const collapsed=clamp(240*settings.terminalWidthScale/100,limits.minWidth,limits.maxWidth);
+  dock.style.setProperty('--terminal-collapsed-width',collapsed+'px');
+  const expanded=clamp(state.terminalSize?.width??264*settings.terminalWidthScale/100,limits.minWidth,limits.maxWidth);
   dock.style.setProperty('--terminal-expanded-width',expanded+'px');
-  const terminalWidth=$('targetCard').hidden?94:state.terminalExpanded?expanded:Math.min(240,limits.maxWidth);
-  document.documentElement.style.setProperty('--deck-joy-max',Math.max(8,innerWidth-terminalWidth-($('targetCard').hidden?190:260))+'px');
-  if(state.terminalSize){
-    dock.style.setProperty('--terminal-width',clamp(state.terminalSize.width,limits.minWidth,limits.maxWidth)+'px');
-    dock.style.setProperty('--terminal-user-height',clamp(state.terminalSize.height,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight)+'px');
-  }
-  for(const id of ['terminalResizeTop','terminalResizeLeft'])$(id).hidden=!state.terminalExpanded;
+  const terminalWidth=$('targetCard').hidden?94:state.terminalExpanded?expanded:collapsed;
+  document.documentElement.style.setProperty('--deck-joy-max',Math.max(8,innerWidth-terminalWidth-($('targetCard').hidden?205:265))+'px');
+  const height=clamp(state.terminalSize?.height??innerHeight*.7*settings.terminalHeightScale/100,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight);
+  dock.style.setProperty('--terminal-user-height',height+'px');
+  for(const id of ['terminalResizeTop','terminalResizeLeft'])$(id).hidden=!state.terminalExpanded||!settings.terminalResizeHandles;
 }
 function resizeTerminal(width,height){
   const limits=terminalLimits();state.terminalSize={width:clamp(width,limits.minWidth,limits.maxWidth),height:clamp(height,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight)};
+  settings.terminalWidthScale=clamp(state.terminalSize.width/264*100,60,240);settings.terminalHeightScale=clamp(state.terminalSize.height/(innerHeight*.7)*100,40,130);
   applyTerminalSize();scheduleTerminalLayout();updateInputCaret();
 }
 for(const [id,axis] of [['terminalResizeTop','height'],['terminalResizeLeft','width']]){
   const handle=$(id);
-  handle.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();e.stopPropagation();handle.setPointerCapture(e.pointerId);const r=$('targetCard').getBoundingClientRect();terminalResize={id:e.pointerId,axis,x:e.clientX,y:e.clientY,width:r.width,height:r.height};$('terminalDock').classList.add('resizing');};
+  handle.onpointerdown=e=>{if(e.button!==0||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();handle.setPointerCapture(e.pointerId);const r=$('targetCard').getBoundingClientRect();terminalResize={id:e.pointerId,axis,x:e.clientX,y:e.clientY,width:r.width,height:r.height};$('terminalDock').classList.add('resizing');};
   handle.onpointermove=e=>{if(!terminalResize||e.pointerId!==terminalResize.id)return;const r=terminalResize;resizeTerminal(r.width+(axis==='width'?r.x-e.clientX:0),r.height+(axis==='height'?r.y-e.clientY:0));};
-  const finish=e=>{if(e.pointerId!==terminalResize?.id)return;terminalResize=null;$('terminalDock').classList.remove('resizing');scheduleTerminalLayout();};
+  const finish=e=>{if(e.pointerId!==terminalResize?.id)return;terminalResize=null;$('terminalDock').classList.remove('resizing');saveSettings();scheduleTerminalLayout();};
   handle.onpointerup=finish;handle.onpointercancel=finish;
-  handle.onkeydown=e=>{const direction={ArrowLeft:1,ArrowUp:1,ArrowRight:-1,ArrowDown:-1}[e.key];if(!direction)return;e.preventDefault();e.stopPropagation();const r=$('targetCard').getBoundingClientRect();resizeTerminal(r.width+(axis==='width'?direction*12:0),r.height+(axis==='height'?direction*12:0));};
+  handle.onkeydown=e=>{const direction={ArrowLeft:1,ArrowUp:1,ArrowRight:-1,ArrowDown:-1}[e.key];if(!direction||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();const r=$('targetCard').getBoundingClientRect();resizeTerminal(r.width+(axis==='width'?direction*12:0),r.height+(axis==='height'?direction*12:0));saveSettings();};
 }
+let dashboardResize=null;
+const dashboardHandle=$('dashboardResize');
+dashboardHandle.onpointerdown=e=>{if(e.button!==0||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();dashboardHandle.setPointerCapture(e.pointerId);dashboardResize={id:e.pointerId,y:e.clientY,height:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'))};};
+dashboardHandle.onpointermove=e=>{if(e.pointerId!==dashboardResize?.id)return;settings.dashboardHeight=clamp(dashboardResize.height+dashboardResize.y-e.clientY,80,260);layoutDashboard();applyCenterButtonLayout();};
+const finishDashboardResize=e=>{if(e.pointerId!==dashboardResize?.id)return;dashboardResize=null;saveSettings();};
+dashboardHandle.onpointerup=finishDashboardResize;dashboardHandle.onpointercancel=finishDashboardResize;
+dashboardHandle.onkeydown=e=>{const direction={ArrowUp:1,ArrowDown:-1}[e.key];if(!direction||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();settings.dashboardHeight=clamp(settings.dashboardHeight+direction*12,80,260);saveSettings();layoutDashboard();applyCenterButtonLayout();};
 function layoutDashboard(){
   const card=$('targetCard'),compact=innerWidth<700&&innerHeight>innerWidth&&!card.hidden;
   document.body.classList.toggle('deck-compact',compact);
-  let height=compact?124:settings.centerButton==='above'?128:72;
+  let height=compact?124:settings.centerButton==='above'?136:80;
   if(!compact)height+=Math.max(0,settings.joyOffset||0);
   if(!card.hidden&&!state.terminalExpanded)height=Math.max(height,card.getBoundingClientRect().height+8);
+  height=Math.max(height,Math.min(settings.dashboardHeight,Math.max(height,innerHeight*.5)));
   document.documentElement.style.setProperty('--dashboard-height',height+'px');
+  dashboardHandle.hidden=!settings.dashboardResizeHandle;
 }
 function onDashboard(x,y){
   if($('app').hidden)return false;
@@ -1162,11 +1183,12 @@ function openSettings(){
     else if(kind==='range'){input.min=options[0];input.max=options[1];input.step=options[2];input.value=settings[key];}
     else input.value=settings[key];
     const value=document.createElement('output');
-    const sync=()=>{if(kind==='range')value.textContent=key==='volume'?Math.round(settings[key]*100)+'%':String(settings[key]);};sync();
+    const sync=()=>{if(kind==='range')value.textContent=key==='volume'?Math.round(settings[key]*100)+'%':String(Math.round(settings[key]*100)/100);};sync();
     input.addEventListener(kind==='range'?'input':'change',()=>{
       settings[key]=kind==='checkbox'?input.checked:typeof DEFAULT_SETTINGS[key]==='number'?Number(input.value):input.value;
       if(key==='pixelSize')terrain.clear();
       if(key==='timeMode'&&state.save&&settings.timeMode==='realtime')state.save.days=currentDays();
+      if(key==='terminalWidthScale'||key==='terminalHeightScale')state.terminalSize=null;
       sync();saveSettings();applySettings();
       if(key==='music'||key==='volume')applyMusicSetting();
       if(key==='orientation')applyOrientationPreference();
@@ -1207,6 +1229,14 @@ function openSettings(){
   control('joyX','Joystick position (%)','range',[8,92,1]);control('joyOffset','Joystick height (px)','range',[-70,120,1]);
   control('centerButton','Center button','select',[['right','Right of joystick'],['above','Above joystick'],['custom','Custom · drag in game'],['hidden','Hidden']]);
   control('cheats','Instant travel','checkbox');
+
+  heading('Dashboard & terminal');
+  control('dashboardHeight','Dashboard height (px)','range',[80,260,2]);
+  control('dashboardResizeHandle','Show dashboard resize arrow','checkbox');
+  control('terminalWidthScale','Terminal width (%)','range',[60,240,5]);
+  control('terminalHeightScale','Terminal height (%)','range',[40,130,5]);
+  control('terminalResizeHandles','Show terminal resize arrows','checkbox');
+  const sizingNote=document.createElement('p');sizingNote.className='settings-intro';sizingNote.textContent='Sizes stay within the screen. Controls and the open keyboard set the minimum usable height. Resize arrows are optional; dragging them saves your preferred size.';box.append(sizingNote);
 
   const details=document.createElement('details');details.className='changelog-details';
   const summary=document.createElement('summary');summary.textContent='Change log';details.append(summary);
