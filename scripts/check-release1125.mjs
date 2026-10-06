@@ -71,6 +71,7 @@ export async function checkRelease1125(page,engine){
     return {capsAlign:Math.abs(caps.left-a.left),slashAlign:Math.abs(slash.left-l.left),deleteRight:Math.abs(del.right-bar.right),cursor:getComputedStyle(document.getElementById('terminalInputCaret')).animationName,cursorVisible:!document.getElementById('terminalInputCaret').hidden};
   });assert.ok(keyboard.capsAlign<1&&keyboard.slashAlign<1&&keyboard.deleteRight<1&&keyboard.cursor==='terminal-blink'&&keyboard.cursorVisible,JSON.stringify(keyboard));
   await page.locator('[data-key="Enter"]').click();
+  await page.evaluate(()=>{const g=window.__game;g.settings.terminalResizeHandles=true;g.updateUI();});
   const before=await page.locator('#targetCard').boundingBox(),left=await page.locator('#terminalResizeLeft').boundingBox();
   await page.mouse.move(left.x+left.width/2,left.y+left.height/2);await page.mouse.down();await page.mouse.move(left.x+left.width/2-90,left.y+left.height/2,{steps:6});await page.mouse.up();await page.waitForTimeout(400);
   const wider=await page.locator('#targetCard').boundingBox();assert.ok(Math.abs(wider.width-before.width-90)<2,'Width handle did not widen');
@@ -107,6 +108,6 @@ export async function checkRelease1125(page,engine){
   assert.ok(slide.mid<slide.start&&slide.mid>slide.end,JSON.stringify(slide));
   await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.applySettings();document.getElementById('terminalInput').focus();});
   assert.equal(await page.locator('#terminalInputCaret').evaluate(e=>getComputedStyle(e).animationName),'none');
-  await page.locator('[data-key="Enter"]').click();await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.reducedMotion=false;g.applySettings();});
+  await page.locator('[data-key="Enter"]').click();await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.reducedMotion=false;g.settings.terminalWidthScale=g.settings.terminalHeightScale=100;g.settings.terminalResizeHandles=false;g.state.terminalSize=null;g.applySettings();});
   return {anchors,inspection,resume,dashboardBlocksPicking:true,keyboard,rapidKeys:24,heldRepeat:true,resized:{before,narrower,shorter},layouts,slide};
 }
