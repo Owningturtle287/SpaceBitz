@@ -11,6 +11,7 @@ import {checkRelease1128} from './check-release1128.mjs';
 import {checkRelease1129} from './check-release1129.mjs';
 import {checkRelease11210} from './check-release11210.mjs';
 import {checkRelease11211} from './check-release11211.mjs';
+import {checkRelease11212} from './check-release11212.mjs';
 import {checkRelease1124} from './check-release1124.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -33,7 +34,7 @@ const browser=await ({chromium,webkit}[engine]).launch({headless:true,...(proces
 try{
   const page=await browser.newPage({viewport:{width:844,height:390},deviceScaleFactor:2,hasTouch:true,serviceWorkers:'block'});
   page.setDefaultTimeout(15000);
-  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  const errors=[];page.on('pageerror',error=>{errors.push(error.message);console.error('Game error:',error.message);});
   await page.addInitScript(()=>localStorage.setItem('spacebitz:field:settings',JSON.stringify({music:false,paused:true,controls:'touch',resolution:'2',showCoords:true})));
   await page.route('**/main.js',async route=>{
     const response=await route.fetch();let source=await response.text();
@@ -312,7 +313,7 @@ try{
         ctx.getImageData(0,0,1,1);times.push(performance.now()-t);
       }
       const sorted=times.slice(1).sort((a,b)=>a-b);reports.push({name:c.name,coldMs:times[0],p95Ms:sorted[Math.floor(sorted.length*.95)]});
-      if(reports.at(-1).p95Ms>250)throw new Error(`Rendering stalled: ${JSON.stringify(reports.at(-1))}`);
+      if(reports.at(-1).p95Ms>50)throw new Error(`Rendering stalled: ${JSON.stringify(reports.at(-1))}`);
       if(c.name==='Earth-0.85'){
         const data=pixels();let white=0,transparent=0;
         for(let i=0;i<data.length;i+=4){if(data[i]>245&&data[i+1]>245&&data[i+2]>245)white++;if(data[i+3]!==255)transparent++;}
@@ -424,7 +425,7 @@ try{
     }
     g.enterChart();for(let i=0;i<30;i++){s.camera={x:i*300,y:i*200};g.backdrop(1000);g.drawChart(1000);}
     g.showDetails(s.selected);g.closeModal();
-    times.sort((a,b)=>a-b);const stats={frames:times.length,p95Ms:times[Math.floor(times.length*.95)],cache:stellarCacheStats()};if(stats.cache.frames>4||stats.p95Ms>250)throw Error('v2 stellar performance limit exceeded '+JSON.stringify(stats));return stats;
+    times.sort((a,b)=>a-b);const stats={frames:times.length,p95Ms:times[Math.floor(times.length*.95)],cache:stellarCacheStats()};if(stats.cache.frames>4||stats.p95Ms>50)throw Error('v2 stellar performance limit exceeded '+JSON.stringify(stats));return stats;
   });
   const stellar=await page.evaluate(async()=>{
     const {paintStellarSurface,stellarProminences}=await import('/stellar.js'),{makeSystem}=await import('/model.js');
@@ -501,7 +502,7 @@ try{
     }
     times.sort((a,b)=>a-b);
     const stats={frames:1200,elapsedMs:performance.now()-started,p95Ms:times[1140],maxMs:times.at(-1),stellar:stellarCacheStats(),celestial:celestialCacheStats(),rings:ringCacheStats(),weather:giantWeatherCacheStats()};
-    if(stats.p95Ms>250||stats.stellar.frames>4||stats.celestial.frames>160||stats.celestial.maps>48||stats.rings.frames>24||Object.values(stats.weather).some(n=>n>6))throw new Error('Soak exceeded render/cache bounds '+JSON.stringify(stats));
+    if(stats.p95Ms>50||stats.stellar.frames>4||stats.celestial.frames>160||stats.celestial.maps>48||stats.rings.frames>24||Object.values(stats.weather).some(n=>n>6))throw new Error('Soak exceeded render/cache bounds '+JSON.stringify(stats));
     return stats;
   });
   const barren=await page.evaluate(async()=>{
@@ -521,5 +522,6 @@ try{
   const release1129=await checkRelease1129(page,engine);
   const release11210=await checkRelease11210(page,engine);
   const release11211=await checkRelease11211(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,release1127,release1128,release1129,release11210,release11211,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release11212=await checkRelease11212(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,release1127,release1128,release1129,release11210,release11211,release11212,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

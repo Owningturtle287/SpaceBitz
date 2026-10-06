@@ -219,8 +219,8 @@ viewport clipping. Reduced motion freezes surface/cloud/magnetosphere motion and
 shows terminal text immediately with a static cursor. Giant-planet weather and
 other existing bounded renderer caches retain their earlier limits.
 
-All objects use an opaque green terminal with name, Focus View, Info, status and
-distance. Info expands upward and types telemetry with brief section pauses;
+All objects use an opaque green terminal with name, Focus View, Open Terminal, status and
+distance. Open Terminal expands upward and types telemetry with brief section pauses;
 its own screen scrolls and smoothly returns to the beginning when typing finishes.
 Manual wheel, touch or keyboard reading interrupts this return. The narrower
 terminal reveals upward from the bottom, with a compact header and two columns;

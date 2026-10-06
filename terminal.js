@@ -1,6 +1,7 @@
 import {stellarRows,years} from './star-info.js';
 import {habitableZone,orbitalElements} from './model.js';
 import {formatCoordinates,formatDistance,formatSystemKm,formatDiameter} from './scale.js';
+import {bodyKind,bodyLabel} from './body-classification.js';
 const number=(v,d=3)=>Number.isFinite(v)?v.toLocaleString('en-US',{maximumFractionDigits:d}):'Unknown';
 export function rotationText(days){const seconds=Math.abs(days)*86400;return seconds<60?number(seconds,6)+' s':seconds<86400?number(seconds/3600)+' h':number(seconds/86400)+' days';}
 export function terminalLines(object,system,context={}){
@@ -18,15 +19,15 @@ export function terminalLines(object,system,context={}){
     add('MULTIPLICITY',system.multiplicity||'Single');
     add('ORBITAL RELATIONSHIP',system.architecture||'Single-star orbits');
     add('COMPANION RELATIONSHIP',object.id===system.star.id?'Primary': 'Companion of '+system.star.name);
-    add('PLANET COUNT',system.planets.length);
     if(object.subtype)add('NEUTRON SUBTYPE',object.subtype);
     if(object.remnantAgeYears)add('REMNANT AGE',years(object.remnantAgeYears));
     if(object.fieldGauss)add('MAGNETIC FIELD',object.fieldGauss.toExponential(2)+' G');
     if(object.cloudChemistry)add('ATMOSPHERE',object.cloudChemistry);
     for(const pair of system.binaries||[])if(pair.members.includes(object.id)){add('PAIR '+pair.id.split(':').at(-1).toUpperCase(),number(pair.au)+' AU / e '+number(pair.eccentricity)+' / '+number(pair.orbitalInclination)+' deg / '+number(pair.period)+' days / q '+number(pair.mu/(1-pair.mu)));add('PAIR MEMBERS',pair.members.map(id=>system.stars.find(star=>star.id===id)?.name||id).join(' + '));}
-  }else if(['planet','moon','dwarf-planet'].includes(object.kind)){
+  }else if(['planet','moon','dwarf-planet'].includes(bodyKind(object))){
     const orbit=orbitalElements(object,days);
-    add('TYPE',object.kind+' / '+object.type);add('DIAMETER',formatDiameter(object.diameter));add('RADIUS',formatDiameter(object.diameter/2));
+    add('TYPE',bodyLabel(object)+' / '+object.type);add('DIAMETER',formatDiameter(object.diameter));add('RADIUS',formatDiameter(object.diameter/2));
+    if(bodyKind(object)==='dwarf-planet')add('CLASSIFICATION',object.id.startsWith('sol:')?'IAU dwarf planet / not orbit-clearing / not a satellite':'Model dwarf-planet analogue / round / not orbit-clearing');
     add('ORBIT PERIOD',number(object.period)+' days');add('ROTATION PERIOD',rotationText(object.rotationDays)+(object.rotationDays<0?' / retrograde':''));
     add('SEMIMAJOR AXIS',object.kind==='moon'?formatSystemKm(object.orbitKm):formatDistance(orbit.a,'system'));
     add('ECCENTRICITY',number(orbit.e,5));add('INCLINATION',number(orbit.inclination*180/Math.PI)+' deg');

@@ -1,6 +1,7 @@
 // A bounded visual model of zonal advection and local vortices, not a GCM.
 // Weather timing is accelerated independently of astronomical orbital time.
 import {TAU,rotationAngle} from './model.js';
+import {bodyCacheKey} from './body-cache.js';
 import {giantColor} from './giants.js';
 import {drawImageInView} from './rendering.js';
 
@@ -35,17 +36,17 @@ export function giantStorms(profile,seconds=0){
 }
 
 function cloudMap(body){
-  if(maps.has(body.id))return maps.get(body.id);
+  const key=bodyCacheKey(body);if(maps.has(key))return maps.get(key);
   const width=320,height=160,pixels=new Uint8ClampedArray(width*height*3),profile={...body.atmosphere,storms:[]};
   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
     const color=giantColor(profile,x/width*TAU,(y/height-.5)*Math.PI),i=(y*width+x)*3;
     for(let k=0;k<3;k++)pixels[i+k]=Math.round(color[k]/4)*4;
   }
-  return bounded(maps,body.id,{width,height,pixels});
+  return bounded(maps,key,{width,height,pixels});
 }
 
 function sphere(body,size){
-  const key=body.id+':'+size;if(geometry.has(key))return geometry.get(key);
+  const key=bodyCacheKey(body)+':'+size;if(geometry.has(key))return geometry.get(key);
   const count=size*size,lat=new Float32Array(count),lon=new Float32Array(count),flow=new Float32Array(count),normal=new Float32Array(count*3),indices=[];
   const ca=Math.cos(body.atmosphere.tilt),sa=Math.sin(body.atmosphere.tilt);
   for(let y=0;y<size;y++)for(let x=0;x<size;x++){
@@ -129,7 +130,7 @@ export function paintGiantAtmosphere(ctx,body,x,y,r,seconds,days,worldPos={x:0,y
   if(!body.atmosphere||r<1.5||x+r<0||x-r>width||y+r<0||y-r>height)return;
   const time=reducedMotion?0:Math.max(0,seconds),rotation=reducedMotion?0:rotationAngle(body,days),size=r<56?96:128;
   const light=Math.round(Math.atan2(-worldPos.y,-worldPos.x)/TAU*48),lightAngle=light/48*TAU;
-  const tick=Math.floor(time*FPS),key=body.id+':'+size+':'+light+':'+reducedMotion;
+  const tick=Math.floor(time*FPS),key=bodyCacheKey(body)+':'+size+':'+light+':'+reducedMotion;
   let pair=frames.get(key);
   if(!pair||pair.tick!==tick||Math.abs(wrap(rotation-pair.rotation))>.025){
     const current=pair?.tick===tick-1&&Math.abs(wrap(rotation-pair.rotation))<=.025?pair.next:makeFrame(body,tick/FPS,rotation,lightAngle,size);

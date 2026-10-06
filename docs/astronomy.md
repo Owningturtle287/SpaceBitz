@@ -59,3 +59,12 @@ The Sol chart now contains eight planets, Pluto and nineteen explorable moons. S
 ## Rendering limits
 
 Animated giant maps are 320×160; projected disks use 96×96 or 128×128 pixels and six smoothly blended keyframes per second. Weather caches hold at most six cloud maps, six sphere geometries and six frame pairs. Rocky/icy disks retain 80×80. All use nearest-neighbor display. Ring rasters are 384×384 front/back layers, cropped to the viewport before drawing at extreme zoom. Static body caches remain bounded to 48 maps, 160 frames and 24 ring pairs. Tests check cloud seams, storm lifetimes and spin, continuous renewal, reduced-motion rendering, physical ring radii, barycentric motion, save geometry, cache limits, every added landing/launch, and browser rendering at up to 128× zoom, including a 1,200-frame multi-system stress run.
+
+
+## Planet and dwarf-planet classification
+
+The [IAU B5 definition](https://ssd.jpl.nasa.gov/planets/def.html) distinguishes planets from dwarf planets by orbital clearing, not a diameter cutoff. A dwarf planet directly orbits the Sun, is nearly round under its own gravity, has not cleared its orbital neighbourhood, and is not a satellite. [NASA lists](https://science.nasa.gov/dwarf-planets/) five recognized dwarf planets: Ceres, Pluto, Haumea, Makemake and Eris. Recognition of candidates remains distinct from a confirmed classification.
+
+SpaceBitz currently simulates Pluto among those five. It is classified as a dwarf planet in selected-object status, chart accessibility labels, terminal records and separate system counts. Charon remains a moon. The classification helper recognizes all five if included in a Sol model; it does not add new bodies to existing voyages. Round large moons remain moons. Procedural worlds are not reclassified merely because of their size: the present generator does not establish orbital-clearing evidence. Future synthetic bodies can supply explicit roundness, direct stellar orbit and clearing metadata; their dwarf-planet analogue status is a model inference, not an IAU designation.
+
+Planet count excludes dwarf planets; dwarf-planet and moon counts are independent. Rendering, landing and moon-host navigation support both planets and dwarf planets. Existing identities, element tables and seeded orbital geometry are retained. The full planet/moon science expansion remains a later release.

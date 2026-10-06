@@ -1,8 +1,10 @@
+import {createMusicController} from './audio.js';
+import {CHANGELOG} from './changelog.js';
 import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
   habitableZone, makeSystem, bodyPosition, galaxyStars, starName, starAppearance, orbitPoint, orbitalElements,stellarPositions,orbitCenter} from './model.js';
 import {defaults,POPULATIONS,validateGeneration,checkedGeneration,percentUnits} from './universe.js';
-import {terminalLines,typedLength} from './terminal.js';
-import {contextPosition,isCoordinateDoubleTap} from './target-ui.js';
+import {createTerminalDevice} from './terminal-device.js';
+import {isCoordinateDoubleTap} from './target-ui.js';
 import {rarityPages} from './rarity-ui.js';
 import {paintBrownAtmosphere,paintBrownGlow,paintCompact} from './substellar.js';
 import {chartStyle,paintHomeMarker,paintPixelFrame} from './presentation.js';
@@ -15,16 +17,19 @@ import {ringSprites,paintRings} from './giants.js';
 import {paintGiantAtmosphere} from './weather.js';
 import {paintStellarSurface,chartBrightness} from './stellar.js';
 import {canvasContextOptions,clearFrame,backgroundPosition,strokeEllipse,circleGeometry,fillAnnulus,fillDisk,drawImageInView,lineInView} from './rendering.js';
-import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter,SYSTEM_VISUAL_SCALE,SYSTEM_MIN_ZOOM,SYSTEM_SHIP_SIZE,SYSTEM_MAX_ZOOM,SHIP_FOCUS_ZOOM} from './scale.js';
+import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatDiameter,SYSTEM_VISUAL_SCALE,SYSTEM_SHIP_SIZE,SYSTEM_MAX_ZOOM,SHIP_FOCUS_ZOOM} from './scale.js';
 import {migrateLayout,systemFitZoom,systemMinZoom,travelSpeed,centerZoomAt,cameraViewAt,starApproachPoint,manualSpeed,outermostPlanet,systemDrive,advanceToArrival} from './navigation.js';
 
-import {importVoyage} from './saves.js';
+import {importVoyage,restoreVoyage} from './saves.js';
+import {readVoyages,writeVoyages,persistVoyage,deleteVoyage,saveBeforeExit} from './voyage-storage.js';
+import {bodyLabel,bodyCounts} from './body-classification.js';
+import {collectSample} from './exploration.js';
+import {registerAppWorker} from './pwa.js';
 import {placeControls,paintLocator} from './hud.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('sky');
 const ctx = canvas.getContext('2d', canvasContextOptions(navigator.userAgent));
-const SAVE_KEY = 'spacebitz:field:v1';
 const SETTINGS_KEY = 'spacebitz:field:settings';
 const GENERATION_KEY='spacebitz:universe:v3';
 let universePreset=defaults(true),customPreset=defaults(false);
@@ -34,332 +39,19 @@ const settings = normalizeSettings({
   ...readJSON(SETTINGS_KEY,{})});
 const terrain=new TerrainRenderer();
 const musicAudio=$('soundtrackAudio');
-let musicStarted=false,musicUnlockHandler=null;
-
-function clearMusicUnlock(){
-  if(!musicUnlockHandler)return;
-  document.removeEventListener('pointerdown',musicUnlockHandler);
-  document.removeEventListener('keydown',musicUnlockHandler);
-  musicUnlockHandler=null;
-}
-function armMusicUnlock(){
-  if(musicUnlockHandler||!settings.music)return;
-  musicUnlockHandler=()=>{
-    clearMusicUnlock();
-    if(settings.music&&musicAudio.paused)playMusic();
-  };
-  document.addEventListener('pointerdown',musicUnlockHandler,{passive:true,once:true});
-  document.addEventListener('keydown',musicUnlockHandler,{passive:true,once:true});
-}
-function playMusic(){
-  if(!settings.music)return;
-  musicAudio.volume=settings.volume;
-  let result;
-  try{result=musicAudio.play();}
-  catch{armMusicUnlock();return;}
-  if(result?.then)result.then(clearMusicUnlock).catch(armMusicUnlock);
-}
-function beginMusic(){
-  if(musicStarted)return;
-  musicStarted=true;
-  musicAudio.loop=true;
-  try{musicAudio.currentTime=0;}catch{}
-  playMusic();
-}
-function stopMusic(){
-  clearMusicUnlock();
-  musicAudio.pause();
-  try{musicAudio.currentTime=0;}catch{}
-}
-function applyMusicSetting(){
-  musicAudio.volume=settings.volume;
-  if(!settings.music){stopMusic();return;}
-  if(musicStarted&&musicAudio.paused){try{musicAudio.currentTime=0;}catch{}playMusic();}
-}
+const music=createMusicController(musicAudio,settings,document);
+const {beginMusic,stopMusic,applyMusicSetting}=music;
 beginMusic();
 
-const CHANGELOG=[
-  {version:'1.12.11',items:[
-    'The joystick casing fills its dashboard row up to the upper rim, with its lower curve and highlights contained inside the bottom border.',
-    'The fully opened terminal keeps its compact lower-right contour. Keyboard and Backspace controls clear the curve while text remains above the phone home indicator.'
-  ]},
-  {version:'1.12.10',items:[
-    'The joystick sits lower against the dashboard corner, with concentric curves instead of a gap above the phone inset.',
-    'The compact terminal casing extends down and right to follow the dashboard rim. Its text and neighboring controls remain above the phone home indicator; the expanded terminal keeps its normal layout.'
-  ]},
-  {version:'1.12.9',items:[
-    'A shorter 68px flight deck centers its instruments vertically, with a wider corner-fitted joystick and a full-size labeled Follow button. Narrow screens wrap full-size controls into two rows.',
-    'Terminal and Log sit slightly inward from the screen edge; the compact device follows the lower corner curve. Travel and Cancel slide straight horizontally when the terminal expands.',
-    'Follow returns smoothly two seconds after the last pan, preserving zoom. Custom device sizes and saved voyages remain compatible.'
-  ]},
-  {version:'1.12.8',items:[
-    'A smaller default flight deck and larger rounded lower corners fit phone screens. The compact terminal sits flush with the dashboard rim, closer to the landscape right edge.',
-    'Travel and Cancel slide above the compact terminal and beside its expanded screen. A smaller green pixel lever moves forward/backward; object names remain beside objects.',
-    'Planet and moon surface coordinates now require two taps, like space coordinates. New Universe starts with an empty name field; custom dashboard sizes and voyage data are preserved.'
-  ]},
-  {version:'1.12.7',items:[
-    'Warp Drive and Log keep their left-to-right order while sliding beside the terminal, with larger flight controls and a lower dock near the right edge.',
-    'Dashboard height and terminal width/height scaling are saved in Settings. Dashboard and terminal resize arrows are independently opt-in and hidden by default.',
-    'Rounded lower dashboard corners respect phone safe areas. Date/time moves left; the system chart and its left-side Fit control move right beside Settings. Opening the chart or terminal closes the other.'
-  ]},
-  {version:'1.12.6',items:[
-    'Lowered flight controls into one transparent dashboard with a stepped metal rim; portrait controls remain inside a compact second row.',
-    'A narrow terminal opens at its minimum width beside the screen edge. Larger Terminal/Log launchers swap corners; Log slides beside Warp Drive when a terminal is visible.',
-    'Empty space coordinates require a double tap and use an unfilled frame. Object picking, surface taps, Follow, keyboard input and saved voyages remain compatible.'
-  ]},
-  {version:'1.12.5',items:[
-    'Moving target names and actions track without overlay lag or unstable placement. Follow stays enabled through zoom and smoothly returns five seconds after the last pan at the existing zoom.',
-    'A larger Follow toggle sits beside Center; Warp Drive slides beside the terminal. Textured pixel-metal dashboard plates protect flight controls from accidental coordinate selection.',
-    'Pixel text throughout the UI, terminal resize arrows, a blinking input cursor, responsive press/repeat keys, Caps Lock, symbol Shift, slash, Enter and input-side Delete improve the terminal device.'
-  ]},
-  {version:'1.12.4',items:[
-    'The second Center press zooms in and follows the moving ship. A small tracking toggle below Center enables or stops following at the current zoom; manual camera gestures stop following.',
-    'Target controls start immediately and glide upward more slowly. The collapsed terminal is narrower; its metallic pixel frame opens into the usual two-column data screen.',
-    'Open Terminal and Close Terminal controls, a standalone terminal launcher beside Log, and a fixed input bar with a pixel keyboard prepare the device for future commands.'
-  ]},
-  {version:'1.12.3',items:[
-    'Small solid green home icons sit above the home star in Deep Space and above its planet in system view.',
-    'Manual movement, routes and arrival preserve the camera position and zoom. Center eases to the ship at the current zoom; a second press after completion zooms in without cancelling travel.',
-    'Target actions and the pixel red X begin their smooth appearance immediately with the object name, removing the half-second delay.'
-  ]},
-  {version:'1.12.2',items:[
-    'Balanced doorless home outlines frame the objects; the home-star marker appears only in Deep Space.',
-    'A narrower Object Data terminal reveals smoothly upward with a compact header and smaller distance readout. Log rests at bottom-right and follows the terminal edge.',
-    'Finished typed records scroll smoothly back to the beginning; manual reading interrupts that scroll and reduced motion remains immediate.',
-    'Stepped pixel borders preserve transparent target panels. Pixel red X and green coordinate arrows match the ship-to-target travel direction.'
-  ]},
-  {version:'1.12.1',items:[
-    'Typing retains the mobile viewport; panning holds the chosen view until movement, travel or Center.',
-    'Added subtle brown-dwarf glow and doorless home outlines around the visible star or world.',
-    'Expanded readable rarity tables with pages fitted to the available screen height.',
-    'Object Data opens upward from the bottom in two columns; the smaller Log button follows above it.',
-    'Target actions slide above transparent name frames after half a second, with a red ×; coordinates use a green arrow. Jump is now Warp Drive.',
-    'Removed the floating Deep Space/light-years heading. Existing voyages retain their generated systems.'
-  ]},
-  {version:'1.12.0',items:[
-    'Revised scientific stellar populations: 20% brown dwarfs, rare massive stars and conditional neutron-star active subtypes. New voyages use v3 generation; existing v2 and legacy worlds retain their original identities and orbits.',
-    'New animated L/T/Y cloud atmospheres, rotation-driven pulsar beams and dipole loops, irregular magnetar bursts, scaled stellar spots/flares and cohesive giant convection.',
-    'Universal opaque green terminal with Focus View, typed telemetry and reduced-motion support replaces object fact dialogs. Target actions and Cancel now follow projected selections.',
-    'Scientific Mode and exact percentage editing now live in the fixed two-column New Universe screen beside independently scrolling saved voyages.',
-    'Full-system camera bounds follow the complete stellar hierarchy. Deep Space uses property-based star symbols and small green home icons without a home-star size bonus.',
-    'System spacecraft preserve their detailed sprite at a physical length of 1 km, with a locator at distant scales and sufficient close-up zoom. Planet/moon environmental overhaul remains deferred.'
-  ]},
-  {version:'1.11.0',items:[
-    'New voyages use a diverse stellar catalogue: main-sequence classes, giants and late evolutionary stages, white dwarfs, neutron stars and magnetars with linked temperature, luminosity, radius, gravity, age and activity.',
-    'Scientific Mode is enabled by default. Custom Universe Generation uses percentage text inputs: every independent population table must total exactly 100%, with no silent normalization. Speculative candidates are custom-only; black holes and quasars are excluded.',
-    'Detached binaries, triples and quadruples use moving hierarchical barycenters and companion-aware S-type/P-type stable orbital placement. Stellar populations use the agreed game priors, not claims of exact observed rates.',
-    'Stars have temperature-linked pixel palettes, family-specific convection, spots, winds, pulsation and compact-remnant motifs; the interstellar map reflects color, brightness and multiplicity.',
-    'Object info and voyage log panels are opaque. Star details include themed header telemetry, an icon Focus View control, expandable explanations and Sol comparisons, habitable-zone radii/diameters and uncertain evolution/end estimates.',
-    'Universe generation settings are saved per voyage; older voyages keep their original generated geography. Planet/moon artwork and detailed environmental adaptation are deferred to their own update.'
-  ]},
-  {version:'1.10.0',items:[
-    "Gas and ice giants now have animated winds: cloud belts flow in opposing directions, filaments shift and local vortices swirl independently of planetary rotation.",
-    "Jupiter has a persistent red-orange Great Red Spot with a darker heart and breathing oval shape, alongside Oval BA and a string of pale ovals.",
-    "Saturn has northern white-storm outbreaks with cloud tails and a corrected north-pole hexagon. Uranus gets bright cloud outbreaks; Neptune has evolving dark vortices and bright companion clouds.",
-    "Generated giants receive deterministic jet widths, wind directions, storm populations, hemisphere-aware vortex spin and occasional long-lived giant storms. Scientific inspirations and artistic probabilities are documented.",
-    "Weather renews smoothly to prevent stretched cloud textures, uses bounded low-resolution interpolated frames, respects Reduce motion and is included in offline caching. Weather timing is accelerated for visibility; physical sizes, orbits and existing voyage identities stay unchanged."
-]},
-  {version:'1.9.0',items:[
-    "Rebuilt giant planets with pixel cloud belts, turbulent whirls, feathered oval storms and improved palettes. Jupiter's rectangular mark is gone; Uranus and Neptune use researched blue-green colors.",
-    "Replaced broad placeholder rings with layered pixel bands, gaps, front/back occlusion and shadows, using measured Sol ring radii. Jupiter now has faint dust rings; Saturn retains its broad icy rings, with narrow Uranus/Neptune rings.",
-    "Generated giants now use deterministic temperature/cloud-based appearances, including Sol-like clouds, pale water clouds and methane haze. Appearance and ring rarity weights are documented game choices; world identities and orbital geometry remain save-compatible.",
-    "Added Tethys, Dione, Rhea and Iapetus to Saturn, and Ariel, Umbriel, Titania and Oberon to Uranus, with sourced diameters, orbital distances/periods and projected mean orbital planes.",
-    "Added landable dwarf planet Pluto and Charon, with an inclined eccentric mean orbit, synchronous retrograde spins and motion around their shared barycenter. System Fit includes Pluto; entering Sol still arrives beside Neptune.",
-    "World information now includes cloud families, ring extent, eccentricity and inclination, and distinguishes explorable moons and dwarf planets. Bounded textures/caches and browser stress coverage protect extreme-zoom rendering."
-]},
-  {version:'1.8.1',items:[
-    "Made the tiny system ship locator a narrow isosceles triangle with a longer forward tip, still aligned with the ship heading and shown only below four pixels.",
-    "System travel now centers the camera on the ship at departure and tracks its integrated position every frame, preventing distant Hyperdrive approaches from leaving the viewport as zoom increases.",
-    "System arrival zoom now stays centered on the ship throughout the close-up instead of panning from a lagging camera position."
-]},
-  {version:'1.8.0',items:[
-    "The tiny system ship triangle now rotates with the ship\u2019s heading while its label stays upright, and appears only below a four-pixel ship size.",
-    "Rebuilt system stars as animated pixel surfaces with stronger circulating convection, evolving bright granules and dark channels, and irregular sunspot groups that emerge, grow and fade.",
-    "Replaced thin vector flare loops with broad, curling pixel plasma extrusions that share the star\u2019s palette and blend into its limb. Larger eruptions grow and subside between quiet intervals.",
-    "Kept stellar rendering bounded with two texture resolutions, six interpolated keyframes per second, four cached stars and cropped drawing at extreme zoom. Reduced-motion stars remain still; physical sizes and travel behavior are unchanged."
-]},
-  {version:'1.7.2',items:[
-    "Replaced the tiny onscreen system ship box with a triangular outline, retaining the SHIP label and offscreen directional arrows.",
-    "Completed journeys now ease into a close-up centered on the ship over 1.3 seconds, including after manual overview zoom during travel. Surface arrival centers on the explorer at maximum zoom; fresh gestures can interrupt the animation.",
-    "System Fit now animates from the exact current camera position and zoom, smoothly combining the zoom-out and pan into the full-system view without snapping to the star first. Reduced-motion mode remains immediate."
-]},
-  {version:'1.7.1',items:[
-    "Hyperdrive now travels at a fixed 0.5 AU per second between planets and to stars. Local transfers between a planet and its moons, or sibling moons, use Orbit Drive at 0.1 light-seconds per second; the drive stays fixed for the journey.",
-    "Fixed endless engine firing on arrival at a receding planet: arrival and station keeping now engage on the same movement step, before the orbit advances again.",
-    "Manual zoom now overrides the travel camera for the rest of that journey. Panning and System Fit remain usable during travel.",
-    "Restored the tiny onscreen ship marker in system view. Light-blue offscreen arrows now locate the ship in system and interstellar views and the lander on surfaces, replacing the old surface locator label.",
-    "System Fit now eases to the full orbital view over 2.6 seconds, supports interruption, and changes instantly with reduced motion."
-]},
-  {version:'1.7.0',items:[
-    "Replaced the dropdown Fit System text button with a small orbital-centering icon beside the system chart; its accessible label remains available to assistive technology.",
-    "Made in-game Settings opaque and positioned the compact interaction panel in the bottom-right corner in both orientations.",
-    "Replaced ship locators with a light-blue edge arrow shown only when the ship is offscreen; removed the onscreen marker and text.",
-    "Surface Center now animates to the full 2.4\u00d7 maximum zoom, retaining the 1.3-second duration and reduced-motion behavior.",
-    "Increased star, planet, moon and orbital geometry by 10\u00d7 while preserving listed diameters, numerical distances, physical proportions, surface metre scale and ship sprite sizes. Existing system ship positions migrate once to keep the same coordinates.",
-    "Renamed system travel Hyperdrive and set its velocity to 0.25 AU per second, with arrival clamping and stellar avoidance. Manual maneuver speed retains its pre-update physical rate.",
-    "Entering a system now places the ship in station keeping beside the planet with the outermost orbit, including Neptune in Sol. New games still begin on their home planet."
-  ]},
-  {version:'1.6.0',items:[
-    "New voyages begin landed beside the ship on their home planet, recorded in the logbook and retained in saves. Sol begins on Earth.",
-    "Modern save imports restore the current system, scene, all positions, home planet, discoveries, log and route as a separate voyage. Malformed locations are rejected; legacy imports retain migration support.",
-    "Manual flight speed no longer depends on zoom. Settings offers Maneuver and Cruise modes plus an optional speed readout.",
-    "Unified traveling feedback, destination distance and a Cancel action across planet, star, surface, waypoint and warp travel. Escape also cancels active travel.",
-    "Added bounded ship locators when the true-scale sprite is tiny or offscreen. Stellar arrival now says Holding, accurately describing its stationary position.",
-    "Custom control placement avoids visible panels, enlarged compact action targets, improved Warp Drive lettering and reduced notification size/duration.",
-    "Interstellar stars gently dim at individual rates. System stars use evolving spherical granulation, small sunspots, warm flare kernels and breathing limb plasma arcs, with bounded caches and reduced-motion support.",
-    "Added save, navigation, placement and animation regression tests and a 1,200-frame multi-system browser stress check. Physical-device thermal/battery testing remains a separate manual check."
-  ]},
-  {version:'1.5.3',items:[
-    "Moved the grid toggle exclusively into Settings, preserving its saved value and off-by-default behavior.",
-    "Doubled Center zoom duration to 1.3 seconds and added the same interruptible zoom on planet/moon surfaces; immediate centering and reduced-motion support remain.",
-    "Placed a compact lever-only Warp Drive control beside Center, with its label beneath; hidden on surfaces and still latched right in interstellar view.",
-    "Moved landscape interaction actions into a narrower bottom-right panel.",
-    "Combined date/time, integer coordinates and FPS into one brighter, bold adaptive panel; each field can be toggled in Settings, and the panel disappears when all are hidden.",
-    "Replaced the surface Expedition label/dropdown with the world name and general planet/moon facts. World information dropdowns and dialogs are opaque; other panels retain their translucent styling.",
-    "Enabled travel to system stars, stopping on the near side outside the stellar disk with an appropriate arrival zoom and stable holding position."
-  ]},
-  {version:'1.5.2',items:["Added a saved GRID ON/OFF toggle beside coordinates and in Settings; the grid defaults off while selected squares and waypoint routes remain usable.", "Coordinates now display whole metres, light-seconds or light-years. Celestial diameters always display kilometres; travel-distance conversions are unchanged.", "Warp Drive stays pulled to the right throughout interstellar travel and returns on entering a system.", "Set panel and control backgrounds to 25% opacity while retaining solid labels, icons and joystick thumb. Shifted landscape joystick and warp controls nearer the lower corners.", "Rebuilt the Center reticle and added a smooth, interruptible ship zoom after immediate system-camera centering, respecting reduced motion.", "Corrected sideways walking contact and swing phases, articulated the knees, and replaced sideways front/back boots with centred toe and heel details."]},
-  {version:'1.5.1',items:[
-    'Fixed oversized orbit and zone drawing after the physical-scale update: only visible screen-space arcs, shading, selection rings and dashed routes are submitted to the renderer.',
-    'Cropped enlarged planet and star textures before drawing, explicitly reset each frame to opaque space, and removed the redundant full-screen background texture.',
-    'Fixed WebKit high-DPI startup scaling with its verified software canvas path; other browsers retain accelerated rendering.',
-    'Reduced stellar texture work and reused consecutive animation frames while retaining smooth convection, evolving spots and flares.',
-    'Decoupled background-star drift from ship movement, station keeping, camera panning and zoom. Background stars follow their own paths.',
-    'Redesigned Warp Drive with a red pixel knob, shaded metal base and a pivoting handle that pulls during engagement.',
-    'Added bounded-rendering regression tests and Chromium/WebKit startup, zoom, screen-clearing and warp checks as deployment gates. Existing saves and fixed distance scales are retained.',
-  ]},
-  {version:'1.5.0',items:[
-    'Made menus, panels and controls smaller and translucent, with stepped pixel corners. Coordinates now sit directly below the clock with matching styling.',
-    'Rebuilt Warp Drive as an animated lever with engagement and transit states, including a reduced-motion alternative.',
-    'Made the standing astronaut one-third of the parked ship’s visible height. Each surface square matches that height and permanently represents one metre.',
-    'Added selectable coordinate squares and Go Here navigation, including highlighted destinations, distance readouts and exact waypoint arrival.',
-    'Standardized surface measurements to metres/kilometres, system measurements to light-seconds/AU (500 ls per AU), and chart measurements to light-years. Removed the units preference.',
-    'Tripled Sol’s visual radius, corrected its mean diameter to 1,391,400 km, and applied one linear physical scale to every star, planet, moon and orbital distance.',
-    'Added JPL orbital inclinations/nodes and matching projected elliptical paths, physical moon orbital distances, a Fit System command, Focus View, wider zoom and faster long-distance travel.',
-    'Added smoothly blended stellar convection, small growing/fading sunspots and occasional flare animation. Stellar activity timing is artistic; Sol planet positions are approximate and moon phases remain illustrative.',
-    'Migrated older compressed-space ship positions safely while retaining discoveries, logbooks, surface locations and chart progress.'
-  ]},
-  {version:'1.4.0',items:[
-    'Unified the main menu, universe generator, flight HUD, settings, saves, logbook and detail dialogs with crisp 16-bit panels, pixel lettering and cyan/amber controls.',
-    'Introduced an original stepped-color SpaceBitz pixel wordmark and bundled the new title/font for offline play.',
-    'Redesigned the astronaut with an ivory helmet, amber visor, coral stripe, antenna and teal life-support pack.',
-    'Added eight distinct walking poses in every facing direction, with opposing arm swings, boot lifts, body bounce and a dedicated idle stance; cadence follows distance traveled.',
-    'Fixed camera zoom scaling for the astronaut, its shadow, flying ships, parked lander and surface samples.'
-  ]},
-  {version:'1.3.6',items:[
-    'Replaced the old Chart control with a dedicated retro Warp Drive button in the bottom-right for entering the interstellar layer.',
-    'Moved the voyage Log directly under Settings and restyled both as a compact upper-right utility stack.',
-    'Moved Center beside the joystick and added Right, Above, Custom drag and Hidden placement options in Settings.',
-    'Custom Center placement can be dragged anywhere in the game view and is saved locally for future sessions.'
-  ]},
-  {version:'1.3.5',items:[
-    'Moved the soundtrack startup attempt to the earliest main-menu initialization and enabled native autoplay; the two-second lead-in remains baked into the track.',
-    'Removed the off-center teal nebula/backlight from the game background for a clean black starfield.',
-    'Moved the system chart into the top-left header, removed the SpaceBitz in-game brand and bottom system-status strip, and simplified the travel card to name, action and Info.',
-    'Restyled the bottom navigation controls and Settings button with a more cohesive pixel-space interface.'
-  ]},
-  {version:'1.3.4',items:[
-    'Replaced the corrupted/truncated repository MP3 with a soundtrack generated fresh during every Pages deployment.',
-    'The deployment now verifies soundtrack size and duration before publishing, preventing an incomplete audio file from going live.',
-    'Removed JavaScript song timers and ended-event playlist scheduling; the intro now uses one native looping audio element with its two-second lead-in baked into the file.',
-    'Mobile browsers that block audible autoplay still require the first user interaction; that browser restriction cannot be bypassed reliably.'
-  ]},
-  {version:'1.3.3',items:[
-    'Rebuilt music playback from scratch around one persistent HTML audio element instead of the previous soundtrack player class.',
-    'Removed music from the service-worker cache and bypassed all audio/range requests so mobile browsers can stream the track normally.',
-    'Music now has only one lifecycle: wait two seconds at the menu, play the full track, wait two seconds after it ends, then advance to the next playlist entry.',
-    'No game scene, panel, planet selection, visibility change or normal control can pause, restart or reschedule the song.'
-  ]},
-  {version:'1.3.2',items:[
-    'Removed gesture-driven audio priming and visibility pause/resume behavior that could make the soundtrack repeatedly stop and restart on mobile.',
-    'Music now uses one timer, one audio element and one ended event: wait two seconds, play once, wait two seconds, repeat.',
-    'If browser autoplay is blocked, only one temporary user-gesture listener is installed and removed immediately after playback succeeds.'
-  ]},
-  {version:'1.3.1',items:[
-    'Simplified music playback to one continuous playlist lifecycle: two-second startup delay, full song playback, two-second gap, then the next song.',
-    'The intro song now begins from the main menu and is no longer restarted by entering a universe, changing scenes, selecting worlds or returning to the menu.',
-    'Removed native audio looping; repeats are now driven only by the track-ended event so every repeat gets the intended two-second pause.',
-    'Added a browser autoplay unlock fallback while keeping one audio element and one playback state.'
-  ]},
-  {version:'1.3.0',items:[
-    'Added the separately designed soft-synth soundtrack as the game’s single looping music file, controlled by the existing music and volume settings.',
-    'Converted the system navigator into a collapsed dropdown that stays in the upper-left and away from the touch joystick.',
-    'Removed the on-screen zoom control panel while preserving pinch, wheel and keyboard zoom.',
-    'Planet and moon names now appear in the orbital view only when selected; the system star can remain labeled by default.'
-  ]},
-  {version:'1.2.9',items:[
-    'Removed the soundtrack playback engine and all music startup, scheduling, resume and visibility hooks.',
-    'Removed the music module and music-specific tests so no legacy or replacement melody can play anywhere in the game.',
-    'Kept the existing music and volume Settings controls as inactive placeholders for a future separately designed soundtrack.'
-  ]},
-  {version:'1.2.8',items:[
-    'Rebuilt the soundtrack from the original uploaded melody reference at its native 0.60-second note timing, preserving the tune while removing recorded noise/static.',
-    'Replaced overlapping per-note oscillators with one continuous melody oscillator so a second copy of the song cannot layer underneath the first.',
-    'Added a warmer harmonic tone, cleaner note separation, gentle low-pass filtering and compression for higher perceived volume without clipping.'
-  ]},
-  {version:'1.2.7',items:[
-    'Redesigned the orbital HUD into a slimmer system navigator and compact target card so more of the system remains visible.',
-    'Condensed planet and moon rows, target metrics, labels and actions while preserving the same navigation and detail controls.',
-    'Improved portrait and landscape phone layouts so the target card, joystick and system rail occupy less of the play field.'
-  ]},
-  {version:'1.2.6',items:[
-    'Hardened soundtrack playback so every voyage restart cancels all existing schedulers and active voices before one delayed copy starts.',
-    'Set travelable star rarity to 50% red, 20% orange, 20% yellow, 9% white and 1% blue while keeping chart/system colors identical.',
-    'Upgraded interstellar stars with smoother colored halos, bright cores and subtle non-crosshair shimmer.',
-    'Added a landscape-first rotating phone layout plus Auto, Landscape and Portrait orientation preferences.'
-  ]},
-  {version:'1.2.5',items:[
-    'Reworked soundtrack startup so each voyage begins the melody once from note one after a two-second delay, with no action-driven duplicate starts.',
-    'Weighted travelable star colors toward real stellar rarity: red dwarfs dominate, orange/yellow stars are less common, white stars are uncommon and blue stars are rare.',
-    'Made each travelable star use the exact same deterministic spectral color in the interstellar chart and its system view.'
-  ]},
-  {version:'1.2.4',items:[
-    'Removed crosshair flares from stars in both system and interstellar views.',
-    'Compacted Settings, added miles/AU display choices, improved visual defaults, preferred time zones and accelerated/real-time clock modes.',
-    'New voyages now begin at the current real date/time; Sol uses a date-driven low-precision Kepler ephemeris and real sidereal spin rates.',
-    'Replaced oversized stellar dark regions with small procedural sunspots that slowly emerge and fade.',
-    'Improved soundtrack startup retries while retaining first-interaction fallback for browsers that enforce autoplay restrictions.'
-  ]},
-  {version:'1.2.3',items:[
-    'Refined the SpaceBitz title with cleaner pixel-space detailing, removed the vertical side rails and restyled the version label without a border.',
-    'Sped up only the main-menu fly-through starfield while leaving in-game background-star speed unchanged.',
-    'Disabled native double-tap page zoom while preserving the game canvas pinch zoom.',
-    'Improved close-planet rendering performance with cheaper large-body halos, better texture-frame cache reuse, zoom-aware orbit rendering and aggressive off-screen stellar-glow culling.'
-  ]},
-  {version:'1.2.2',items:[
-    'Redesigned the SpaceBitz wordmark with sharper pixel-space detailing, more breathing room above the menu buttons and a clear version badge.',
-    'Simplified the universe creation screen by removing redundant descriptive, status, version and device text.',
-    'Changed menu and in-game background stars to a fresh procedural sky each session while preserving the same sky during that session.',
-    'Expanded star colors into more saturated red, yellow, orange, white and blue families.'
-  ]},
-  {version:'1.2.1',items:[
-    'Streamlined the main menu by removing the extra explorer tagline, subtitle, descriptive copy and footer status text.',
-    'Raised the SpaceBitz title, removed menu button numbers and centered the Start Game, Multiplayer and Settings labels.'
-  ]},
-  {version:'1.2',items:[
-    'Introduced the two-stage retro main menu with Start Game, Multiplayer placeholder and Settings.',
-    'Opened the menu layout so more of the starfield remains visible and shifted outer space toward near-black.',
-    'Made menu and in-game starfields faster with stronger depth, quicker brightness-only twinkle and richer retro pixel-art square, circle and diamond star sprites.',
-    'Music now defaults on for new players, with audio controls kept inside Settings.'
-  ]},
-  {version:'1.1',items:[
-    'Restored the original soundtrack and expanded sound, sky, display and control settings.',
-    'Refined the retro moving sky, simulation clock, celestial scale, terrain rendering and character sprites.',
-    'Improved responsive/mobile navigation, stellar details and orbital/deployment checks.'
-  ]},
-  {version:'1.0',items:[
-    'Launched the responsive, installable SpaceBitz Field Edition.',
-    'Added procedural star systems, orbiting worlds, exploration, landing, star-chart travel and local save support.',
-    'Established the core flight HUD, logbook, touch/keyboard controls and offline app shell.'
-  ]}
-];
+
 const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,y:0}, zoom:1,
   panUntil:0, centerZoom:null, centerReady:false, followShip:false, followPanRemaining:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
-  last:performance.now(), lastUI:0, elapsed:0, fps:60, particles:[], textureCache:new Map(),
-  waypoint:null,hoverCell:null,coordinateTap:null,warpUntil:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
+  last:performance.now(), lastUI:0, elapsed:0, fps:60,
+  waypoint:null,coordinateTap:null,warpUntil:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
+const {showDetails,toggleTerminal,buildTerminal,setTerminalKeyboard,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
 const loadSaves = () => {
-  const value=readJSON(SAVE_KEY, []);
-  return Array.isArray(value)?value.filter(s=>s && s.id && s.seed):[];
+  try{return readVoyages(localStorage).filter(s=>s&&typeof s.id==='string'&&typeof s.seed==='string');}
+  catch(error){toast(error.message);return [];}
 };
 function readJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
 function saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}catch{toast('Settings could not be saved on this device.');}}
@@ -408,10 +100,12 @@ document.addEventListener('touchend',e=>{
   lastSingleTouchEnd=now;
 },{passive:false});
 function persist() {
-  if (!state.save) return;
-  state.save.updated = Date.now();
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify([state.save,...loadSaves().filter(s=>s.id!==state.save.id)].slice(0,8))); }
-  catch { toast('Storage is full. This voyage could not be saved.'); }
+  if (!state.save) return true;
+  try {persistVoyage(localStorage,state.save);persist.failedAt=0;return true;}
+  catch(error) {
+    if(!persist.failedAt||Date.now()-persist.failedAt>15000){toast(error.name==='QuotaExceededError'?'Storage is full. Voyage kept open; export it or free storage before leaving.':error.message);persist.failedAt=Date.now();}
+    return false;
+  }
 }
 function toast(message) {
   $('toast').textContent = message; $('toast').classList.add('show');
@@ -492,9 +186,11 @@ window.addEventListener('orientationchange',()=>setTimeout(()=>{fit();updateUI()
 globalThis.screen?.orientation?.addEventListener?.('change',()=>setTimeout(()=>{fit();updateUI();applyCenterButtonLayout();},80));
 applySettings();
 function start(save) {
+  try{save=restoreVoyage(save);}catch(error){toast(error.message+' The stored voyage has not been changed.');return;}
   state.save=save; state.scene=save.scene || 'system';
   if(save.generation)save.generation=checkedGeneration(save.generation);
   state.system=makeSystem(save.currentSystem || save.homeSeed,save.generation);
+  terrain.clear();state.sampleBody=null;state.samples=null;state.listKey=null;
   save.currentSystem=state.system.seed;
   save.chart ||= {x:0,y:0}; save.ship ||= {x:0,y:0};
   save.surface ||= {x:0,y:0}; save.discoveries ||= []; save.log ||= [];
@@ -502,7 +198,7 @@ function start(save) {
   if(settings.timeMode==='realtime')save.days=currentDays();
   migrateLayout(save,state.system);save.route||=[];
   if(state.scene==='surface' && !findBody(save.landed)?.solid){state.scene='system';save.scene='system';save.landed=null;}
-  state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.selected=null;state.waypoint=null;state.hoverCell=null;state.warpUntil=0;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false;state.followPanRemaining=0; state.autopilot=null;state.followBody=null;state.panUntil=0;
+  state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.selected=null;state.waypoint=null;state.warpUntil=0;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false;state.followPanRemaining=0; state.autopilot=null;state.followBody=null;state.panUntil=0;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.actorMotion={direction:'down',steps:0};
   state.zoom=state.scene==='chart'?1:state.scene==='surface'?1.3:.85;
   if(state.scene==='chart') state.camera={...save.chart};
@@ -537,7 +233,7 @@ function renderSaves() {
     const date=document.createElement('small');date.textContent=new Date(save.updated||Date.now()).toLocaleDateString();
     const del=document.createElement('button');del.className='delete-save';del.textContent='✕';del.setAttribute('aria-label','Delete '+play.textContent);
     del.onclick=()=>{if(!confirm(`Delete “${save.name}” from this device?`))return;
-      localStorage.setItem(SAVE_KEY,JSON.stringify(loadSaves().filter(s=>s.id!==save.id)));renderSaves();};
+      try{deleteVoyage(localStorage,save.id);renderSaves();}catch{toast('The voyage could not be deleted. Your stored data is unchanged.');}};
     row.append(play,date,del);list.append(row);
   }
 }
@@ -626,9 +322,9 @@ $('importFile').onchange=async e=>{
     if(file.size>2_000_000)throw Error('Save file is too large.');
     const value=JSON.parse(await file.text());
     const source=Array.isArray(value)?value:(Array.isArray(value.saves)?value.saves:[value]);
-    const converted=source.slice(0,8).map(raw=>importVoyage(raw,crypto.randomUUID?.()||String(Date.now()+Math.random())));
+    const converted=source.map(raw=>importVoyage(raw,crypto.randomUUID?.()||String(Date.now()+Math.random())));
     if(!converted.length)throw Error('No voyages found.');
-    localStorage.setItem(SAVE_KEY,JSON.stringify([...converted,...loadSaves()].slice(0,8)));
+    writeVoyages(localStorage,converted);
     renderSaves();toast(`Imported ${converted.length} voyage${converted.length===1?'':'s'}.`);
   }catch(error){toast(error.message||'Could not import this save.');}
   e.target.value='';
@@ -636,13 +332,10 @@ $('importFile').onchange=async e=>{
 let installPrompt;
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;$('installButton').hidden=false;});
 $('installButton').onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installButton').hidden=true;}};
-if('serviceWorker' in navigator && location.protocol.startsWith('http')){
-  const wasControlled=!!navigator.serviceWorker.controller;let reloading=false;
-  navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(wasControlled&&!reloading){reloading=true;persist();location.reload();}
-  });
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
-}
+let applyPendingUpdate=()=>{};
+if('serviceWorker' in navigator && location.protocol.startsWith('http'))window.addEventListener('load',()=>{
+  applyPendingUpdate=registerAppWorker({serviceWorker:navigator.serviceWorker,isSafe:()=>!state.save,reload:()=>location.reload(),onReady:()=>toast('Update ready. It will apply after Save & Main Menu.')});
+});
 
 function beginSelection(){
   closeSystemChart();state.coordinateTap=null;state.contextPlacement=null;
@@ -654,7 +347,7 @@ function beginSelection(){
   void row.offsetHeight;row.style.transition='';
   $('contextActions').classList.add('ready');$('travelControls').classList.add('ready');
 }
-function select(object) { beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=null;state.hoverCell=null;state.selected=object; state.autopilot=null;updateUI(); }
+function select(object) { beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=null;state.selected=object; state.autopilot=null;updateUI(); }
 function keepStationNearShip(){
   if(state.scene!=='system')return;
   const ship=state.save.ship;
@@ -669,14 +362,14 @@ function markDiscovery(body) {
   toast(`First landing on ${body.name} · added to logbook`);persist();
 }
 function enterChart() {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
-  state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
+  state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   const star=currentStar();state.scene='chart';state.selected=star;
   state.save.scene='chart';state.save.chart={x:star.x+38,y:star.y+30};
   state.camera={...state.save.chart};state.zoom=1;state.autopilot=null;persist();updateUI();
 }
 function enterSystem(star) {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
-  state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
+  state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   state.system=makeSystem(star.seed,state.save.generation);state.save.currentSystem=star.seed;
   state.scene='system';state.save.scene='system';state.selected=null;
@@ -691,7 +384,7 @@ function enterSystem(star) {state.coordinateTap=null;state.terminal=null;state.t
   toast(`${state.system.name} · arriving at ${outer.name}`);persist();updateUI();
 }
 function enterSurface(body) {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
-  state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
+  state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   if(!body.solid){toast('No solid surface here. Explore one of its moons.');return;}
   state.followBody=null;state.actorMotion={direction:'down',steps:0};
   state.selected=null;state.scene='surface';state.save.scene='surface';state.save.landed=body.id;
@@ -699,7 +392,7 @@ function enterSurface(body) {state.coordinateTap=null;state.terminal=null;state.
   state.autopilot=null;markDiscovery(body);persist();updateUI();
 }
 function launch() {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
-  state.waypoint=null;state.hoverCell=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
+  state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.followBody=null;
   const body=findBody(state.save.landed);
   if(body){const p=bodyPosition(body,state.save.days,state.system);
@@ -734,8 +427,9 @@ function primary() {
   }
   if(state.scene==='surface'){
     const sample=state.selected?.kind==='sample'?state.selected:nearestSample();const d=sample?Math.hypot(sample.x-state.save.surface.x,sample.y-state.save.surface.y):Infinity;
-    if(state.selected?.kind==='sample'&&d<SURFACE_UNIT){state.save.discoveries.push(sample.id);state.save.log.unshift({name:findBody(state.save.landed)?.name||'World',action:'Sample collected',days:state.save.days});
-      toast('Sample secured · added to logbook');persist();updateUI();return;}
+    if(state.selected?.kind==='sample'&&d<SURFACE_UNIT){
+      const collected=collectSample(state.save,sample,findBody(state.save.landed)?.name||'World');
+      cancelTarget();if(collected){toast('Sample secured · added to logbook');persist();}updateUI();return;}
     if(state.selected?.kind!=='sample'&&Math.hypot(state.save.surface.x,state.save.surface.y)<62){launch();return;}
     state.autopilot={type:'surface',x:state.selected?.kind==='sample'?state.selected.x:0,y:state.selected?.kind==='sample'?state.selected.y:0};toast(state.selected?.kind==='sample'?'Course set to sample':'Returning to lander');updateUI();return;
   }
@@ -744,7 +438,7 @@ function primary() {
     if(state.selected.kind==='star'){
       const radius=visualRadius(state.selected.diameter),pos=bodyPosition(state.selected,state.save.days,state.system),local={x:state.save.ship.x-pos.x,y:state.save.ship.y-pos.y},goal=starApproachPoint(local,radius);
       state.panUntil=0;state.focusBody=null;state.followBody=null;
-      state.autopilot={type:'stellar',id:state.selected.id,...goal,arrivalZoom:Math.min(1,Math.min(state.width,state.height)*.32/(radius+150))};
+      state.autopilot={type:'stellar',id:state.selected.id,...goal};
       toast(`Hyperdrive to ${state.selected.name}`);updateUI();return;
     }
     const body=state.selected,pos=bodyPosition(body,state.save.days,state.system);
@@ -752,7 +446,7 @@ function primary() {
     if(dist<visualRadius(body.diameter,body.kind)+48){enterSurface(body);return;}
     const drive=systemDrive(state.save.ship,body,state.system,state.save.days,state.followBody?.id);
     state.panUntil=0;state.followBody=null;
-    state.autopilot={type:'body',id:body.id,drive,arrivalZoom:Math.min(1,100/(visualRadius(body.diameter)+20))};toast(`${drive==='orbit'?'Orbit Drive':'Hyperdrive'} to ${body.name}`);updateUI();return;
+    state.autopilot={type:'body',id:body.id,drive};toast(`${drive==='orbit'?'Orbit Drive':'Hyperdrive'} to ${body.name}`);updateUI();return;
   }
   const star=state.selected;
   if(!star){select(currentStar());return;}
@@ -778,7 +472,7 @@ $('systemFit').onclick=()=>{
   const to=systemFitZoom(state.system,state.width,state.height,state.save.days);
   if(settings.reducedMotion){state.zoom=to;state.camera={x:0,y:0};}
   else state.centerZoom={from:state.zoom,to,fromCamera:{...state.camera},elapsed:0,duration:2600,systemFit:true};
-  if(state.autopilot)state.autopilot.manualZoom=true;
+
   state.panUntil=Infinity;$('systemChart').classList.remove('open');
   $('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');
 };
@@ -837,12 +531,8 @@ $('systemChartToggle').onclick=()=>{
   $('systemChartToggle').setAttribute('aria-expanded',String(open));
   updateUI();
 };
-function zoom(factor){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(state.autopilot)state.autopilot.manualZoom=true;state.zoom=clamp(state.zoom*factor,state.scene==='system'?systemMinZoom(state.system,state.width,state.height,state.save.days):state.scene==='surface'?.65:.34,state.scene==='system'?SYSTEM_MAX_ZOOM:2.4);if(following&&!state.followPanRemaining)state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};}
+function zoom(factor){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;state.zoom=clamp(state.zoom*factor,state.scene==='system'?systemMinZoom(state.system,state.width,state.height,state.save.days):state.scene==='surface'?.65:.34,state.scene==='system'?SYSTEM_MAX_ZOOM:2.4);if(following&&!state.followPanRemaining)state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};}
 
-function addMetric(parent,label,value) {
-  const div=document.createElement('div');div.className='metric';
-  const a=document.createElement('span'),b=document.createElement('strong');a.textContent=label;b.textContent=value;div.append(a,b);parent.append(div);
-}
 function diameterText(km){return formatDiameter(km);}
 function localTimeZone(){return Intl.DateTimeFormat().resolvedOptions().timeZone||'UTC';}
 function preferredTimeZone(){
@@ -864,8 +554,8 @@ function updateUI() {
   $('modeLabel').hidden=scene==='surface';
   $('modeLabel').textContent=scene==='chart'?'SECTOR / STAR CHART':'ORBITAL / SYSTEM';
   $('placeLabel').textContent=scene==='chart'?'Deep Space':scene==='surface'?findBody(state.save.landed)?.name||'Surface':sys.name;
-  const planetCount=sys.planets.filter(p=>p.kind==='planet').length,dwarfCount=sys.planets.length-planetCount;
-  $('hint').textContent=scene==='chart'?'Select a star, then engage Warp Drive.':scene==='surface'?'Double-tap a 1 m square, then use the green travel lever. Collect samples and return to your lander.':`${sys.star.type} STAR · ${planetCount} PLANETS${dwarfCount?` · ${dwarfCount} DWARF PLANET`:''}`;
+  const {planets:planetCount,dwarfPlanets:dwarfCount}=bodyCounts(sys);
+  $('hint').textContent=scene==='chart'?'Select a star, then engage Warp Drive.':scene==='surface'?'Double-tap a 1 m square, then use the green travel lever. Collect samples and return to your lander.':`${sys.star.type} STAR · ${planetCount} PLANETS${dwarfCount?` · ${dwarfCount} DWARF PLANET${dwarfCount===1?'':'S'}`:''}`;
   $('zoneLegend').hidden=scene!=='system';$('zoneToggle').textContent=settings.zone?'ON':'OFF';$('zoneToggle').setAttribute('aria-pressed',String(settings.zone));
   const list=$('bodyList'),listKey=`${scene}:${sys.seed}:${sel?.id||''}`;
   if(state.listKey!==listKey){
@@ -874,6 +564,7 @@ function updateUI() {
       const b=document.createElement('button');b.className='body-entry'+(body.kind==='moon'?' moon':'')+(sel?.id===body.id?' active':'');
       b.style.setProperty('--dot',body.color);b.innerHTML='<span class="body-dot"></span>';
       const name=document.createElement('span');name.textContent=body.name;const au=document.createElement('small');au.textContent=body.kind==='star'?'STAR':formatDistance(orbitalElements(body,state.save.days).a,'system');
+      b.title=body.name+' · '+bodyLabel(body);b.setAttribute('aria-label',b.title);b.dataset.kind=body.kind;
       b.append(name,au);b.onclick=()=>{select(body);$('systemChart').classList.remove('open');$('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');};list.append(b);
     }
     list.scrollLeft=scroll;state.listKey=listKey;
@@ -881,8 +572,7 @@ function updateUI() {
   $('bodyList').hidden=scene!=='system';$('systemFit').hidden=scene!=='system';
   let title='',action='SELECT',details=false;
   if(scene==='surface'){
-    const body=findBody(state.save.landed),sample=nearestSample();
-    const near=sample&&Math.hypot(sample.x-state.save.surface.x,sample.y-state.save.surface.y)<SURFACE_UNIT;
+    const body=findBody(state.save.landed);
     const landerNear=Math.hypot(state.save.surface.x,state.save.surface.y)<62;
     title=sel?.name||body?.name||'Surface';
     const sampleNear=sel?.kind==='sample'&&Math.hypot(sel.x-posSurface().x,sel.y-posSurface().y)<SURFACE_UNIT;
@@ -914,7 +604,7 @@ function updateUI() {
   $('targetCard').hidden=$('systemChart').classList.contains('open')||(!hasTarget&&!state.terminalExpanded);$('contextActions').hidden=!sel||Boolean(state.warpUntil);
   $('travelControls').hidden=!hasTarget||$('systemChart').classList.contains('open')||Boolean(state.warpUntil);
   $('targetName').textContent=title||'Ship Terminal';$('focusSelected').hidden=!sel&&!state.waypoint;
-  $('targetStatus').textContent=state.waypoint?'Coordinate selected':scene==='chart'&&sel?.seed===state.save.homeSeed||scene==='system'&&sel?.kind==='star'&&state.save.currentSystem===state.save.homeSeed?'Home System':sel?.id===state.save.homePlanet?'Home World':traveling?'Course active':sel?.familyLabel||sel?.kind||'Target selected';
+  $('targetStatus').textContent=state.waypoint?'Coordinate selected':scene==='chart'&&sel?.seed===state.save.homeSeed||scene==='system'&&sel?.kind==='star'&&state.save.currentSystem===state.save.homeSeed?'Home System':sel?.id===state.save.homePlanet?'Home World':traveling?'Course active':sel?.familyLabel||(sel?bodyLabel(sel):'Target selected');
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
   $('terminalInputBar').hidden=!state.terminalExpanded;
   if(!hasTarget)$('targetStatus').textContent='Ready · '+(scene==='chart'?'Deep Space':scene==='surface'?'Surface':'System');
@@ -956,230 +646,16 @@ function updateUI() {
   applyCenterButtonLayout();
 }
 function setModal(eyebrow,title,content,opaque=false) {
-  $('modal').querySelector('.modal-card').classList.toggle('planet-info',opaque);
+  $('modal').querySelector('.modal-card').classList.toggle('opaque-panel',opaque);
   state.previousFocus=document.activeElement;resetInput();
   $('modalEyebrow').textContent=eyebrow;$('modalTitle').textContent=title;
-  $('modalEyebrow').hidden=!eyebrow;$('modalTitleActions').replaceChildren();$('modalTelemetry').replaceChildren();
-  $('modal').querySelector('.modal-card').classList.remove('object-info');
+  $('modalEyebrow').hidden=!eyebrow;
   $('modalContent').replaceChildren(content);$('modal').hidden=false;$('modal').classList.add('visible');
   $('modalClose').focus();
 }
 function closeModal(){$('modal').hidden=true;$('modal').classList.remove('visible');state.previousFocus?.focus();}
 $('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 function posSurface(){return state.save.surface;}
-function selectedRecord(){
-  const chart=state.scene==='chart',selected=state.selected;
-  const system=chart&&selected?.seed?chartSystem(selected.seed):state.system;
-  const object=state.waypoint?{kind:'coordinate',name:'Coordinate'}:chart&&selected?.seed?system.star:selected||{kind:'coordinate',name:'Coordinate'};
-  const position=state.waypoint|| (chart?selected:state.scene==='surface'?(selected?.kind==='sample'?selected:{x:0,y:0}):selected?bodyPosition(selected,state.save.days,system):null)||{x:0,y:0};
-  const ship=state.scene==='surface'?state.save.surface:chart?state.save.chart:state.save.ship;
-  return {object,system,position,ship};
-}
-function buildTerminal(){
-  if(!state.save)return;const record=selectedRecord();
-  state.terminal={text:terminalLines(record.object,record.system,{days:state.save.days,scene:state.scene,position:record.position,ship:record.ship,homeSystem:state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.save.currentSystem===state.save.homeSeed&&record.object.kind==='star',homeWorld:record.object.id===state.save.homePlanet}),start:performance.now(),count:-1};
-  if(!state.selected&&!state.waypoint)state.terminal.text='Object Data\n\nSTATUS : READY\nLAYER : '+(state.scene==='chart'?'Deep Space':state.scene==='surface'?'Surface':'System')+'\nPOSITION : '+formatCoordinates(record.ship,state.scene)+'\nVOYAGE : '+state.save.name+'\n\nSelect an object or area to retrieve its data.\nCommand input is on standby.';
-  const output=$('terminalOutput');output.replaceChildren();let offset=0;
-  state.terminal.lines=state.terminal.text.split('\n').map((text,index)=>{
-    const node=document.createElement('div'),colon=text.indexOf(' : '),key=document.createElement('span'),value=document.createElement('span');
-    node.className=!text?'terminal-break':index===0?'terminal-title':colon<0?'terminal-note':'terminal-field';
-    key.className='terminal-key';value.className='terminal-value';node.append(key,value);node.hidden=true;output.append(node);
-    const row={text,offset,node,key,value,colon};offset+=text.length+1;return row;
-  });$('terminalScreen').scrollTop=0;
-}
-function showDetails(body){
-  closeSystemChart();
-  if(body&&body!==state.selected&&body.kind!=='coordinate')select(body);
-  state.terminalExpanded=true;buildTerminal();updateUI();
-}
-function toggleTerminal(){
-  if(!state.save)return;
-  state.terminalExpanded=!state.terminalExpanded;
-  if(state.terminalExpanded){closeSystemChart();buildTerminal();}
-  else {$('terminalInput').blur();setTerminalKeyboard(false);}
-  updateUI();
-}
-let terminalShift=false,terminalCaps=false;
-const heldTerminalKeys=new Map();
-function stopTerminalKeys(){for(const press of heldTerminalKeys.values()){clearTimeout(press.delay);clearInterval(press.repeat);}heldTerminalKeys.clear();}
-function setTerminalKeyboard(visible){
-  if(!visible)stopTerminalKeys();
-  $('terminalKeyboard').hidden=!visible;$('targetCard').classList.toggle('keyboard-open',visible);
-  $('terminalKeyboardToggle').setAttribute('aria-expanded',String(visible));$('terminalKeyboardToggle').setAttribute('aria-label',visible?'Hide terminal keyboard':'Show terminal keyboard');
-  scheduleTerminalLayout();updateInputCaret();
-}
-const terminalSymbols={'Q':'!','W':'@','E':'#','R':'$','T':'%','Y':'^','U':'&','I':'*','O':'(','P':')','A':'-','S':'_','D':'=','F':'+','G':'[','H':']','J':'{','K':'}','L':'\\','Z':';','X':':','C':"'",'V':'"','B':',','N':'.','M':'?'};
-function terminalCharacter(key){return terminalShift?(terminalSymbols[key]||key):terminalCaps?key:key.toLowerCase();}
-function terminalKey(key){
-  const input=$('terminalInput'),start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
-  if(key==='Shift'||key==='CapsLock'){if(key==='Shift')terminalShift=!terminalShift;else terminalCaps=!terminalCaps;renderTerminalKeyboard();return;}
-  if(key==='Enter'){setTerminalKeyboard(false);input.blur();return;}
-  if(key==='Clear'){input.value='';input.setSelectionRange(0,0);input.dispatchEvent(new Event('input',{bubbles:true}));return;}
-  const from=key==='Backspace'&&start===end?Math.max(0,start-1):start;
-  const text=key==='Backspace'?'':key==='Space'?' ':terminalCharacter(key);
-  if(input.value.length-(end-from)+text.length>input.maxLength)return;
-  input.setRangeText(text,from,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));
-}
-function bindTerminalKey(button,key){
-  let pointerClickPending=false,lastPointerRelease=-Infinity;
-  button.onpointerdown=e=>{
-    if(e.button!==0)return;e.preventDefault();e.stopPropagation();pointerClickPending=true;lastPointerRelease=performance.now();if(e.isTrusted)button.setPointerCapture?.(e.pointerId);terminalKey(key);
-    if(['Shift','CapsLock','Enter','Clear'].includes(key))return;
-    const press={delay:setTimeout(()=>{press.repeat=setInterval(()=>terminalKey(key),55);terminalKey(key);},350)};
-    heldTerminalKeys.set(e.pointerId,press);
-  };
-  const release=e=>{lastPointerRelease=performance.now();if(e.type==='pointercancel')pointerClickPending=false;const press=heldTerminalKeys.get(e.pointerId);if(press){clearTimeout(press.delay);clearInterval(press.repeat);heldTerminalKeys.delete(e.pointerId);}};
-  button.onpointerup=release;button.onpointercancel=release;button.onlostpointercapture=release;
-  // Assistive technology and physical keyboard activation have no preceding pointer press.
-  button.onkeydown=e=>{if(e.key==='Enter'||e.key===' ')pointerClickPending=false;};
-  button.onclick=e=>{
-    // Chromium touch clicks can have detail=0 too. Consume the click belonging to
-    // the press already handled above, including after a long held-key repeat.
-    if(pointerClickPending&&e.isTrusted&&performance.now()-lastPointerRelease<750){pointerClickPending=false;return;}
-    if(e.detail===0)terminalKey(key);
-  };
-}
-function renderTerminalKeyboard(){
-  const keyboard=$('terminalKeyboard');
-  if(!keyboard.childElementCount)for(const keys of ['1234567890','QWERTYUIOP','ASDFGHJKL',['CapsLock',...'ZXCVBNM','/'],['Shift','Space','Clear','Enter']]){
-    const row=document.createElement('div');row.className='keyboard-row';
-    for(const key of keys){const button=document.createElement('button');button.type='button';button.className='pixel-key';button.dataset.key=key;
-      if(key==='Space')button.classList.add('space-key');bindTerminalKey(button,key);row.append(button);
-    }keyboard.append(row);
-  }
-  for(const button of keyboard.querySelectorAll('button')){
-    const key=button.dataset.key;button.textContent=key==='CapsLock'?'CAPS':key==='Shift'?'SHIFT':key.length===1?terminalCharacter(key):key.toUpperCase();
-    button.setAttribute('aria-label',key==='Shift'?(terminalShift?'Switch to letters':'Switch to symbols'):key==='CapsLock'?'Caps Lock':key);
-    if(key==='Shift'||key==='CapsLock')button.setAttribute('aria-pressed',String(key==='Shift'?terminalShift:terminalCaps));
-  }
-}
-const inputMeasure=document.createElement('canvas').getContext('2d');
-function updateInputCaret(){
-  const input=$('terminalInput'),caret=$('terminalInputCaret');
-  caret.hidden=!state.terminalExpanded||document.activeElement!==input||input.selectionStart!==input.selectionEnd;
-  if(caret.hidden)return;
-  const style=getComputedStyle(input);inputMeasure.font=style.font;
-  const measured=inputMeasure.measureText(input.value.slice(0,input.selectionStart)).width;
-  const available=input.clientWidth-12;
-  if(measured-input.scrollLeft>available)input.scrollLeft=measured-available;
-  else if(measured<input.scrollLeft)input.scrollLeft=measured;
-  caret.style.left=(6+measured-input.scrollLeft)+'px';
-}
-renderTerminalKeyboard();bindTerminalKey($('terminalDelete'),'Backspace');
-$('terminalInput').onfocus=()=>{resetInput();setTerminalKeyboard(true);};
-$('terminalInput').onblur=updateInputCaret;
-$('terminalInput').oninput=updateInputCaret;
-$('terminalInput').onkeydown=e=>{if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();setTerminalKeyboard(false);$('terminalInput').blur();}else requestAnimationFrame(updateInputCaret);};
-document.addEventListener('selectionchange',()=>{if(document.activeElement===$('terminalInput'))updateInputCaret();});
-window.addEventListener('blur',stopTerminalKeys);
-$('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden;if(open)$('terminalInput').focus({preventScroll:true});setTerminalKeyboard(open);};
-
-// Resizing is bounded to the viewport and applies only to the expanded device.
-let terminalResize=null;
-function terminalResizeSize(){
-  const r=$('targetCard').getBoundingClientRect(),dock=getComputedStyle($('terminalDock'));
-  const safe=document.body.classList.contains('deck-wrap')?0:$('dashboardBase').getBoundingClientRect().height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
-  return {width:r.width-Math.max(0,parseFloat(dock.right)-3),height:r.height-safe+1};
-}
-function terminalLimits(){
-  const wrap=innerWidth<620,joyRect=$('joystick').getBoundingClientRect();
-  const reserve=wrap?(state.terminalExpanded?102:116):Math.max(330,joyRect.width?joyRect.right+242:0);
-  const maxWidth=Math.max(200,innerWidth-reserve),row=Math.max(68,Math.min(settings.dashboardHeight+(settings.joyOffset||0),innerHeight*.25));
-  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,innerHeight-(wrap?row*2+74:115))};
-}
-function applyTerminalSize(){
-  const dock=$('terminalDock'),limits=terminalLimits();
-  dock.style.setProperty('--terminal-max-width',limits.maxWidth+'px');
-  const collapsed=clamp(240*settings.terminalWidthScale/100,limits.minWidth,limits.maxWidth);
-  dock.style.setProperty('--terminal-collapsed-width',collapsed+'px');
-  const expanded=clamp(state.terminalSize?.width??264*settings.terminalWidthScale/100,limits.minWidth,limits.maxWidth);
-  dock.style.setProperty('--terminal-expanded-width',expanded+'px');
-  const terminalWidth=$('targetCard').hidden?94:state.terminalExpanded?expanded:collapsed;
-  document.documentElement.style.setProperty('--deck-joy-max',Math.max(6,innerWidth-terminalWidth-($('targetCard').hidden?302:338))+'px');
-  const height=clamp(state.terminalSize?.height??innerHeight*.7*settings.terminalHeightScale/100,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight);
-  dock.style.setProperty('--terminal-user-height',height+'px');
-  for(const id of ['terminalResizeTop','terminalResizeLeft'])$(id).hidden=!state.terminalExpanded||!settings.terminalResizeHandles;
-}
-function resizeTerminal(width,height){
-  const limits=terminalLimits();state.terminalSize={width:clamp(width,limits.minWidth,limits.maxWidth),height:clamp(height,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight)};
-  settings.terminalWidthScale=clamp(state.terminalSize.width/264*100,60,240);settings.terminalHeightScale=clamp(state.terminalSize.height/(innerHeight*.7)*100,40,130);
-  applyTerminalSize();scheduleTerminalLayout();updateInputCaret();
-}
-for(const [id,axis] of [['terminalResizeTop','height'],['terminalResizeLeft','width']]){
-  const handle=$(id);
-  handle.onpointerdown=e=>{if(e.button!==0||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();handle.setPointerCapture(e.pointerId);terminalResize={id:e.pointerId,axis,x:e.clientX,y:e.clientY,...terminalResizeSize()};$('terminalDock').classList.add('resizing');};
-  handle.onpointermove=e=>{if(!terminalResize||e.pointerId!==terminalResize.id)return;const r=terminalResize;resizeTerminal(r.width+(axis==='width'?r.x-e.clientX:0),r.height+(axis==='height'?r.y-e.clientY:0));};
-  const finish=e=>{if(e.pointerId!==terminalResize?.id)return;terminalResize=null;$('terminalDock').classList.remove('resizing');saveSettings();scheduleTerminalLayout();};
-  handle.onpointerup=finish;handle.onpointercancel=finish;
-  handle.onkeydown=e=>{const direction={ArrowLeft:1,ArrowUp:1,ArrowRight:-1,ArrowDown:-1}[e.key];if(!direction||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();const r=terminalResizeSize();resizeTerminal(r.width+(axis==='width'?direction*12:0),r.height+(axis==='height'?direction*12:0));saveSettings();};
-}
-let dashboardResize=null;
-const dashboardHandle=$('dashboardResize');
-dashboardHandle.onpointerdown=e=>{if(e.button!==0||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();dashboardHandle.setPointerCapture(e.pointerId);dashboardResize={id:e.pointerId,y:e.clientY,height:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'))};};
-dashboardHandle.onpointermove=e=>{if(e.pointerId!==dashboardResize?.id)return;settings.dashboardHeight=clamp(dashboardResize.height+dashboardResize.y-e.clientY,68,260);layoutDashboard();applyCenterButtonLayout();};
-const finishDashboardResize=e=>{if(e.pointerId!==dashboardResize?.id)return;dashboardResize=null;saveSettings();};
-dashboardHandle.onpointerup=finishDashboardResize;dashboardHandle.onpointercancel=finishDashboardResize;
-dashboardHandle.onkeydown=e=>{const direction={ArrowUp:1,ArrowDown:-1}[e.key];if(!direction||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();settings.dashboardHeight=clamp(settings.dashboardHeight+direction*12,68,260);saveSettings();layoutDashboard();applyCenterButtonLayout();};
-function layoutDashboard(){
-  const wrap=innerWidth<620;
-  document.body.classList.remove('deck-compact');document.body.classList.toggle('deck-wrap',wrap);
-  const row=Math.max(68,Math.min(settings.dashboardHeight+(settings.joyOffset||0),innerHeight*(wrap ? .25 : .5)));
-  const height=wrap?row*2+4:Math.max(row,settings.centerButton==='above'?136:68);
-  document.documentElement.style.setProperty('--dashboard-row-height',row+'px');
-  document.documentElement.style.setProperty('--dashboard-height',height+'px');
-  $('terminalDock').style.setProperty('--terminal-compact-height',(row-2)+'px');
-  dashboardHandle.hidden=!settings.dashboardResizeHandle;
-}
-function onDashboard(x,y){
-  if($('app').hidden)return false;
-  return ['dashboardBase','terminalDock'].some(id=>{const element=$(id);if(element.hidden)return false;const r=element.getBoundingClientRect();return r.width&&r.height&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;});
-}
-function focusSelected(){
-  if(!state.save)return;const {object,position}=selectedRecord();state.centerZoom=null;state.centerReady=false;state.followShip=false;
-  if(state.scene==='chart'){state.zoom=2.4;state.focusBody=null;}
-  else if(state.scene==='system'){state.zoom=clamp(Math.min(state.width,state.height)*.24/Math.max(visualRadius(object.diameter||1),.001),systemMinZoom(state.system,state.width,state.height,state.save.days),SYSTEM_MAX_ZOOM);state.focusBody=object.id||null;}
-  else state.zoom=2.4;
-  state.camera={x:position.x,y:position.y};state.panUntil=Infinity;
-}
-function updateTerminal(now){
-  if(!state.terminalExpanded||!state.terminal)return;
-  const record=state.terminal,screen=$('terminalScreen');
-  if(record.rewind){
-    const progress=settings.reducedMotion?1:clamp((now-record.rewind.start)/600,0,1);
-    screen.scrollTop=record.rewind.from*(1-progress)**3;if(progress===1)record.rewind=null;
-  }
-  const count=Math.max(record.count,typedLength(record.text,(now-record.start)/1000,settings.reducedMotion));
-  if(count===record.count)return;record.count=count;const atEnd=screen.scrollHeight-screen.scrollTop-screen.clientHeight<22;
-  for(const row of record.lines){const visible=count>row.offset,text=row.text.slice(0,Math.max(0,count-row.offset)),split=row.colon<0?0:Math.min(text.length,row.colon+3);row.node.hidden=!visible;row.key.textContent=text.slice(0,split);row.value.textContent=text.slice(split)+(count>row.offset+row.text.length?'\n':'');}
-  if(settings.reducedMotion)screen.scrollTop=0;else if(atEnd)screen.scrollTop=screen.scrollHeight;
-  if(count===record.text.length&&!record.finished){record.finished=true;if(!settings.reducedMotion&&screen.scrollTop>0)record.rewind={from:screen.scrollTop,start:now};}
-}
-function positionContext(){
-  if($('contextActions').hidden||!state.save)return;const record=selectedRecord(),target=screen(record.position.x,record.position.y),element=$('contextActions');
-  const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
-  const radius=(state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10)+(homeIcon?16:0);
-  const obstacles=['terminalPocket','travelControls','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls','mapButton','dashboardBase'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
-  const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles,state.contextPlacement);state.contextPlacement=place;element.style.transform=`translate(${place.x}px,${place.y}px)`;
-}
-function layoutTerminalDock(){
-  const visible=!$('targetCard').hidden;$('terminalDock').classList.toggle('has-target',visible);
-  $('terminalDock').classList.toggle('terminal-expanded',Boolean(state.terminalExpanded));
-  applyTerminalSize();layoutDashboard();
-  $('terminalPocket').style.height=(visible?$('targetCard').getBoundingClientRect().height:0)+'px';
-}
-let terminalLayoutFrame=0;
-function scheduleTerminalLayout(){
-  if(terminalLayoutFrame)return;
-  // Defer ancestor sizing until the next frame, outside nested observer delivery.
-  terminalLayoutFrame=requestAnimationFrame(()=>{
-    terminalLayoutFrame=0;layoutTerminalDock();
-    const height=$('terminalPocket').getBoundingClientRect().height;
-    document.documentElement.style.setProperty('--terminal-height',height+'px');applyCenterButtonLayout();
-  });
-}
-const terminalObserver=new ResizeObserver(scheduleTerminalLayout);
-terminalObserver.observe($('targetCard'));terminalObserver.observe($('terminalPocket'));
-for(const event of ['wheel','touchstart','pointerdown','keydown'])$('terminalScreen').addEventListener(event,()=>{if(state.terminal)state.terminal.rewind=null;},{passive:true});
 function showJournal() {
   const box=document.createElement('div');const p=document.createElement('p');p.textContent=`${state.save.discoveries.length} discoveries recorded in ${state.save.name}.`;
   box.append(p);for(const entry of state.save.log.slice(0,30)){
@@ -1270,7 +746,7 @@ function openSettings(){
   details.append(changelog);box.append(details);
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-    save.onclick=()=>{persist();closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();};box.append(save);
+    save.onclick=()=>saveBeforeExit(persist,()=>{closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();applyPendingUpdate();});box.append(save);
     const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
     exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
       const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};box.append(exportButton);
@@ -1439,11 +915,6 @@ function backdrop(now) {
     drawRetroPixelStar(x,y,size,star.shape,star.rgb);
   }
   ctx.globalAlpha=1;
-}
-function drawOrbit(x,y,r,color='#a3bed3') {
-  const p=screen(x,y),sr=r*state.zoom;if(sr<1)return;
-  ctx.save();ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.22;
-  strokeEllipse(ctx,circleGeometry(p.x,p.y,sr),state.width,state.height);ctx.restore();
 }
 
 function label(text,x,y) {
@@ -1637,16 +1108,14 @@ function drawGround(now) {
   const body=findBody(state.save.landed);if(!body)return;
   terrain.draw(ctx,body,state.camera,state.zoom,state.width,state.height,settings.pixelSize);
   drawCoordinateGrid();
-  const sampleTerrain=terrain.sampler(body),cell=110;
+  const cell=110;
   const hw=state.width/state.zoom/2,hh=state.height/state.zoom/2;
   // Sparse, independently placed vegetation and rocks. Placement is keyed to
   // world space, not to the terrain cache or the visible screen.
   for(let cy=Math.floor((state.camera.y-hh)/cell)-1;cy<=Math.floor((state.camera.y+hh)/cell)+1;cy++)
     for(let cx=Math.floor((state.camera.x-hw)/cell)-1;cx<=Math.floor((state.camera.x+hw)/cell)+1;cx++){
-      const rand=rng(`props:${body.id}:${cx},${cy}`);if(rand()<.38)continue;
-      const wx=(cx+rand())*cell,wy=(cy+rand())*cell,t=sampleTerrain(wx,wy);
-      if(t.water||Math.hypot(wx,wy)<85)continue;
-      const p=screen(wx,wy),z=state.zoom,tree=t.biome==='forest'&&rand()<.65;
+      const prop=terrain.prop(body,cx,cy,cell);if(!prop)continue;
+      const p=screen(prop.x,prop.y),z=state.zoom,tree=prop.tree;
       ctx.save();ctx.translate(Math.round(p.x),Math.round(p.y));ctx.scale(z,z);
       ctx.fillStyle='#0d243447';ctx.fillRect(-5,2,14,4);
       if(tree){
@@ -1655,7 +1124,7 @@ function drawGround(now) {
         ctx.fillStyle='#4d8054';ctx.fillRect(-6,-17,9,9);ctx.fillRect(-9,-11,10,5);
         ctx.fillStyle='#83a868';ctx.fillRect(-4,-16,5,3);
       }else{
-        const size=3+Math.floor(rand()*5);ctx.fillStyle='#414d53';ctx.fillRect(-size,-size,size*2,size+4);
+        const size=prop.size;ctx.fillStyle='#414d53';ctx.fillRect(-size,-size,size*2,size+4);
         ctx.fillStyle=body.type==='desert'?'#bf9466':'#a5b1b2';ctx.fillRect(-size,-size,size+3,3);
         ctx.fillStyle=body.type==='desert'?'#86634f':'#687f88';ctx.fillRect(-size+2,-size+3,size*2-2,size-1);
       }
@@ -1696,6 +1165,7 @@ function frame(now) {
 requestAnimationFrame(frame);
 document.addEventListener('visibilitychange',()=>{
   state.last=performance.now();
+  music.setVisibility(document.hidden);
   if(document.hidden){resetInput();persist();}
 });
 window.addEventListener('pagehide',()=>{stopMusic();persist();});
@@ -1709,15 +1179,12 @@ canvas.addEventListener('pointerdown',e=>{if(onDashboard(e.clientX,e.clientY)||!
   if(pointers.size===2){state.coordinateTap=null;gesture=null;const [a,b]=[...pointers.values()];state.pinch=Math.hypot(a.x-b.x,a.y-b.y);}
 });
 canvas.addEventListener('pointermove',e=>{
-  if(!pointers.has(e.pointerId)){
-    if(state.save&&!$('modal').classList.contains('visible')&&e.pointerType==='mouse'){
-      const rect=canvas.getBoundingClientRect();state.hoverCell=gridCell(world(e.clientX-rect.left,e.clientY-rect.top),state.scene);
-    }return;
-  }const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(!pointers.has(e.pointerId))return;
+  const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pointers.size===2){const [a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);
-    if(state.pinch)zoom(dist/state.pinch);state.hoverCell=null;state.pinch=dist;return;}
+    if(state.pinch)zoom(dist/state.pinch);state.pinch=dist;return;}
   if(gesture){if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>7)gesture.moved=true;
-    if(gesture.moved){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(following)state.followPanRemaining=2000;state.hoverCell=null;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
+    if(gesture.moved){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(following)state.followPanRemaining=2000;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
       state.panUntil=Infinity;state.focusBody=null;}}
 });
 function pick(e){if(onDashboard(e.clientX,e.clientY))return;const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
@@ -1736,9 +1203,8 @@ function pick(e){if(onDashboard(e.clientX,e.clientY))return;const rect=canvas.ge
   if(state.scene==='system'&&systemStars().some(s=>{const pos=bodyPosition(s,state.save.days,state.system);return Math.hypot(cell.x-pos.x,cell.y-pos.y)<visualRadius(s.diameter)+24;})){toast('Choose a coordinate outside the stars.');return;}
   const tap={x,y,scene:state.scene,time:performance.now()},confirmed=isCoordinateDoubleTap(state.coordinateTap,tap);
   state.coordinateTap=confirmed?null:tap;if(!confirmed)return;
-  beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=cell;state.selected=null;state.autopilot=null;state.hoverCell=null;updateUI();
+  beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=cell;state.selected=null;state.autopilot=null;updateUI();
 }
-canvas.addEventListener('pointerleave',()=>{state.hoverCell=null;});
 canvas.addEventListener('pointerup',e=>{if(!pointers.has(e.pointerId))return;pointers.delete(e.pointerId);
   if(gesture&&!gesture.moved&&pointers.size===0)pick(e);gesture=null;state.pinch=null;});
 canvas.addEventListener('pointercancel',e=>{state.coordinateTap=null;pointers.delete(e.pointerId);gesture=null;state.pinch=null;});
@@ -1753,7 +1219,7 @@ window.addEventListener('keydown',e=>{
       else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
     }return;
   }
-  if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName)||document.activeElement?.closest('#targetCard'))return;
+  if(['INPUT','SELECT','TEXTAREA'].includes(document.activeElement?.tagName)||document.activeElement?.isContentEditable||document.activeElement?.closest('#terminalKeyboard'))return;
   if(!state.save)return;
   const k=e.key.length===1?e.key.toLowerCase():e.key;
   if(k===' '&&['BUTTON','A'].includes(document.activeElement?.tagName))return;
@@ -1763,6 +1229,7 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>state.keys.delete(e.key.length===1?e.key.toLowerCase():e.key));
 window.addEventListener('blur',resetInput);
+document.addEventListener('focusin',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)||e.target.isContentEditable)resetInput();});
 const joy=$('joystick'),stick=$('stick');let joyPointer=null;
 function resetInput(){state.keys.clear();state.joy={x:0,y:0};joyPointer=null;stick.style.setProperty('--jx','0px');stick.style.setProperty('--jy','0px');}
 function moveJoy(e){const r=joy.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;

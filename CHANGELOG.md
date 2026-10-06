@@ -1,5 +1,174 @@
 # Changelog
 
+## 1.12.12 — 2026-10-06
+
+- Voyage storage never evicts older saves. Failed saves keep the session open, corrupt stored records are protected, and imports/restoration validate dates and coordinates before use.
+- Planet, terrain, weather and ring caches distinguish different voyages with matching seeded IDs. Adaptive surface tiles retain a bounded working set at wide viewport sizes; cached rock/vegetation placements avoid resampling unchanged scenery every frame.
+- Surface samples can be collected only once. Legacy barren-system saves migrate safely, and focused terminal header buttons no longer block keyboard flight.
+- Dwarf planets have an explicit classification and separate terminal/chart counts. Pluto is identified consistently; Charon and other satellites remain moons. The model does not infer dwarf status from diameter alone.
+- Service-worker updates wait until Save & Main Menu. Audio respects visibility, the checked-in full soundtrack is available in local development, and updates preserve active gameplay.
+- Separated terminal/dashboard, music, storage and release controllers; removed obsolete UI and duplicate CSS declarations. Release metadata and offline assets are checked automatically.
+- Deployment publishes only runtime assets. Added storage, migration, classification, cache, native audio and offline/update regressions alongside Chromium/WebKit and mobile layout checks.
+
+## 1.12.11 — 2026-10-06
+
+- The joystick casing fills its dashboard row up to the upper rim, with its lower curve and highlights contained inside the bottom border.
+- The fully opened terminal keeps its compact lower-right contour. Keyboard and Backspace controls clear the curve while text remains above the phone home indicator.
+
+## 1.12.10 — 2026-10-06
+
+- The joystick sits lower against the dashboard corner, with concentric curves instead of a gap above the phone inset.
+- The compact terminal casing extends down and right to follow the dashboard rim. Its text and neighboring controls remain above the phone home indicator; the expanded terminal keeps its normal layout.
+
+## 1.12.9 — 2026-10-06
+
+- A shorter 68px flight deck centers its instruments vertically, with a wider corner-fitted joystick and a full-size labeled Follow button. Narrow screens wrap full-size controls into two rows.
+- Terminal and Log sit slightly inward from the screen edge; the compact device follows the lower corner curve. Travel and Cancel slide straight horizontally when the terminal expands.
+- Follow returns smoothly two seconds after the last pan, preserving zoom. Custom device sizes and saved voyages remain compatible.
+
+## 1.12.8 — 2026-10-06
+
+- A smaller default flight deck and larger rounded lower corners fit phone screens. The compact terminal sits flush with the dashboard rim, closer to the landscape right edge.
+- Travel and Cancel slide above the compact terminal and beside its expanded screen. A smaller green pixel lever moves forward/backward; object names remain beside objects.
+- Planet and moon surface coordinates now require two taps, like space coordinates. New Universe starts with an empty name field; custom dashboard sizes and voyage data are preserved.
+
+## 1.12.7 — 2026-10-06
+
+- Warp Drive and Log keep their left-to-right order while sliding beside the terminal, with larger flight controls and a lower dock near the right edge.
+- Dashboard height and terminal width/height scaling are saved in Settings. Dashboard and terminal resize arrows are independently opt-in and hidden by default.
+- Rounded lower dashboard corners respect phone safe areas. Date/time moves left; the system chart and its left-side Fit control move right beside Settings. Opening the chart or terminal closes the other.
+
+## 1.12.6 — 2026-10-06
+
+- Lowered flight controls into one transparent dashboard with a stepped metal rim; portrait controls remain inside a compact second row.
+- A narrow terminal opens at its minimum width beside the screen edge. Larger Terminal/Log launchers swap corners; Log slides beside Warp Drive when a terminal is visible.
+- Empty space coordinates require a double tap and use an unfilled frame. Object picking, surface taps, Follow, keyboard input and saved voyages remain compatible.
+
+## 1.3.6 — 2026-10-06
+
+- Replaced the old Chart control with a dedicated retro Warp Drive button in the bottom-right for entering the interstellar layer.
+- Moved the voyage Log directly under Settings and restyled both as a compact upper-right utility stack.
+- Moved Center beside the joystick and added Right, Above, Custom drag and Hidden placement options in Settings.
+- Custom Center placement can be dragged anywhere in the game view and is saved locally for future sessions.
+
+## 1.3.5 — 2026-10-06
+
+- Moved the soundtrack startup attempt to the earliest main-menu initialization and enabled native autoplay; the two-second lead-in remains baked into the track.
+- Removed the off-center teal nebula/backlight from the game background for a clean black starfield.
+- Moved the system chart into the top-left header, removed the SpaceBitz in-game brand and bottom system-status strip, and simplified the travel card to name, action and Info.
+- Restyled the bottom navigation controls and Settings button with a more cohesive pixel-space interface.
+
+## 1.3.4 — 2026-10-06
+
+- Replaced the corrupted/truncated repository MP3 with a soundtrack generated fresh during every Pages deployment.
+- The deployment now verifies soundtrack size and duration before publishing, preventing an incomplete audio file from going live.
+- Removed JavaScript song timers and ended-event playlist scheduling; the intro now uses one native looping audio element with its two-second lead-in baked into the file.
+- Mobile browsers that block audible autoplay still require the first user interaction; that browser restriction cannot be bypassed reliably.
+
+## 1.3.3 — 2026-10-06
+
+- Rebuilt music playback from scratch around one persistent HTML audio element instead of the previous soundtrack player class.
+- Removed music from the service-worker cache and bypassed all audio/range requests so mobile browsers can stream the track normally.
+- Music now has only one lifecycle: wait two seconds at the menu, play the full track, wait two seconds after it ends, then advance to the next playlist entry.
+- No game scene, panel, planet selection, visibility change or normal control can pause, restart or reschedule the song.
+
+## 1.3.2 — 2026-10-06
+
+- Removed gesture-driven audio priming and visibility pause/resume behavior that could make the soundtrack repeatedly stop and restart on mobile.
+- Music now uses one timer, one audio element and one ended event: wait two seconds, play once, wait two seconds, repeat.
+- If browser autoplay is blocked, only one temporary user-gesture listener is installed and removed immediately after playback succeeds.
+
+## 1.3.1 — 2026-10-06
+
+- Simplified music playback to one continuous playlist lifecycle: two-second startup delay, full song playback, two-second gap, then the next song.
+- The intro song now begins from the main menu and is no longer restarted by entering a universe, changing scenes, selecting worlds or returning to the menu.
+- Removed native audio looping; repeats are now driven only by the track-ended event so every repeat gets the intended two-second pause.
+- Added a browser autoplay unlock fallback while keeping one audio element and one playback state.
+
+## 1.3.0 — 2026-10-06
+
+- Added the separately designed soft-synth soundtrack as the game’s single looping music file, controlled by the existing music and volume settings.
+- Converted the system navigator into a collapsed dropdown that stays in the upper-left and away from the touch joystick.
+- Removed the on-screen zoom control panel while preserving pinch, wheel and keyboard zoom.
+- Planet and moon names now appear in the orbital view only when selected; the system star can remain labeled by default.
+
+## 1.2.9 — 2026-10-06
+
+- Removed the soundtrack playback engine and all music startup, scheduling, resume and visibility hooks.
+- Removed the music module and music-specific tests so no legacy or replacement melody can play anywhere in the game.
+- Kept the existing music and volume Settings controls as inactive placeholders for a future separately designed soundtrack.
+
+## 1.2.8 — 2026-10-06
+
+- Rebuilt the soundtrack from the original uploaded melody reference at its native 0.60-second note timing, preserving the tune while removing recorded noise/static.
+- Replaced overlapping per-note oscillators with one continuous melody oscillator so a second copy of the song cannot layer underneath the first.
+- Added a warmer harmonic tone, cleaner note separation, gentle low-pass filtering and compression for higher perceived volume without clipping.
+
+## 1.2.7 — 2026-10-06
+
+- Redesigned the orbital HUD into a slimmer system navigator and compact target card so more of the system remains visible.
+- Condensed planet and moon rows, target metrics, labels and actions while preserving the same navigation and detail controls.
+- Improved portrait and landscape phone layouts so the target card, joystick and system rail occupy less of the play field.
+
+## 1.2.6 — 2026-10-06
+
+- Hardened soundtrack playback so every voyage restart cancels all existing schedulers and active voices before one delayed copy starts.
+- Set travelable star rarity to 50% red, 20% orange, 20% yellow, 9% white and 1% blue while keeping chart/system colors identical.
+- Upgraded interstellar stars with smoother colored halos, bright cores and subtle non-crosshair shimmer.
+- Added a landscape-first rotating phone layout plus Auto, Landscape and Portrait orientation preferences.
+
+## 1.2.5 — 2026-10-06
+
+- Reworked soundtrack startup so each voyage begins the melody once from note one after a two-second delay, with no action-driven duplicate starts.
+- Weighted travelable star colors toward real stellar rarity: red dwarfs dominate, orange/yellow stars are less common, white stars are uncommon and blue stars are rare.
+- Made each travelable star use the exact same deterministic spectral color in the interstellar chart and its system view.
+
+## 1.2.4 — 2026-10-06
+
+- Removed crosshair flares from stars in both system and interstellar views.
+- Compacted Settings, added miles/AU display choices, improved visual defaults, preferred time zones and accelerated/real-time clock modes.
+- New voyages now begin at the current real date/time; Sol uses a date-driven low-precision Kepler ephemeris and real sidereal spin rates.
+- Replaced oversized stellar dark regions with small procedural sunspots that slowly emerge and fade.
+- Improved soundtrack startup retries while retaining first-interaction fallback for browsers that enforce autoplay restrictions.
+
+## 1.2.3 — 2026-10-06
+
+- Refined the SpaceBitz title with cleaner pixel-space detailing, removed the vertical side rails and restyled the version label without a border.
+- Sped up only the main-menu fly-through starfield while leaving in-game background-star speed unchanged.
+- Disabled native double-tap page zoom while preserving the game canvas pinch zoom.
+- Improved close-planet rendering performance with cheaper large-body halos, better texture-frame cache reuse, zoom-aware orbit rendering and aggressive off-screen stellar-glow culling.
+
+## 1.2.2 — 2026-10-06
+
+- Redesigned the SpaceBitz wordmark with sharper pixel-space detailing, more breathing room above the menu buttons and a clear version badge.
+- Simplified the universe creation screen by removing redundant descriptive, status, version and device text.
+- Changed menu and in-game background stars to a fresh procedural sky each session while preserving the same sky during that session.
+- Expanded star colors into more saturated red, yellow, orange, white and blue families.
+
+## 1.2.1 — 2026-10-06
+
+- Streamlined the main menu by removing the extra explorer tagline, subtitle, descriptive copy and footer status text.
+- Raised the SpaceBitz title, removed menu button numbers and centered the Start Game, Multiplayer and Settings labels.
+
+## 1.2 — 2026-10-06
+
+- Introduced the two-stage retro main menu with Start Game, Multiplayer placeholder and Settings.
+- Opened the menu layout so more of the starfield remains visible and shifted outer space toward near-black.
+- Made menu and in-game starfields faster with stronger depth, quicker brightness-only twinkle and richer retro pixel-art square, circle and diamond star sprites.
+- Music now defaults on for new players, with audio controls kept inside Settings.
+
+## 1.1 — 2026-10-06
+
+- Restored the original soundtrack and expanded sound, sky, display and control settings.
+- Refined the retro moving sky, simulation clock, celestial scale, terrain rendering and character sprites.
+- Improved responsive/mobile navigation, stellar details and orbital/deployment checks.
+
+## 1.0 — 2026-10-06
+
+- Launched the responsive, installable SpaceBitz Field Edition.
+- Added procedural star systems, orbiting worlds, exploration, landing, star-chart travel and local save support.
+- Established the core flight HUD, logbook, touch/keyboard controls and offline app shell.
+
 ## 1.12.5 — 2026-10-05
 
 - Moving target labels and action strips track without repeated CSS easing, retaining their placement until an obstruction requires a change.

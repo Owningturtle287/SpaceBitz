@@ -1,6 +1,7 @@
 // Reflected-light giant atmospheres and ring dimensions. See docs/astronomy.md.
 // Appearance RNG is separate from world generation: recoloring never moves worlds.
 import {rng,hash,TAU} from './model.js';
+import {bodyCacheKey} from './body-cache.js';
 import {noise} from './terrain.js';
 import {drawImageInView} from './rendering.js';
 
@@ -152,7 +153,7 @@ export function ringProfile(body){
 const ringFrames=new Map();
 export function ringSprites(body,worldPos={x:0,y:0}){
   const profile=body.rings;if(!profile)return null;
-  const light=Math.round(Math.atan2(-worldPos.y,-worldPos.x)/TAU*32),key=body.id+':'+light;
+  const light=Math.round(Math.atan2(-worldPos.y,-worldPos.x)/TAU*32),key=bodyCacheKey(body)+':'+light;
   if(ringFrames.has(key))return ringFrames.get(key);
   const size=384,outer=profile.outerKm/(body.diameter/2),unit=2*outer/size;
   const canvases=[document.createElement('canvas'),document.createElement('canvas')];
