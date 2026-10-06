@@ -78,6 +78,25 @@
     </button>
     <button id="terminalButton" class="icon-button utility-button" aria-label="Open Terminal" title="Open Terminal" aria-expanded="false"><svg class="terminal-glyph" viewBox="0 0 16 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="#8ee9d4" d="M1 1h14v10H1z"/><path fill="#071612" d="M3 3h10v6H3z"/><path fill="#b7ffd0" d="M4 4h1v1h1v1H5v1H4V6h1V5H4zm4 3h3v1H8z"/><path fill="#8dabb1" d="M6 12h4v1h3v1H3v-1h3z"/></svg><span class="utility-label">TERM</span></button>
     <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
+    <div id="travelControls" class="travel-controls" hidden aria-label="Selected target controls"><div class="context-action-row">
+      <button id="primaryAction" class="travel-lever" type="button" aria-label="Go Here">
+        <svg class="travel-mechanism" viewBox="0 0 32 38" shape-rendering="crispEdges" aria-hidden="true">
+          <path fill="#071812" d="M7 22h18v3h4v5h2v7H1v-7h2v-5h4z"/>
+          <path fill="#638b7c" d="M8 25h16v3h4v6H4v-6h4z"/>
+          <path fill="#c9e7c7" d="M8 25h16v2H8zm-4 5h4v2H4z"/>
+          <path fill="#1c3f31" d="M12 27h8v7h-8z"/>
+          <g class="travel-handle">
+            <path fill="#06170d" d="M12 8h8v22h-8z"/><path fill="#6c9f88" d="M14 11h4v19h-4z"/><path fill="#d4f4ce" d="M14 11h2v13h-2z"/>
+            <path fill="#06170d" d="M9 3h14v3h3v11h-3v3H9v-3H6V6h3z"/>
+            <path fill="#248048" d="M10 6h12v2h2v8h-3v2H10v-2H8V8h2z"/>
+            <path fill="#64de7d" d="M10 6h11v3h2v5h-4v3h-9v-3H8V9h2z"/>
+            <path fill="#c0ffac" d="M11 7h8v2h-5v3h-3z"/>
+          </g>
+          <path fill="#284d3e" d="M3 34h26v3H3z"/><path fill="#a9c8ad" d="M4 34h24v1H4z"/><path class="travel-lamp" fill="#67ed86" d="M13 35h6v1h-6z"/>
+        </svg><span id="primaryActionLabel">GO HERE</span>
+      </button>
+      <button id="cancelTravel" class="button cancel-target-button" aria-label="Cancel target" title="Cancel"><svg class="pixel-x" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h2v2H1z M3 3h2v2H3z M5 5h2v2H5z M7 7h2v2H7z M9 9h2v2H9z M9 1h2v2H9z M7 3h2v2H7z M3 7h2v2H3z M1 9h2v2H1z"/></svg></button>
+    </div></div>
     <div id="terminalPocket" class="terminal-pocket">
     <section class="terminal" id="targetCard" aria-label="Object terminal" hidden>
       <button id="terminalResizeTop" class="terminal-resize resize-top" type="button" aria-label="Resize terminal height" hidden><svg viewBox="0 0 14 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M5 0h4v1h2v1h2v1H1V2h2V1h2zM1 4h12v1h-2v1H3V5H1z"/></svg></button>
@@ -90,7 +109,7 @@
     </section>
     </div>
     </div>
-    <div id="contextActions" class="context-actions" hidden aria-label="Selected target actions"><div class="context-action-row"><button id="primaryAction" class="button primary"><span id="primaryActionLabel">GO HERE</span><svg id="coordinateArrow" class="pixel-arrow" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true" hidden><path fill="currentColor" d="M5 0h2v2h2v2h2v2H8v6H4V6H1V4h2V2h2z"/></svg></button><button id="cancelTravel" class="button subtle" aria-label="Cancel target" title="Cancel"><svg class="pixel-x" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h2v2H1z M3 3h2v2H3z M5 5h2v2H5z M7 7h2v2H7z M9 9h2v2H9z M9 1h2v2H9z M7 3h2v2H7z M3 7h2v2H3z M1 9h2v2H1z"/></svg></button></div><span id="contextName" class="context-name"></span></div>
+    <div id="contextActions" class="context-actions" hidden aria-label="Selected object name"><span id="contextName" class="context-name"></span></div>
     <div id="joystick" class="joystick" aria-label="Movement joystick" role="application"><div id="stick"></div></div>
     <div id="navigationControls" class="navigation-controls">
     <button id="homeButton" class="center-button hud-float" type="button" aria-label="Recenter view">
@@ -106,7 +125,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.12.7</span>
+        <span class="version-chip main-menu-version">v1.12.8</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>
@@ -122,7 +141,7 @@
         <div class="generation-columns">
           <div class="generation-column">
             <div id="generationFields">
-              <div class="generation-inputs"><div class="create-row"><label for="universeName">UNIVERSE NAME</label><input id="universeName" maxlength="40" value="My Universe" autocomplete="off"></div><div class="create-row"><label for="universeSeed">SEED <small>OPTIONAL</small></label><input id="universeSeed" maxlength="64" placeholder="Surprise me" autocomplete="off"></div></div>
+              <div class="generation-inputs"><div class="create-row"><label for="universeName">UNIVERSE NAME</label><input id="universeName" maxlength="40" placeholder="Universe name" autocomplete="off"></div><div class="create-row"><label for="universeSeed">SEED <small>OPTIONAL</small></label><input id="universeSeed" maxlength="64" placeholder="Surprise me" autocomplete="off"></div></div>
               <div class="universe-mode-row"><label class="scientific-check"><input id="scientificMode" type="checkbox" checked> <span>SCIENTIFIC MODE</span></label><button id="generationOptions" class="button subtle" hidden>GENERATION SETTINGS</button></div>
               <p id="customUniverseWarning" class="custom-warning" hidden>Custom distribution active — generated universe may not reflect observed stellar populations.</p>
               <details id="scientificDefaults" class="scientific-defaults"><summary>SCIENTIFIC DEFAULT RARITIES</summary><div class="scientific-body"><select id="scientificPool" aria-label="Scientific percentage category"></select><div id="scientificValues"></div><div id="scientificPages" class="editor-pages" hidden><button id="scientificPrev" class="button subtle" aria-label="Previous scientific entries">←</button><span id="scientificPage"></span><button id="scientificNext" class="button subtle" aria-label="Next scientific entries">→</button></div><output>TABLE TOTAL: 100.000000%</output></div></details>

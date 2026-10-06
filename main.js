@@ -2,7 +2,7 @@ import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash
   habitableZone, makeSystem, bodyPosition, galaxyStars, starName, starAppearance, orbitPoint, orbitalElements,stellarPositions,orbitCenter} from './model.js';
 import {defaults,POPULATIONS,validateGeneration,checkedGeneration,percentUnits} from './universe.js';
 import {terminalLines,typedLength} from './terminal.js';
-import {contextPosition,coordinateHeading,isCoordinateDoubleTap} from './target-ui.js';
+import {contextPosition,isCoordinateDoubleTap} from './target-ui.js';
 import {rarityPages} from './rarity-ui.js';
 import {paintBrownAtmosphere,paintBrownGlow,paintCompact} from './substellar.js';
 import {chartStyle,paintHomeMarker,paintPixelFrame} from './presentation.js';
@@ -79,6 +79,11 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.12.8',items:[
+    'A smaller default flight deck and larger rounded lower corners fit phone screens. The compact terminal sits flush with the dashboard rim, closer to the landscape right edge.',
+    'Travel and Cancel slide above the compact terminal and beside its expanded screen. A smaller green pixel lever moves forward/backward; object names remain beside objects.',
+    'Planet and moon surface coordinates now require two taps, like space coordinates. New Universe starts with an empty name field; custom dashboard sizes and voyage data are preserved.'
+  ]},
   {version:'1.12.7',items:[
     'Warp Drive and Log keep their left-to-right order while sliding beside the terminal, with larger flight controls and a lower dock near the right edge.',
     'Dashboard height and terminal width/height scaling are saved in Settings. Dashboard and terminal resize arrows are independently opt-in and hidden by default.',
@@ -635,12 +640,13 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
 
 function beginSelection(){
   closeSystemChart();state.coordinateTap=null;state.contextPlacement=null;
-  const row=$('contextActions').querySelector('.context-action-row');row.style.transition='none';
+  const row=$('travelControls').querySelector('.context-action-row');row.style.transition='none';
+  $('travelControls').classList.remove('ready');$('travelControls').hidden=false;
   $('contextActions').classList.remove('ready');
   $('contextActions').hidden=false;
   // Commit the starting pose now; the action strip animates on this same tap.
   void row.offsetHeight;row.style.transition='';
-  $('contextActions').classList.add('ready');
+  $('contextActions').classList.add('ready');$('travelControls').classList.add('ready');
 }
 function select(object) { beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=null;state.hoverCell=null;state.selected=object; state.autopilot=null;updateUI(); }
 function keepStationNearShip(){
@@ -853,7 +859,7 @@ function updateUI() {
   $('modeLabel').textContent=scene==='chart'?'SECTOR / STAR CHART':'ORBITAL / SYSTEM';
   $('placeLabel').textContent=scene==='chart'?'Deep Space':scene==='surface'?findBody(state.save.landed)?.name||'Surface':sys.name;
   const planetCount=sys.planets.filter(p=>p.kind==='planet').length,dwarfCount=sys.planets.length-planetCount;
-  $('hint').textContent=scene==='chart'?'Select a star, then engage Warp Drive.':scene==='surface'?'Tap a 1 m square, then its green arrow. Collect samples and return to your lander.':`${sys.star.type} STAR · ${planetCount} PLANETS${dwarfCount?` · ${dwarfCount} DWARF PLANET`:''}`;
+  $('hint').textContent=scene==='chart'?'Select a star, then engage Warp Drive.':scene==='surface'?'Double-tap a 1 m square, then use the green travel lever. Collect samples and return to your lander.':`${sys.star.type} STAR · ${planetCount} PLANETS${dwarfCount?` · ${dwarfCount} DWARF PLANET`:''}`;
   $('zoneLegend').hidden=scene!=='system';$('zoneToggle').textContent=settings.zone?'ON':'OFF';$('zoneToggle').setAttribute('aria-pressed',String(settings.zone));
   const list=$('bodyList'),listKey=`${scene}:${sys.seed}:${sel?.id||''}`;
   if(state.listKey!==listKey){
@@ -899,7 +905,8 @@ function updateUI() {
   if(state.warpUntil){title='WARP DRIVE';action='ENGAGING';destination=null;}
   $('cancelTravel').hidden=false;
   const hasTarget=Boolean(sel||state.waypoint||traveling);
-  $('targetCard').hidden=$('systemChart').classList.contains('open')||(!hasTarget&&!state.terminalExpanded);$('contextActions').hidden=!hasTarget||Boolean(state.warpUntil);
+  $('targetCard').hidden=$('systemChart').classList.contains('open')||(!hasTarget&&!state.terminalExpanded);$('contextActions').hidden=!sel||Boolean(state.warpUntil);
+  $('travelControls').hidden=!hasTarget||$('systemChart').classList.contains('open')||Boolean(state.warpUntil);
   $('targetName').textContent=title||'Ship Terminal';$('focusSelected').hidden=!sel&&!state.waypoint;
   $('targetStatus').textContent=state.waypoint?'Coordinate selected':scene==='chart'&&sel?.seed===state.save.homeSeed||scene==='system'&&sel?.kind==='star'&&state.save.currentSystem===state.save.homeSeed?'Home System':sel?.id===state.save.homePlanet?'Home World':traveling?'Course active':sel?.familyLabel||sel?.kind||'Target selected';
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
@@ -908,7 +915,8 @@ function updateUI() {
   if(!state.terminalExpanded){setTerminalKeyboard(false);if(document.activeElement===$('terminalInput'))$('terminalInput').blur();}
   if(state.terminalExpanded&&!state.terminal)buildTerminal();
   $('targetDistance').textContent=destination?(state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
-  $('primaryActionLabel').textContent=state.waypoint?'':action;$('primaryActionLabel').hidden=Boolean(state.waypoint);$('coordinateArrow').toggleAttribute('hidden',!state.waypoint);
+  $('primaryActionLabel').textContent=action;$('primaryAction').classList.toggle('engaged',traveling);
+  $('primaryAction').setAttribute('aria-busy',String(traveling));
   $('primaryAction').setAttribute('aria-label',action==='GO HERE'?'Go Here':action);
   $('contextName').textContent=title||'Target';$('contextActions').classList.toggle('coordinate',Boolean(state.waypoint));
   document.body.classList.toggle('terminal-visible',!$('targetCard').hidden);
@@ -1096,18 +1104,18 @@ for(const [id,axis] of [['terminalResizeTop','height'],['terminalResizeLeft','wi
 let dashboardResize=null;
 const dashboardHandle=$('dashboardResize');
 dashboardHandle.onpointerdown=e=>{if(e.button!==0||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();dashboardHandle.setPointerCapture(e.pointerId);dashboardResize={id:e.pointerId,y:e.clientY,height:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'))};};
-dashboardHandle.onpointermove=e=>{if(e.pointerId!==dashboardResize?.id)return;settings.dashboardHeight=clamp(dashboardResize.height+dashboardResize.y-e.clientY,80,260);layoutDashboard();applyCenterButtonLayout();};
+dashboardHandle.onpointermove=e=>{if(e.pointerId!==dashboardResize?.id)return;settings.dashboardHeight=clamp(dashboardResize.height+dashboardResize.y-e.clientY,74,260);layoutDashboard();applyCenterButtonLayout();};
 const finishDashboardResize=e=>{if(e.pointerId!==dashboardResize?.id)return;dashboardResize=null;saveSettings();};
 dashboardHandle.onpointerup=finishDashboardResize;dashboardHandle.onpointercancel=finishDashboardResize;
-dashboardHandle.onkeydown=e=>{const direction={ArrowUp:1,ArrowDown:-1}[e.key];if(!direction||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();settings.dashboardHeight=clamp(settings.dashboardHeight+direction*12,80,260);saveSettings();layoutDashboard();applyCenterButtonLayout();};
+dashboardHandle.onkeydown=e=>{const direction={ArrowUp:1,ArrowDown:-1}[e.key];if(!direction||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();settings.dashboardHeight=clamp(settings.dashboardHeight+direction*12,74,260);saveSettings();layoutDashboard();applyCenterButtonLayout();};
 function layoutDashboard(){
   const card=$('targetCard'),compact=innerWidth<700&&innerHeight>innerWidth&&!card.hidden;
   document.body.classList.toggle('deck-compact',compact);
-  let height=compact?124:settings.centerButton==='above'?136:80;
+  let height=compact?118:settings.centerButton==='above'?136:74;
   if(!compact)height+=Math.max(0,settings.joyOffset||0);
-  if(!card.hidden&&!state.terminalExpanded)height=Math.max(height,card.getBoundingClientRect().height+8);
   height=Math.max(height,Math.min(settings.dashboardHeight,Math.max(height,innerHeight*.5)));
   document.documentElement.style.setProperty('--dashboard-height',height+'px');
+  $('terminalDock').style.setProperty('--terminal-compact-height',(height-2)+'px');
   dashboardHandle.hidden=!settings.dashboardResizeHandle;
 }
 function onDashboard(x,y){
@@ -1138,14 +1146,13 @@ function positionContext(){
   if($('contextActions').hidden||!state.save)return;const record=selectedRecord(),target=screen(record.position.x,record.position.y),element=$('contextActions');
   const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
   const radius=(state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10)+(homeIcon?16:0);
-  if(state.waypoint)$('coordinateArrow').style.transform=`rotate(${coordinateHeading(record.ship,record.position,state.shipMotion.heading)}deg)`;
   const obstacles=['terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls','mapButton','dashboardBase'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
   const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles,state.contextPlacement);state.contextPlacement=place;element.style.transform=`translate(${place.x}px,${place.y}px)`;
 }
 function layoutTerminalDock(){
   const visible=!$('targetCard').hidden;$('terminalDock').classList.toggle('has-target',visible);
   $('terminalDock').classList.toggle('terminal-expanded',Boolean(state.terminalExpanded));
-  applyTerminalSize();
+  applyTerminalSize();layoutDashboard();
   $('terminalPocket').style.height=(visible?$('targetCard').getBoundingClientRect().height:0)+'px';
 }
 let terminalLayoutFrame=0;
@@ -1231,7 +1238,7 @@ function openSettings(){
   control('cheats','Instant travel','checkbox');
 
   heading('Dashboard & terminal');
-  control('dashboardHeight','Dashboard height (px)','range',[80,260,2]);
+  control('dashboardHeight','Dashboard height (px)','range',[74,260,2]);
   control('dashboardResizeHandle','Show dashboard resize arrow','checkbox');
   control('terminalWidthScale','Terminal width (%)','range',[60,240,5]);
   control('terminalHeightScale','Terminal height (%)','range',[40,130,5]);
@@ -1354,7 +1361,7 @@ function drawCoordinateGrid(){
   for(let y=Math.ceil((top-unit/2)/step)*step+unit/2;y<top+halfH*2;y+=step){const p=screen(0,y);ctx.moveTo(0,Math.round(p.y)+.5);ctx.lineTo(state.width,Math.round(p.y)+.5);}
   ctx.stroke();
   }
-  const cell=state.waypoint||(scene==='surface'?state.hoverCell:null);
+  const cell=state.waypoint;
   if(cell){
     const p=screen(cell.x-unit/2,cell.y-unit/2),size=unit*state.zoom;
     ctx.strokeStyle=state.waypoint?'#ffcf69':'#8ee9d4';
@@ -1715,10 +1722,8 @@ function pick(e){if(onDashboard(e.clientX,e.clientY))return;const rect=canvas.ge
   if(state.scene==='surface'){const lander=screen(0,0);if(Math.hypot(x-lander.x,y-lander.y)<32*state.zoom){select({id:'lander',kind:'lander',name:'Lander',x:0,y:0});return;}for(const sample of surfaceSamples()){if(state.save.discoveries.includes(sample.id))continue;const p=screen(sample.x,sample.y);if(Math.hypot(x-p.x,y-p.y)<Math.max(15,10*state.zoom)){select({...sample,kind:'sample',name:'Surface sample'});return;}}}
   const cell=gridCell(world(x,y),state.scene);
   if(state.scene==='system'&&systemStars().some(s=>{const pos=bodyPosition(s,state.save.days,state.system);return Math.hypot(cell.x-pos.x,cell.y-pos.y)<visualRadius(s.diameter)+24;})){toast('Choose a coordinate outside the stars.');return;}
-  if(state.scene!=='surface'){
-    const tap={x,y,scene:state.scene,time:performance.now()},confirmed=isCoordinateDoubleTap(state.coordinateTap,tap);
-    state.coordinateTap=confirmed?null:tap;if(!confirmed)return;
-  }
+  const tap={x,y,scene:state.scene,time:performance.now()},confirmed=isCoordinateDoubleTap(state.coordinateTap,tap);
+  state.coordinateTap=confirmed?null:tap;if(!confirmed)return;
   beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=cell;state.selected=null;state.autopilot=null;state.hoverCell=null;updateUI();
 }
 canvas.addEventListener('pointerleave',()=>{state.hoverCell=null;});

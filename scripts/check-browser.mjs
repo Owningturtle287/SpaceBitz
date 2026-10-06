@@ -7,6 +7,7 @@ import {checkRelease1123} from './check-release1123.mjs';
 import {checkRelease1125} from './check-release1125.mjs';
 import {checkRelease1126} from './check-release1126.mjs';
 import {checkRelease1127} from './check-release1127.mjs';
+import {checkRelease1128} from './check-release1128.mjs';
 import {checkRelease1124} from './check-release1124.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -41,6 +42,7 @@ try{
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   assert.equal(await page.locator('#mainMenuStage #scientificMode').count(),0);
   await page.locator('#startGame').click();
+  assert.equal(await page.locator('#universeName').inputValue(),'','New Universe should start with an empty name');
   assert.equal(await page.locator('#scientificMode').isChecked(),true);
   assert.equal(await page.locator('#generationOptions').isVisible(),false);
   await page.locator('#scientificMode').uncheck();await page.locator('#generationOptions').click();await page.locator('#generationEditor select').selectOption('spectral');
@@ -181,7 +183,7 @@ try{
     const earth=s.system.planets.find(p=>p.name==='Earth'),moon=earth.moons[0],pos=bodyPosition(earth,s.save.days,s.system);
     s.save.ship={x:pos.x+visualRadius(earth.diameter)+44,y:pos.y};s.followBody={id:earth.id,x:visualRadius(earth.diameter)+44,y:0};
     g.select(moon);g.primary();
-    if(s.autopilot?.drive!=='orbit'||document.getElementById('primaryAction').textContent!=='ORBIT DRIVE'||!document.getElementById('targetDistance').textContent.includes('0.1 ls/s'))throw new Error('Local transfer has wrong drive');
+    if(s.autopilot?.drive!=='orbit'||document.getElementById('primaryActionLabel').textContent!=='ORBIT DRIVE'||!document.getElementById('targetDistance').textContent.includes('0.1 ls/s'))throw new Error('Local transfer has wrong drive');
     const before={...s.save.ship};g.update(16,16);
     if(Math.abs(Math.hypot(s.save.ship.x-before.x,s.save.ship.y-before.y)/SYSTEM_UNIT-.1*.016)>1e-7)throw new Error('Orbit Drive speed wrong');
     g.zoom(.5);const manualZoom=s.zoom;g.update(16,16);
@@ -210,7 +212,7 @@ try{
     for(let i=0;i<3000&&s.autopilot;i++){
       g.update(16,0);if(Math.hypot(s.save.ship.x,s.save.ship.y)<r+38)throw new Error('Star approach entered the stellar disk');
     }
-    if(s.autopilot||document.getElementById('primaryAction').textContent!=='HOLDING')throw new Error('Star travel did not arrive');
+    if(s.autopilot||document.getElementById('primaryActionLabel').textContent!=='HOLDING')throw new Error('Star travel did not arrive');
     const parked={...s.save.ship};g.update(1300,0);
     if(s.zoom!==zoom||s.centerZoom||s.camera.x!==camera.x||s.camera.y!==camera.y)throw new Error('Star arrival changed the camera');
     if(s.save.ship.x!==parked.x||s.save.ship.y!==parked.y)throw new Error('Stellar stop drifts');
@@ -265,7 +267,7 @@ try{
     const raw=JSON.parse(JSON.stringify(s.save)),copy=importVoyage(raw,'import-qa');g.start(copy);
     for(const key of ['currentSystem','scene','ship','surface','chart','route','homePlanet','discoveries'])if(JSON.stringify(copy[key])!==JSON.stringify(raw[key]))throw new Error('Import changed '+key);
     const far=s.system.planets.at(-1);g.select(far);g.primary();
-    if(document.getElementById('primaryAction').textContent!=='HYPERDRIVE'||document.getElementById('cancelTravel').hidden)throw new Error('Travel controls missing');
+    if(document.getElementById('primaryActionLabel').textContent!=='HYPERDRIVE'||document.getElementById('cancelTravel').hidden)throw new Error('Travel controls missing');
     document.getElementById('cancelTravel').click();if(s.autopilot)throw new Error('Cancel failed');
     const movements=[];
     for(const zoom of [.01,1,20]){s.followBody=null;s.zoom=zoom;const x=s.save.ship.x;s.keys.add('d');g.update(100,0);s.keys.clear();movements.push(s.save.ship.x-x);}
@@ -512,5 +514,6 @@ try{
   const release1125=await checkRelease1125(page,engine);
   const release1126=await checkRelease1126(page,engine);
   const release1127=await checkRelease1127(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,release1127,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release1128=await checkRelease1128(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,release1127,release1128,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

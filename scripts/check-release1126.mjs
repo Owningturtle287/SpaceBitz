@@ -80,7 +80,7 @@ export async function checkRelease1126(page,engine){
   });
   await page.mouse.click(empty.x,empty.y);assert.equal(await picked(),false);await page.mouse.click(empty.x,empty.y);assert.equal(await picked(),true,'Deep Space did not accept double tap');
   await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.enterSurface(g.state.system.planets.find(p=>p.name==='Earth'));g.cancelTarget();g.state.camera={x:1e7,y:1e7};g.updateUI();});await page.waitForTimeout(350);
-  await page.mouse.click(350,160);assert.equal(await picked(),true,'Surface coordinate lost single-tap selection');
+  await page.mouse.click(350,160);assert.equal(await picked(),false,'Surface selected after one tap');await page.mouse.click(350,160);assert.equal(await picked(),true,'Surface coordinate did not accept two taps');
   await page.evaluate(()=>window.__game.cancelTarget());
-  return {layouts,firstTapIgnored:true,frame,doubleTapBothSpaceLayers:true,panZoomAndTimeoutReset:true,dashboardBlocksTaps:true,singleTapObjectsAndSurface:true};
+  return {layouts,firstTapIgnored:true,frame,doubleTapBothSpaceLayers:true,panZoomAndTimeoutReset:true,dashboardBlocksTaps:true,singleTapObjectsAndDoubleTapSurface:true};
 }

@@ -60,8 +60,8 @@ export async function checkRelease1121(page,engine){
   // Pick an empty square; its green arrow and red X remain compact and cancellable.
   await page.evaluate(()=>{const g=window.__game;g.state.camera={x:1e7,y:1e7};g.state.panUntil=Infinity;g.state.centerZoom=null;g.state.zoom=.1;});
   await page.mouse.click(420,190);await page.mouse.click(420,190);await page.waitForTimeout(650);await page.evaluate(()=>{window.__game.frame(performance.now());window.__game.positionContext();});
-  assert.equal(await page.locator('#coordinateArrow').isVisible(),true);assert.equal(await page.locator('#coordinateArrow').getAttribute('shape-rendering'),'crispEdges');assert.equal(await page.locator('#primaryAction').getAttribute('aria-label'),'Go Here');
-  const controls=await page.locator('#contextActions').boundingBox();assert.ok(controls.width<70&&controls.height<40);
+  assert.equal(await page.locator('#travelControls').isVisible(),true);assert.equal(await page.locator('#primaryAction svg').getAttribute('shape-rendering'),'crispEdges');assert.equal(await page.locator('#primaryAction').getAttribute('aria-label'),'Go Here');
+  const controls=await page.locator('#travelControls').boundingBox();assert.ok(controls.width<90&&controls.height<=50);assert.equal(await page.locator('#contextActions').isVisible(),false);
   await page.screenshot({path:`.qa/${engine}-1121-coordinate.png`});await page.locator('#cancelTravel').click();assert.equal(await page.locator('#contextActions').isVisible(),false);
   const art=await page.evaluate(async()=>{
     const {paintHomeMarker}=await import('/presentation.js'),{paintBrownGlow,paintBrownAtmosphere}=await import('/substellar.js'),{makeStar}=await import('/universe.js');
@@ -74,7 +74,7 @@ export async function checkRelease1121(page,engine){
       ctx.font='13px monospace';ctx.textAlign='center';ctx.fillStyle='#85c69b';ctx.fillText(body.type+' / '+body.temperature+' K',x,280);
     }
     if(!(halos[0]>halos[1]&&halos[1]>halos[2]&&halos[2]>0))throw Error('Brown halo brightness does not follow temperature: '+halos);
-    const g=window.__game;g.enterChart();g.state.selected={seed:'far-warp',x:g.state.save.chart.x+1000,y:g.state.save.chart.y+1000};g.updateUI();if(document.getElementById('primaryAction').textContent!=='WARP DRIVE')throw Error('Jump label remains');
+    const g=window.__game;g.enterChart();g.state.selected={seed:'far-warp',x:g.state.save.chart.x+1000,y:g.state.save.chart.y+1000};g.updateUI();if(document.getElementById('primaryActionLabel').textContent!=='WARP DRIVE')throw Error('Jump label remains');
     return {image:canvas.toDataURL(),halos};
   });
   await writeFile(`.qa/${engine}-1121-home-glow.png`,Buffer.from(art.image.split(',')[1],'base64'));return {layouts,halos:art.halos};
