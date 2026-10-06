@@ -1,4 +1,5 @@
 import {hash,clamp} from './model.js';
+import {bodyCacheKey} from './body-cache.js';
 
 // All samples use global world coordinates. Cache chunks never determine terrain,
 // so coastlines, ridges and shadows continue across every chunk boundary.
@@ -68,17 +69,17 @@ export function createTerrainSampler(body) {
 }
 export class TerrainRenderer {
   constructor(){this.cache=new Map();this.samplers=new Map();this.chunkSize=192;}
-  sampler(body){if(!this.samplers.has(body.id)){
+  sampler(body){const key=bodyCacheKey(body);if(!this.samplers.has(key)){
     if(this.samplers.size>=8)this.samplers.delete(this.samplers.keys().next().value);
-    this.samplers.set(body.id,createTerrainSampler(body));}return this.samplers.get(body.id);}
-  clear(){this.cache.clear();}
-  chunk(body,cx,cy,pixel) {
-    const key=`${body.id}:${cx},${cy}:${pixel}`;
+    this.samplers.set(key,createTerrainSampler(body));}return this.samplers.get(key);}
+  clear(){this.cache.clear();this.samplers.clear();}
+  chunk(body,cx,cy,pixel,span=this.chunkSize) {
+    const key=`${bodyCacheKey(body)}:${cx},${cy}:${pixel}:${span}`;
     if(this.cache.has(key))return this.cache.get(key);
-    const size=this.chunkSize/pixel,c=document.createElement('canvas');c.width=c.height=size;
+    const size=Math.min(96,Math.ceil(this.chunkSize/pixel)),step=span/size,c=document.createElement('canvas');c.width=c.height=size;
     const g=c.getContext('2d'),img=g.createImageData(size,size),sample=this.sampler(body);
     for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-      const color=sample(cx*this.chunkSize+(x+.5)*pixel,cy*this.chunkSize+(y+.5)*pixel).color;
+      const color=sample(cx*span+(x+.5)*step,cy*span+(y+.5)*step).color;
       const i=(y*size+x)*4;img.data[i]=color[0];img.data[i+1]=color[1];img.data[i+2]=color[2];img.data[i+3]=255;
     }
     g.putImageData(img,0,0);this.cache.set(key,c);
@@ -86,14 +87,18 @@ export class TerrainRenderer {
     return c;
   }
   draw(ctx,body,camera,zoom,width,height,pixel=3) {
-    const size=this.chunkSize,halfW=width/(2*zoom),halfH=height/(2*zoom);
+    const halfW=width/(2*zoom),halfH=height/(2*zoom);
+    // Keep the visible working set inside the bounded cache. Wide zooms use
+    // coarser world tiles, never larger raster textures or growing GPU caches.
+    let size=this.chunkSize;
+    while((Math.ceil(width/(zoom*size))+2)*(Math.ceil(height/(zoom*size))+2)>96)size*=2;
     const left=Math.floor((camera.x-halfW)/size),right=Math.floor((camera.x+halfW)/size);
     const top=Math.floor((camera.y-halfH)/size),bottom=Math.floor((camera.y+halfH)/size);
     ctx.save();ctx.imageSmoothingEnabled=false;
     for(let cy=top;cy<=bottom;cy++)for(let cx=left;cx<=right;cx++){
       const x=Math.round(width/2+(cx*size-camera.x)*zoom),y=Math.round(height/2+(cy*size-camera.y)*zoom);
       const endX=Math.round(width/2+((cx+1)*size-camera.x)*zoom),endY=Math.round(height/2+((cy+1)*size-camera.y)*zoom);
-      ctx.drawImage(this.chunk(body,cx,cy,pixel),x,y,endX-x,endY-y);
+      ctx.drawImage(this.chunk(body,cx,cy,pixel,size),x,y,endX-x,endY-y);
     }
     ctx.restore();
   }

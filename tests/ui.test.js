@@ -6,14 +6,16 @@ const index=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const main=readFileSync(new URL('../main.js',import.meta.url),'utf8');
 const settings=readFileSync(new URL('../settings.js',import.meta.url),'utf8');
 
-test('flight HUD uses dedicated warp drive and upper-right log utility',()=>{
+test('flight HUD keeps settings at the top and log beside the terminal in the dashboard',()=>{
   assert.doesNotMatch(index,/class="brand"/);
   assert.doesNotMatch(index,/id="statusText"/);
   assert.match(index,/<header class="topbar">[\s\S]*id="systemChart"/);
   assert.match(index,/id="mapButton" class="warp-drive-button"/);
   assert.match(index,/class="warp-label">Warp Drive</);
   assert.doesNotMatch(index,/class="warp-sub"|id="gridToggle"/);
-  assert.match(index,/class="utility-stack"[\s\S]*id="settingsOpen"[\s\S]*id="journalButton"/);
+  const utilities=index.match(/class="utility-stack"[\s\S]*?<\/div>/)[0];
+  assert.match(utilities,/id="settingsOpen"/);assert.doesNotMatch(utilities,/id="journalButton"/);
+  assert.match(index,/id="terminalDock"[\s\S]*id="journalButton"/);
   assert.match(index,/class="log-glyph"/);
 });
 

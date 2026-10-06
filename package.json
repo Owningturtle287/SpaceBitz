@@ -1,1 +1,16 @@
-{"name":"spacebitz","version":"1.12.11","private":true,"type":"module","scripts":{"test":"node --test tests/*.test.js"}}
+{
+  "name": "spacebitz",
+  "version": "1.12.12",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check:release": "node scripts/release.mjs",
+    "release:sync": "node scripts/release.mjs --write",
+    "build": "node scripts/build-site.mjs",
+    "test:browser": "node scripts/check-browser.mjs",
+    "test:pwa": "node scripts/check-pwa.mjs",
+    "assets:font": "python tools/build-retro-assets.py",
+    "assets:audio": "python scripts/build_soundtrack.py && ffmpeg -y -hide_banner -loglevel error -i audio/nostalgic_melody_soft_synth.wav -ac 1 -ar 44100 -codec:a libmp3lame -b:a 96k -write_xing 0 audio/nostalgic_melody_soft_synth.mp3"
+  }
+}

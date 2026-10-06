@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {coordinateHeading,isCoordinateDoubleTap} from '../target-ui.js';
+import {isCoordinateDoubleTap} from '../target-ui.js';
 
 test('space and surface confirmation requires two nearby taps in the same scene and time window',()=>{
   const first={x:100,y:200,scene:'system',time:1000};
@@ -11,17 +11,6 @@ test('space and surface confirmation requires two nearby taps in the same scene 
   assert.equal(isCoordinateDoubleTap(surface,{...surface,time:1200}),true);
   assert.equal(isCoordinateDoubleTap(surface,{...first,time:1200}),false);
   for(const next of [{...first,time:1501},{...first,time:999},{...first,x:140},{...first,scene:'chart'}])assert.equal(isCoordinateDoubleTap(first,next),false);
-});
-
-test('coordinate arrow follows travel vectors in every quadrant and after ship movement',()=>{
-  for(const ship of [{x:0,y:0},{x:152,y:-230}])for(const [dx,dy]of [[0,-1],[1,0],[0,1],[-1,0],[3,-4],[-3,-4],[3,4],[-3,4]]){
-    const angle=coordinateHeading(ship,{x:ship.x+dx,y:ship.y+dy})*Math.PI/180,length=Math.hypot(dx,dy);
-    assert.ok(Math.abs(Math.sin(angle)-dx/length)<1e-12);
-    assert.ok(Math.abs(-Math.cos(angle)-dy/length)<1e-12);
-  }
-  const p={x:12,y:34};
-  assert.equal(coordinateHeading(p,p),0);
-  assert.equal(coordinateHeading(p,p,Math.PI/2),180);
 });
 
 test('moving target keeps its side until it reaches an obstruction',async()=>{

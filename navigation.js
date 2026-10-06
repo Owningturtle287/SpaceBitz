@@ -65,7 +65,7 @@ export function migrateLayout(save,system){
     const oldOrbit=save.layoutVersion===2?oldRadius(system.star.diameter)+180+900*Math.log1p(body.au*2):160+275*Math.log1p(body.au*2);
     const radius=oldOrbit*(body.ephemeris?1-o.e*Math.cos(E):1);
     return {body,d:Math.hypot(ship.x-Math.cos(angle)*radius,ship.y-Math.sin(angle)*radius)};
-  }).sort((a,b)=>a.d-b.d)[0].body;
+  }).sort((a,b)=>a.d-b.d)[0]?.body||system.star;
   const p=bodyPosition(nearest,days,system);
   save.ship={x:p.x+visualRadius(nearest.diameter)+60,y:p.y};
   save.layoutVersion=4;return save;

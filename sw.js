@@ -1,8 +1,9 @@
-const CACHE='spacebitz-field-v1.12.11-device-corner-fit';
-const SHELL=['./','./index.html','./main.js','./model.js','./universe.js','./universe-v2.js','./terminal.js','./target-ui.js','./rarity-ui.js','./substellar.js','./presentation.js','./star-info.js','./scale.js','./navigation.js','./saves.js','./hud.js','./stellar.js','./giants.js','./weather.js','./rendering.js','./settings.js','./terrain.js','./motion.js','./sprites.js','./celestial.js','./style.css','./assets/spacebitz-pixel.woff','./assets/spacebitz-title.svg','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
+const CACHE='spacebitz-field-v1.12.12';
+const SHELL=['./','./index.html','./audio.js','./body-cache.js','./body-classification.js','./celestial.js','./changelog.js','./exploration.js','./giants.js','./hud.js','./main.js','./model.js','./motion.js','./navigation.js','./presentation.js','./pwa.js','./rarity-ui.js','./rendering.js','./saves.js','./scale.js','./settings.js','./sprites.js','./star-info.js','./stellar.js','./substellar.js','./target-ui.js','./terminal-device.js','./terminal.js','./terrain.js','./universe-v2.js','./universe.js','./voyage-storage.js','./weather.js','./style.css','./styles-base.css','./styles-devices.css','./assets/spacebitz-pixel.woff','./assets/spacebitz-title.svg','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{
-  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)).then(()=>self.skipWaiting()));
+  event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)));
 });
+self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')event.waitUntil(self.skipWaiting());});
 self.addEventListener('activate',event=>{
   event.waitUntil(Promise.all([
     caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('spacebitz-field-')&&k!==CACHE).map(k=>caches.delete(k)))),
@@ -13,8 +14,15 @@ self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET'||!event.request.url.startsWith(self.registration.scope))return;
   const url=new URL(event.request.url);
   if(event.request.headers.has('range')||url.pathname.includes('/audio/'))return;
-  event.respondWith(caches.match(event.request).then(cached=>cached||fetch(event.request).then(response=>{
-    if(response.ok){const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));}
-    return response;
-  })));
+  // Only cache the finite app shell. Query strings must not create unbounded
+  // runtime entries; non-shell resources pass straight through to the network.
+  const shellURL=new URL(url);shellURL.search='';
+  const allowed=SHELL.some(path=>new URL(path,self.registration.scope).href===shellURL.href);
+  if(!allowed)return;
+  const response=caches.open(CACHE).then(async cache=>{
+    const cached=await cache.match(shellURL.href);if(cached)return cached;
+    const value=await fetch(event.request);if(value.ok)await cache.put(shellURL.href,value.clone());return value;
+  });
+  event.respondWith(response);
+  event.waitUntil(response.then(()=>{}).catch(()=>{}));
 });

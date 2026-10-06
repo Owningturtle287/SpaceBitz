@@ -1,5 +1,6 @@
 import {POPULATIONS,SOL_REFERENCE,solFacts,defaults} from './universe.js';
 import {habitableZone} from './model.js';
+import {bodyCounts} from './body-classification.js';
 const n=(v,d=2)=>!Number.isFinite(v)?'Unknown':v!==0&&(Math.abs(v)<.001||Math.abs(v)>=1e8)?v.toExponential(2):v.toLocaleString('en-US',{maximumFractionDigits:d});
 export const years=v=>v>=1e12?n(v/1e12)+' trillion yr':v>=1e9?n(v/1e9)+' billion yr':v>=1e6?n(v/1e6)+' million yr':n(v,0)+' yr';
 export function starFacts(star){
@@ -40,7 +41,10 @@ export function stellarRows(star,system){
   add('STELLAR WIND',s.windSpeed?`~${n(s.windSpeed,0)} km/s`:'No ordinary plasma wind model',`Characteristic wind speed; mass loss ${s.windMassLoss?n(s.windMassLoss)+' M☉/yr':'not modelled'}. Evolved stars can have slow dense winds; hot massive stars fast radiatively driven winds. Neutron-star particle winds are not described by this ordinary-star model.`,`~450 km/s · ~2×10⁻¹⁴ M☉/yr`);
   add('SYSTEM',system.multiplicity||'Single','Number of stellar components, including compact companions. '+(legacy?'Legacy single-star architecture.':`Primary-system reference weight ${n(pools.multiplicity[{Single:'single',Binary:'binary',Triple:'triple',Quadruple:'quad'}[system.multiplicity]]??0,6)}%. ${config.scientific?'Scientific Mode conditions this on primary mass: massive stars are more often multiple. ':''}Detached hierarchical Keplerian approximation, not full N-body dynamics.`),'Single star');
   add('PLANET ARCHITECTURE',system.architecture||'Single-star orbits','S-type planets orbit one star; P-type planets orbit a binary barycenter. Safety margins use coplanar binary stability fits. Habitable-zone illumination and orbit stability are separate questions. Planet/moon surfaces will be upgraded in a later release.','Planets orbit Sol');
-  add('PLANETS',String(system.planets.filter(p=>p.kind==='planet').length),'Generated count reflects available stable orbital space, the host and evolutionary context. It is not a claim that every real star has planets; barren and remnant systems can have none.','8 planets + Pluto (dwarf planet)');
+  const counts=bodyCounts(system);
+  add('PLANET COUNT',String(counts.planets),'Planets are counted separately from dwarf planets and satellites. Barren and remnant systems can have none.','8 planets');
+  add('DWARF PLANET COUNT',String(counts.dwarfPlanets),'Round bodies that orbit a star, have not cleared their orbital neighbourhood, and are not satellites. Sol includes Pluto; diameter alone does not classify procedural worlds.','1 modelled: Pluto');
+  add('MOON COUNT',String(counts.moons),'Satellites orbit a planetary body. Large round moons, including Charon, remain moons.','Modelled major satellites');
   if(system.binaries?.length)for(const [i,b]of system.binaries.entries()){
     add('COMPANION ORBIT '+(i+1),n(b.au)+' AU · e '+n(b.eccentricity,3),`Pair hierarchy ${b.members.map(id=>system.stars.find(s=>s.id===id)?.name).join(' + ')}. Semimajor separation ${n(b.au)} AU, period ${n(b.period)} days, inclination ${n(b.orbitalInclination)}°, mass ratio q=${n(b.mu/(1-b.mu),3)}. Orbits can be viewed and companions selected in the system navigator.`,'No stellar companion');
   }

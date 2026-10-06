@@ -1,11 +1,12 @@
 import {hash,TAU,rotationAngle} from './model.js';
 import {noise} from './terrain.js';
 import {giantColor} from './giants.js';
+import {bodyCacheKey} from './body-cache.js';
 
 const maps=new Map(),frames=new Map();
 const cap=(n,a,b)=>Math.max(a,Math.min(b,n));
 function surfaceMap(body){
-  if(maps.has(body.id))return maps.get(body.id);
+  const key=bodyCacheKey(body);if(maps.has(key))return maps.get(key);
   const width=body.atmosphere?320:192,height=width/2,pixels=new Uint8ClampedArray(width*height*3),seed=hash(body.id);
   const base=body.color.match(/\w\w/g).map(h=>parseInt(h,16));
   for(let y=0;y<height;y++)for(let x=0;x<width;x++){
@@ -37,7 +38,7 @@ function surfaceMap(body){
     }
     const i=(y*width+x)*3;for(let k=0;k<3;k++)pixels[i+k]=Math.round(color[k]/4)*4;
   }
-  const map={width,height,pixels};maps.set(body.id,map);
+  const map={width,height,pixels};maps.set(key,map);
   if(maps.size>48)maps.delete(maps.keys().next().value);
   return map;
 }
@@ -45,7 +46,7 @@ export function celestialSprite(body,days,worldPosition={x:0,y:0}) {
   const rotation=((rotationAngle(body,days)%TAU)+TAU)%TAU;
   const lightAngle=Math.atan2(-worldPosition.y,-worldPosition.x);
   const frame=Math.floor(rotation/TAU*96),light=Math.round(lightAngle/TAU*48);
-  const key=`${body.id}:${frame}:${light}`;
+  const key=`${bodyCacheKey(body)}:${frame}:${light}`;
   if(frames.has(key))return frames.get(key);
   const map=surfaceMap(body),size=body.kind==='star'?144:body.atmosphere?128:80;
   const c=document.createElement('canvas');c.width=c.height=size;const g=c.getContext('2d'),img=g.createImageData(size,size);

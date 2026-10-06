@@ -3,6 +3,7 @@
 import {AU_KM,SYSTEM_PX_PER_KM,SUN_DIAMETER_KM} from './scale.js';
 import {giantProfile,ringProfile} from './giants.js';
 import {makeArchitecture,solFacts,randomFor,GENERATION_VERSION} from './universe.js';
+import {bodyKind} from './body-classification.js';
 export const TAU = Math.PI * 2;
 export const DAY_MS = 86400000;
 export const EPOCH = Date.UTC(2026, 0, 1);
@@ -243,6 +244,7 @@ function completeSystem(system) {
     Jupiter:.41354,Saturn:.444,Uranus:-.71833,Neptune:.67125,Pluto:-6.3872};
   system.star.rotationDays ??= system.seed === 'sol' ? 25.05 : 10 + rng('spin:'+system.seed)()*30;
   for (const p of system.planets) {
+    p.kind=bodyKind(p);
     const r=rng('rotation:'+p.id);
     p.rotationDays=system.seed==='sol'?spins[p.name]:p.type==='gas'?.3+r()*.4:.65+r()*2;
     if(system.seed==='sol'&&p.name==='Earth')p.rotationPhase=100.66085856687278*DEG;
