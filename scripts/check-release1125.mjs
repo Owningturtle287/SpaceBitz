@@ -83,6 +83,7 @@ export async function checkRelease1125(page,engine){
   for(const viewport of [{width:1440,height:900},{width:844,height:390},{width:667,height:375},{width:390,height:844},{width:375,height:667}]){
     await page.setViewportSize(viewport);await page.evaluate(()=>{const g=window.__game;g.state.terminalSize=null;document.getElementById('terminalDock').style.removeProperty('--terminal-width');document.getElementById('terminalDock').style.removeProperty('--terminal-user-height');g.updateUI();g.updateTerminal(g.state.terminal.start+14000);});
     await page.locator('#terminalInput').focus();await page.waitForTimeout(500);
+    await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations())a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
     const fit=await page.evaluate(()=>{
       const r=id=>document.getElementById(id).getBoundingClientRect(),t=r('targetCard'),w=r('mapButton'),f=r('followShipButton'),c=r('homeButton'),joy=r('joystick'),k=r('terminalKeyboard'),input=r('terminalInputBar');
       const overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;

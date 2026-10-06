@@ -20,7 +20,7 @@ export async function checkRelease1126(page,engine){
       await page.evaluate(async()=>{
         // The earlier gates verify the actual transitions. Settle this layout sample
         // explicitly so a busy WebKit renderer cannot leave it between widths.
-        for(const id of ['terminalDock','terminalPocket','journalButton'])for(const animation of document.getElementById(id).getAnimations())animation.finish();
+        for(const id of ['terminalDock','terminalPocket','journalButton','mapButton'])for(const animation of document.getElementById(id).getAnimations())animation.finish();
         await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);
       });
       const fit=await page.evaluate(()=>{
