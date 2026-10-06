@@ -23,7 +23,7 @@ export async function checkRelease11210(page,engine){
     await page.screenshot({path:`.qa/${engine}-11210-compact-${viewport.width}.png`});
     await page.evaluate(()=>window.__game.showDetails(window.__game.state.selected));await settle();
     const expanded=await page.locator('#targetCard').evaluate(e=>{const a=e.getBoundingClientRect(),deck=document.getElementById('dashboardBase').getBoundingClientRect(),safe=+getComputedStyle(document.documentElement).getPropertyValue('--dashboard-safe-bottom').replace('px','');return {right:innerWidth-a.right,bottom:innerHeight-a.bottom,safe,deckHeight:deck.height-safe,wrap:document.body.classList.contains('deck-wrap'),radius:getComputedStyle(e).borderBottomRightRadius};});
-    assert.ok(Math.abs(expanded.right-3)<.1&&Math.abs(expanded.bottom-(3+(expanded.wrap?expanded.deckHeight:0)))<.1&&parseFloat(expanded.radius)>30,JSON.stringify(expanded));layouts.push({viewport,fit,expanded});
+    assert.ok(Math.abs(expanded.right-3)<.1&&Math.abs(expanded.bottom-(3+(expanded.wrap?expanded.deckHeight+expanded.safe:0)))<.1&&parseFloat(expanded.radius)>30,JSON.stringify(expanded));layouts.push({viewport,fit,expanded});
   }
   await page.evaluate(()=>{document.documentElement.style.removeProperty('--dashboard-safe-bottom');document.getElementById('terminalDock').style.removeProperty('--deck-safe-right');window.__game.cancelTarget();window.__game.applySettings();});
   return {layouts};

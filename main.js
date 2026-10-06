@@ -1078,7 +1078,7 @@ $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden
 let terminalResize=null;
 function terminalResizeSize(){
   const r=$('targetCard').getBoundingClientRect(),dock=getComputedStyle($('terminalDock'));
-  const safe=$('dashboardBase').getBoundingClientRect().height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
+  const safe=document.body.classList.contains('deck-wrap')?0:$('dashboardBase').getBoundingClientRect().height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
   return {width:r.width-Math.max(0,parseFloat(dock.right)-3),height:r.height-safe+1};
 }
 function terminalLimits(){

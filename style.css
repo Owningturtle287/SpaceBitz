@@ -649,7 +649,8 @@ body:has(#homeButton[data-center-position=above]):not(.deck-wrap) #joystick{heig
 #targetCard.terminal.expanded:not(.keyboard-open) .terminal-input-bar,.terminal-keyboard .keyboard-row:last-child{padding-right:calc((var(--dashboard-corner) - 3px)/2)}
 .travel-controls,.terminal-expanded .travel-controls{bottom:calc(var(--dashboard-row-height) + 4px);transition:right .24s cubic-bezier(.22,.7,.25,1)}
 body.deck-wrap .terminal-pocket{transition:height .24s cubic-bezier(.22,.7,.25,1),transform .24s cubic-bezier(.22,.7,.25,1)}
-body.deck-wrap .terminal-expanded .terminal-pocket{transform:translateY(calc(var(--dashboard-safe-bottom) - 1px - var(--dashboard-height)))}
+body.deck-wrap .terminal-expanded .terminal-pocket{transform:translateY(calc(-1px - var(--dashboard-height)))}
+body.deck-wrap #targetCard.terminal.expanded,body.deck-wrap #targetCard.terminal.keyboard-open{height:calc(var(--terminal-user-height) - 1px);padding-bottom:7px}
 body.deck-wrap .terminal-dock.has-target #mapButton{right:40px}
 body.deck-wrap .terminal-dock.has-target #journalButton{right:4px}
 body.deck-wrap #mapButton,body.deck-wrap .terminal-dock.has-target #journalButton{bottom:calc(var(--dashboard-row-height) * 1.5 + 2px - var(--deck-warp-height)/2)}
