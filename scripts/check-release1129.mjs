@@ -43,6 +43,13 @@ export async function checkRelease1129(page,engine){
   }
   const jr=await page.locator('#joystick').boundingBox();await page.mouse.move(jr.x+jr.width/2,jr.y+jr.height/2);await page.mouse.down();await page.mouse.move(jr.x+jr.width+80,jr.y+jr.height+80);
   const thumb=await page.evaluate(()=>{const r=id=>document.getElementById(id).getBoundingClientRect(),a=r('joystick'),b=r('stick'),j=window.__game.state.joy;return {inside:b.left>=a.left&&b.right<=a.right&&b.top>=a.top&&b.bottom<=a.bottom,signal:Math.hypot(j.x,j.y)};});assert.ok(thumb.inside&&Math.abs(thumb.signal-1)<.00001,JSON.stringify(thumb));await page.mouse.up();assert.equal(await page.evaluate(()=>Math.hypot(window.__game.state.joy.x,window.__game.state.joy.y)),0);
+  // The surface hides Warp Drive: its Log control must still stay in its row.
+  const surfaceLayouts=[];
+  for(const viewport of [{width:390,height:844},{width:320,height:568}]){
+    await page.setViewportSize(viewport);await page.evaluate(()=>{const g=window.__game;g.enterSurface(g.state.system.planets.find(p=>p.name==='Earth'));g.select({kind:'lander',id:'lander',name:'Lander',x:0,y:0});g.showDetails(g.state.selected);});await settle();
+    const fit=await page.evaluate(()=>{const r=id=>document.getElementById(id).getBoundingClientRect(),card=r('targetCard'),log=r('journalButton'),controls=['joystick','navigationControls','targetCard','travelControls'].map(r),overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;return {card:card.toJSON(),log:log.toJSON(),hidden:document.getElementById('mapButton').hidden,clear:controls.every(a=>!overlap(log,a)),screen:document.getElementById('terminalScreen').clientHeight};});assert.ok(fit.hidden&&fit.clear&&fit.card.top>=60&&fit.screen>=35,JSON.stringify(fit));surfaceLayouts.push({viewport,fit});
+  }
+  await page.setViewportSize({width:844,height:390});
   // Check the shorter timer in all layers, resetting it with another real drag.
   const following=[];
   for(const scene of ['system','chart','surface']){
@@ -51,5 +58,5 @@ export async function checkRelease1129(page,engine){
     assert.equal(await page.evaluate(()=>window.__game.state.followPanRemaining),2000);await page.evaluate(()=>window.__game.update(1900,0));await pan();
     const result=await page.evaluate(()=>{const g=window.__game,s=g.state,from={...s.camera},zoom=s.zoom;g.update(1999,0);const waiting=s.followPanRemaining===1&&s.camera.x===from.x&&s.camera.y===from.y;g.update(1,0);const eased=s.centerZoom?.centerAction==='resume';g.update(650,0);const mid={...s.camera};g.update(650,0);const pos=s.scene==='surface'?s.save.surface:s.scene==='chart'?s.save.chart:s.save.ship;return {scene:s.scene,waiting,eased,mid,from,done:s.followShip&&!s.centerZoom&&s.camera.x===pos.x&&s.camera.y===pos.y,sameZoom:s.zoom===zoom};});assert.ok(result.waiting&&result.eased&&result.done&&result.sameZoom,JSON.stringify(result));following.push(result);
   }
-  await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.state.followShip=false;g.applySettings();});return {layouts,paths,thumb,following};
+  await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.state.followShip=false;g.applySettings();});return {layouts,paths,thumb,surfaceLayouts,following};
 }

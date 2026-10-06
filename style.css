@@ -653,3 +653,5 @@ body[data-reduced-motion=true].deck-wrap .terminal-pocket{transition:none}
 @media(prefers-reduced-motion:reduce){body.deck-wrap .terminal-pocket{transition:none}}
 
 #targetCard.terminal:not(.expanded) .terminal-meta{padding-right:6px}
+
+body.deck-wrap .terminal-dock:has(#mapButton[hidden]).has-target #journalButton{right:4px;bottom:calc(var(--dashboard-row-height) * 1.5 + 2px - 16px)}
