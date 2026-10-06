@@ -10,6 +10,7 @@ import {checkRelease1127} from './check-release1127.mjs';
 import {checkRelease1128} from './check-release1128.mjs';
 import {checkRelease1129} from './check-release1129.mjs';
 import {checkRelease11210} from './check-release11210.mjs';
+import {checkRelease11211} from './check-release11211.mjs';
 import {checkRelease1124} from './check-release1124.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -519,5 +520,6 @@ try{
   const release1128=await checkRelease1128(page,engine);
   const release1129=await checkRelease1129(page,engine);
   const release11210=await checkRelease11210(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,release1127,release1128,release1129,release11210,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release11211=await checkRelease11211(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,release1127,release1128,release1129,release11210,release11211,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

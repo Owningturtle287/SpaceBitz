@@ -19,11 +19,11 @@ export async function checkRelease11210(page,engine){
       return {deck,joy,card,centers,safe,row,wrap,clear:controls.every(a=>!overlap(a,card)),textSafe:meta.bottom<=innerHeight-safe-2,controlsSafe:controls.every(a=>a.bottom<=innerHeight-safe),topAligned:Math.abs(card.top-(wrap?innerHeight-safe-row:deck.top))<.1};
     });
     for(const [a,b] of [['deckLeft','joystick'],['deckRight','terminal']])assert.ok(Math.abs(fit.centers[a].x-fit.centers[b].x)<.1&&Math.abs(fit.centers[a].y-fit.centers[b].y)<.1,JSON.stringify({viewport,fit}));
-    assert.ok(fit.clear&&fit.textSafe&&fit.controlsSafe&&fit.topAligned&&fit.joy.width===96&&fit.joy.height===64&&Math.abs(fit.card.right-viewport.width+3)<.1&&Math.abs(fit.card.bottom-viewport.height+3)<.1&&Math.abs(fit.card.height-(fit.row+viewport.bottom-3))<.1,JSON.stringify({viewport,fit}));
+    assert.ok(fit.clear&&fit.textSafe&&fit.controlsSafe&&fit.topAligned&&fit.joy.width===96&&fit.joy.height===fit.row+viewport.bottom-7&&Math.abs(fit.card.right-viewport.width+3)<.1&&Math.abs(fit.card.bottom-viewport.height+3)<.1&&Math.abs(fit.card.height-(fit.row+viewport.bottom-3))<.1,JSON.stringify({viewport,fit}));
     await page.screenshot({path:`.qa/${engine}-11210-compact-${viewport.width}.png`});
     await page.evaluate(()=>window.__game.showDetails(window.__game.state.selected));await settle();
     const expanded=await page.locator('#targetCard').evaluate(e=>{const a=e.getBoundingClientRect(),deck=document.getElementById('dashboardBase').getBoundingClientRect(),safe=+getComputedStyle(document.documentElement).getPropertyValue('--dashboard-safe-bottom').replace('px','');return {right:innerWidth-a.right,bottom:innerHeight-a.bottom,safe,deckHeight:deck.height-safe,wrap:document.body.classList.contains('deck-wrap'),radius:getComputedStyle(e).borderBottomRightRadius};});
-    assert.ok(expanded.right>=6&&expanded.right<=12&&Math.abs(expanded.bottom-(expanded.safe+2+(expanded.wrap?expanded.deckHeight:0)))<.1&&expanded.radius==='2px',JSON.stringify(expanded));layouts.push({viewport,fit,expanded});
+    assert.ok(Math.abs(expanded.right-3)<.1&&Math.abs(expanded.bottom-(3+(expanded.wrap?expanded.deckHeight:0)))<.1&&parseFloat(expanded.radius)>30,JSON.stringify(expanded));layouts.push({viewport,fit,expanded});
   }
   await page.evaluate(()=>{document.documentElement.style.removeProperty('--dashboard-safe-bottom');document.getElementById('terminalDock').style.removeProperty('--deck-safe-right');window.__game.cancelTarget();window.__game.applySettings();});
   return {layouts};

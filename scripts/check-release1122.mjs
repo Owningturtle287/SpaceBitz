@@ -27,6 +27,7 @@ export async function checkRelease1122(page,engine){
   assert.ok(opening.height>0&&opening.height<opening.full&&opening.after<opening.before,JSON.stringify(opening));
   await page.waitForTimeout(350);
   await page.evaluate(()=>window.__game.showDetails(window.__game.state.selected));await page.waitForTimeout(350);
+  await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations())a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
   const typing=await page.evaluate(()=>{
     const g=window.__game,record=g.state.terminal,screen=document.getElementById('terminalScreen');
     for(let elapsed=0;elapsed<=8000;elapsed+=100){g.updateTerminal(record.start+elapsed);if(record.finished)break;}
@@ -40,7 +41,7 @@ export async function checkRelease1122(page,engine){
     const card=document.getElementById('targetCard'),screen=document.getElementById('terminalScreen'),r=card.getBoundingClientRect(),log=document.getElementById('journalButton').getBoundingClientRect();
     return {width:r.width,header:screen.getBoundingClientRect().top-r.top,distance:parseFloat(getComputedStyle(document.getElementById('targetDistance')).fontSize),status:parseFloat(getComputedStyle(document.getElementById('targetStatus')).fontSize),overflow:screen.scrollWidth-screen.clientWidth,columns:getComputedStyle(document.getElementById('terminalOutput')).gridTemplateColumns.split(' ').length,logBottom:log.bottom,top:r.top};
   });
-  assert.ok(layout.width<=264&&layout.header<64&&layout.distance<layout.status&&layout.overflow<=1&&layout.logBottom<=896,JSON.stringify(layout));assert.equal(layout.columns,2);
+  assert.ok(layout.width<=267&&layout.header<64&&layout.distance<layout.status&&layout.overflow<=1&&layout.logBottom<=896,JSON.stringify(layout));assert.equal(layout.columns,2);
   await page.evaluate(()=>{const g=window.__game;g.positionContext();document.getElementById('contextActions').classList.add('ready');g.backdrop(0);g.drawSystem(0);});
   await page.screenshot({path:`.qa/${engine}-1122-terminal-desktop.png`});
   const reading=await page.evaluate(()=>{
@@ -54,7 +55,7 @@ export async function checkRelease1122(page,engine){
   for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667}]){
     await page.setViewportSize(viewport);await page.waitForTimeout(100);await page.evaluate(()=>{const g=window.__game;g.updateUI();g.positionContext();g.backdrop(0);g.drawSystem(0);});
     const fits=await page.evaluate(()=>{const r=document.getElementById('targetCard').getBoundingClientRect(),screen=document.getElementById('terminalScreen'),log=document.getElementById('journalButton').getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,log:log.bottom,overflow:screen.scrollWidth-screen.clientWidth};});
-    const bottom=viewport.height-2-(viewport.width<620?await page.locator('#dashboardBase').evaluate(e=>e.getBoundingClientRect().height):0);assert.ok(fits.left>=0&&fits.right<=viewport.width&&Math.abs(fits.bottom-bottom)<1&&fits.top>=60&&fits.log<=viewport.height-2&&fits.overflow<=1,JSON.stringify(fits));
+    const bottom=viewport.height-3-(viewport.width<620?await page.locator('#dashboardBase').evaluate(e=>e.getBoundingClientRect().height):0);assert.ok(fits.left>=0&&fits.right<=viewport.width&&Math.abs(fits.bottom-bottom)<1&&fits.top>=60&&fits.log<=viewport.height-2&&fits.overflow<=1,JSON.stringify(fits));
     await page.screenshot({path:`.qa/${engine}-1122-terminal-${viewport.width}.png`});
   }
   await page.setViewportSize({width:844,height:390});

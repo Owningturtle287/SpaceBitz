@@ -23,7 +23,7 @@ export async function checkRelease1127(page,engine){
   await setRange('dashboardHeight',160);await setRange('terminalWidthScale',120);await setRange('terminalHeightScale',80);
   await page.locator('#setting-terminalResizeHandles').check();await page.locator('#setting-dashboardResizeHandle').check();await page.locator('#modalClose').click();await page.waitForTimeout(450);
   const initial=await page.evaluate(()=>({deck:document.getElementById('dashboardBase').getBoundingClientRect().height,terminal:document.getElementById('targetCard').getBoundingClientRect().toJSON(),saved:JSON.parse(localStorage.getItem('spacebitz:field:settings'))}));
-  assert.equal(initial.deck,160);assert.ok(Math.abs(initial.terminal.width-316.8)<1&&Math.abs(initial.terminal.height-504)<1,JSON.stringify(initial));
+  assert.equal(initial.deck,160);assert.ok(Math.abs(initial.terminal.width-319.8)<1&&Math.abs(initial.terminal.height-503)<1,JSON.stringify(initial));
   assert.equal(initial.saved.dashboardHeight,160);assert.equal(initial.saved.terminalWidthScale,120);assert.equal(initial.saved.terminalHeightScale,80);
   for(const id of ['terminalResizeTop','terminalResizeLeft','dashboardResize'])assert.equal(await page.locator('#'+id).isVisible(),true);
   const keyboardResize=await page.evaluate(()=>{
@@ -34,10 +34,10 @@ export async function checkRelease1127(page,engine){
   const drag=async(id,dx,dy)=>{const r=await page.locator('#'+id).boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();await page.mouse.move(r.x+r.width/2+dx,r.y+r.height/2+dy,{steps:6});await page.mouse.up();await page.waitForTimeout(350);};
   await drag('terminalResizeLeft',-48,0);await drag('terminalResizeTop',0,-36);await drag('dashboardResize',0,-28);
   const resized=await page.evaluate(()=>({deck:document.getElementById('dashboardBase').getBoundingClientRect().height,terminal:document.getElementById('targetCard').getBoundingClientRect().toJSON(),saved:JSON.parse(localStorage.getItem('spacebitz:field:settings'))}));
-  assert.ok(Math.abs(resized.deck-188)<1&&Math.abs(resized.terminal.width-364.8)<1&&Math.abs(resized.terminal.height-540)<1,JSON.stringify(resized));
+  assert.ok(Math.abs(resized.deck-188)<1&&Math.abs(resized.terminal.width-367.8)<1&&Math.abs(resized.terminal.height-539)<1,JSON.stringify(resized));
   assert.ok(resized.saved.terminalWidthScale>initial.saved.terminalWidthScale&&resized.saved.terminalHeightScale>initial.saved.terminalHeightScale&&resized.saved.dashboardHeight===188);
   await page.setViewportSize({width:844,height:390});await page.waitForTimeout(400);
-  assert.ok(Math.abs((await page.locator('#targetCard').boundingBox()).height-390*.7*resized.saved.terminalHeightScale/100)<1,'Rotation did not apply the saved height scale');
+  assert.ok(Math.abs((await page.locator('#targetCard').boundingBox()).height-(390*.7*resized.saved.terminalHeightScale/100-1))<1,'Rotation did not apply the saved height scale');
   await page.setViewportSize({width:1440,height:900});await page.waitForTimeout(400);
   await page.locator('#settingsOpen').click();await page.locator('#setting-terminalResizeHandles').uncheck();await page.locator('#setting-dashboardResizeHandle').uncheck();await page.locator('#modalClose').click();
   for(const id of ['terminalResizeTop','terminalResizeLeft','dashboardResize'])assert.equal(await page.locator('#'+id).isVisible(),false);
@@ -58,7 +58,7 @@ export async function checkRelease1127(page,engine){
         const controls=[joy,center,follow,warp,log];
         return {card,deck,joy,warp,log,contained:controls.every(inside)&&(window.__game.state.terminalExpanded||inside(card)),clear:controls.every((a,i)=>controls.slice(i+1).every(b=>!overlap(a,b)))&&controls.every(a=>!overlap(a,card)),vertical:(innerWidth<620||Math.abs((joy.top+joy.bottom-center.top-center.bottom)/2)<1)&&Math.abs((center.top+center.bottom-follow.top-follow.bottom)/2)<1,topOrder:clock.right<=system.left&&system.right<=chart.left&&chart.right<=settings.left,topFits:clock.left>=0&&settings.right<=innerWidth,rounded:parseFloat(getComputedStyle(document.getElementById('dashboardBase')).borderBottomRightRadius)>0&&getComputedStyle(document.getElementById('dashboardBase')).borderTopRightRadius==='0px',arrowHidden:document.getElementById('terminalResizeTop').hidden&&document.getElementById('dashboardResize').hidden};
       });
-      assert.ok(fit.contained&&fit.clear&&fit.vertical&&fit.topOrder&&fit.topFits&&fit.rounded&&fit.arrowHidden&&fit.warp.right<fit.log.left&&(viewport.width<620||fit.log.right<fit.card.left)&&viewport.width-fit.card.right<=12&&Math.abs(fit.card.bottom-viewport.height+(expanded?2:3)+(expanded&&viewport.width<620?fit.deck.height:0))<1,JSON.stringify({viewport,expanded,fit}));
+      assert.ok(fit.contained&&fit.clear&&fit.vertical&&fit.topOrder&&fit.topFits&&fit.rounded&&fit.arrowHidden&&fit.warp.right<fit.log.left&&(viewport.width<620||fit.log.right<fit.card.left)&&viewport.width-fit.card.right<=12&&Math.abs(fit.card.bottom-viewport.height+3+(expanded&&viewport.width<620?fit.deck.height:0))<1,JSON.stringify({viewport,expanded,fit}));
       assert.ok(fit.joy.width>=(viewport.width<700&&viewport.height>viewport.width?44:viewport.width<=600?60:64)&&fit.warp.width>=(viewport.width<=600?60:64),JSON.stringify(fit));
       layouts.push({viewport,expanded,width:fit.card.width,deck:fit.deck.height});await page.screenshot({path:`.qa/${engine}-1127-${expanded?'open':'compact'}-${viewport.width}.png`});
     }

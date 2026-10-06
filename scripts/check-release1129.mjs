@@ -20,8 +20,8 @@ export async function checkRelease1129(page,engine){
         const row=+getComputedStyle(document.documentElement).getPropertyValue('--dashboard-row-height').replace('px',''),lower=innerHeight-row/2,upper=lower-row-4;
         return {deck,card,joy,center,follow,warp,log,term,wrap,contained:controls.every(inside),clear:controls.every((a,i)=>controls.slice(i+1).every(b=>!overlap(a,b)))&&(!visible||controls.every(a=>!overlap(a,card))),centered:controls.every(a=>Math.min(Math.abs(cy(a)-lower),wrap?Math.abs(cy(a)-upper):Infinity)<1),label:document.querySelector('.follow-label').textContent,rounded:getComputedStyle(document.getElementById('joystick')).borderBottomLeftRadius!=='0px'&&getComputedStyle(document.getElementById('targetCard')).borderBottomRightRadius!=='0px'};
       });
-      assert.ok(fit.contained&&fit.clear&&fit.centered&&fit.rounded&&fit.joy.width===96&&fit.joy.height===64&&fit.center.width===56&&fit.center.height===52&&fit.follow.width===56&&fit.follow.height===52&&fit.label==='FOLLOW',JSON.stringify({viewport,phase,fit}));
-      assert.ok(fit.warp.width>=(viewport.width<=600?60:64)&&fit.log.width===(phase==='closed'?44:32)&&viewport.width-(phase==='closed'?fit.term.right:fit.card.right)>=(phase==='compact'?3:6),JSON.stringify(fit));
+      assert.ok(fit.contained&&fit.clear&&fit.centered&&fit.rounded&&fit.joy.width===96&&fit.joy.height===61&&fit.center.width===56&&fit.center.height===52&&fit.follow.width===56&&fit.follow.height===52&&fit.label==='FOLLOW',JSON.stringify({viewport,phase,fit}));
+      assert.ok(fit.warp.width>=(viewport.width<=600?60:64)&&fit.log.width===(phase==='closed'?44:32)&&viewport.width-(phase==='closed'?fit.term.right:fit.card.right)>=(phase==='closed'?6:3),JSON.stringify(fit));
       if(phase==='compact')assert.ok(fit.card.height===65&&Math.abs(fit.card.bottom-viewport.height+3)<1&&(fit.wrap||Math.abs(fit.card.top-fit.deck.top)<1),JSON.stringify(fit));
       layouts.push({viewport,phase,deck:fit.deck.height,joystick:fit.joy,terminal:fit.card});await page.screenshot({path:`.qa/${engine}-1129-${phase}-${viewport.width}.png`});
     }
