@@ -79,6 +79,10 @@ function applyMusicSetting(){
 beginMusic();
 
 const CHANGELOG=[
+  {version:'1.12.11',items:[
+    'The joystick casing fills its dashboard row up to the upper rim, with its lower curve and highlights contained inside the bottom border.',
+    'The fully opened terminal keeps its compact lower-right contour. Keyboard and Backspace controls clear the curve while text remains above the phone home indicator.'
+  ]},
   {version:'1.12.10',items:[
     'The joystick sits lower against the dashboard corner, with concentric curves instead of a gap above the phone inset.',
     'The compact terminal casing extends down and right to follow the dashboard rim. Its text and neighboring controls remain above the phone home indicator; the expanded terminal keeps its normal layout.'
@@ -1072,6 +1076,11 @@ $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden
 
 // Resizing is bounded to the viewport and applies only to the expanded device.
 let terminalResize=null;
+function terminalResizeSize(){
+  const r=$('targetCard').getBoundingClientRect(),dock=getComputedStyle($('terminalDock'));
+  const safe=document.body.classList.contains('deck-wrap')?0:$('dashboardBase').getBoundingClientRect().height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
+  return {width:r.width-Math.max(0,parseFloat(dock.right)-3),height:r.height-safe+1};
+}
 function terminalLimits(){
   const wrap=innerWidth<620,joyRect=$('joystick').getBoundingClientRect();
   const reserve=wrap?(state.terminalExpanded?102:116):Math.max(330,joyRect.width?joyRect.right+242:0);
@@ -1098,11 +1107,11 @@ function resizeTerminal(width,height){
 }
 for(const [id,axis] of [['terminalResizeTop','height'],['terminalResizeLeft','width']]){
   const handle=$(id);
-  handle.onpointerdown=e=>{if(e.button!==0||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();handle.setPointerCapture(e.pointerId);const r=$('targetCard').getBoundingClientRect();terminalResize={id:e.pointerId,axis,x:e.clientX,y:e.clientY,width:r.width,height:r.height};$('terminalDock').classList.add('resizing');};
+  handle.onpointerdown=e=>{if(e.button!==0||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();handle.setPointerCapture(e.pointerId);terminalResize={id:e.pointerId,axis,x:e.clientX,y:e.clientY,...terminalResizeSize()};$('terminalDock').classList.add('resizing');};
   handle.onpointermove=e=>{if(!terminalResize||e.pointerId!==terminalResize.id)return;const r=terminalResize;resizeTerminal(r.width+(axis==='width'?r.x-e.clientX:0),r.height+(axis==='height'?r.y-e.clientY:0));};
   const finish=e=>{if(e.pointerId!==terminalResize?.id)return;terminalResize=null;$('terminalDock').classList.remove('resizing');saveSettings();scheduleTerminalLayout();};
   handle.onpointerup=finish;handle.onpointercancel=finish;
-  handle.onkeydown=e=>{const direction={ArrowLeft:1,ArrowUp:1,ArrowRight:-1,ArrowDown:-1}[e.key];if(!direction||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();const r=$('targetCard').getBoundingClientRect();resizeTerminal(r.width+(axis==='width'?direction*12:0),r.height+(axis==='height'?direction*12:0));saveSettings();};
+  handle.onkeydown=e=>{const direction={ArrowLeft:1,ArrowUp:1,ArrowRight:-1,ArrowDown:-1}[e.key];if(!direction||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();const r=terminalResizeSize();resizeTerminal(r.width+(axis==='width'?direction*12:0),r.height+(axis==='height'?direction*12:0));saveSettings();};
 }
 let dashboardResize=null;
 const dashboardHandle=$('dashboardResize');

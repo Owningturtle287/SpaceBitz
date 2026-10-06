@@ -42,6 +42,7 @@ export async function checkRelease1124(page,engine){
   assert.ok(immediate.ready&&immediate.delay.split(',').every(v=>parseFloat(v)===0)&&immediate.duration.includes('0.55s')&&immediate.offset>0,JSON.stringify(immediate));
   await page.waitForTimeout(180);const middle=await page.locator('.context-action-row').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m42);
   assert.ok(middle>0&&middle<immediate.offset,'Action glide finished too quickly');await page.waitForTimeout(450);
+  await page.locator('.context-action-row').evaluate(e=>{for(const a of e.getAnimations())if(Number.isFinite(a.effect.getComputedTiming().endTime))a.finish();});
   assert.equal(await page.locator('.context-action-row').evaluate(e=>new DOMMatrix(getComputedStyle(e).transform).m42),0);
   await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.updateUI();});await page.waitForTimeout(350);
   assert.equal(await page.locator('#targetCard').isVisible(),false);
