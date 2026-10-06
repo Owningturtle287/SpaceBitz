@@ -29,14 +29,14 @@ export async function checkRelease1125(page,engine){
   await page.mouse.move(1000,220);await page.mouse.down();await page.mouse.move(1080,250,{steps:4});await page.mouse.up();
   const inspection=await page.evaluate(()=>{
     const g=window.__game,s=g.state,panned={...s.camera},z=s.zoom;
-    if(!s.followShip||s.followPanRemaining!==5000)throw Error('Pan switched Follow off');
-    g.update(4900,0);if(s.camera.x!==panned.x||s.camera.y!==panned.y||s.followPanRemaining!==100)throw Error('Follow returned early');
+    if(!s.followShip||s.followPanRemaining!==2000)throw Error('Pan switched Follow off');
+    g.update(1900,0);if(s.camera.x!==panned.x||s.camera.y!==panned.y||s.followPanRemaining!==100)throw Error('Follow returned early');
     return {panned,z};
   });
   await page.mouse.move(1000,220);await page.mouse.down();await page.mouse.move(1030,245);await page.mouse.up();
   const resume=await page.evaluate(()=>{
     const g=window.__game,s=g.state,from={...s.camera},z=s.zoom;
-    g.update(4999,0);if(s.followPanRemaining!==1||s.camera.x!==from.x)throw Error('Last pan did not reset timeout');
+    g.update(1999,0);if(s.followPanRemaining!==1||s.camera.x!==from.x)throw Error('Last pan did not reset timeout');
     g.update(1,0);if(s.centerZoom?.centerAction!=='resume'||s.camera.x!==from.x)throw Error('Return skipped easing');
     g.update(650,0);if(s.camera.x===from.x||s.camera.x===s.save.ship.x||s.zoom!==z)throw Error('Return was not fluid at the current zoom');
     g.update(650,0);g.update(500,500);if(!s.followShip||s.camera.x!==s.save.ship.x||s.camera.y!==s.save.ship.y||s.zoom!==z)throw Error('Follow did not resume');
@@ -87,9 +87,9 @@ export async function checkRelease1125(page,engine){
       const r=id=>document.getElementById(id).getBoundingClientRect(),t=r('targetCard'),w=r('mapButton'),f=r('followShipButton'),c=r('homeButton'),joy=r('joystick'),k=r('terminalKeyboard'),input=r('terminalInputBar');
       const overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;
       const fonts=['terminalOutput','terminalInput','terminalKeyboard','targetDistance','clock','coordsReadout'].every(id=>getComputedStyle(document.getElementById(id)).fontFamily.includes('SpaceBitz Pixel'));
-      return {terminal:t.toJSON(),warp:w.toJSON(),follow:f.toJSON(),center:c.toJSON(),clear:w.right<t.left&&!overlap(w,f)&&!overlap(w,c)&&!overlap(w,joy),half:f.width===c.width/2&&f.height===c.height/2,side:Math.abs(f.left-c.right-6)<1,fonts,keyboardFits:k.bottom<=t.bottom,screenHeight:document.getElementById('terminalScreen').clientHeight,inputFixed:input.bottom<=k.top,overflow:document.getElementById('terminalScreen').scrollWidth-document.getElementById('terminalScreen').clientWidth};
+      return {terminal:t.toJSON(),warp:w.toJSON(),follow:f.toJSON(),center:c.toJSON(),clear:!overlap(w,t)&&!overlap(w,f)&&!overlap(w,c)&&!overlap(w,joy),equal:f.width===c.width&&f.height===c.height,side:Math.abs(f.left-c.right-6)<1,fonts,keyboardFits:k.bottom<=t.bottom,screenHeight:document.getElementById('terminalScreen').clientHeight,inputFixed:input.bottom<=k.top,overflow:document.getElementById('terminalScreen').scrollWidth-document.getElementById('terminalScreen').clientWidth};
     });
-    assert.ok(fit.clear&&fit.half&&fit.side&&fit.fonts&&fit.keyboardFits&&fit.screenHeight>=35&&fit.inputFixed&&fit.overflow<=1&&fit.warp.left>=0&&fit.terminal.top>=60&&fit.terminal.right<=viewport.width,JSON.stringify({viewport,fit}));layouts.push({viewport,...fit});
+    assert.ok(fit.clear&&fit.equal&&fit.side&&fit.fonts&&fit.keyboardFits&&fit.screenHeight>=35&&fit.inputFixed&&fit.overflow<=1&&fit.warp.left>=0&&fit.terminal.top>=60&&fit.terminal.right<=viewport.width,JSON.stringify({viewport,fit}));layouts.push({viewport,...fit});
     await page.screenshot({path:`.qa/${engine}-1125-dashboard-${viewport.width}.png`});
     await page.locator('[data-key="Enter"]').click();
   }

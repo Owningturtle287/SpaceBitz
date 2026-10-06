@@ -231,7 +231,11 @@ Stellar output includes physical, evolutionary, magnetic,
 radiation, habitable-zone and orbital data. Planet/moon data uses the same framework
 without adding the deferred environment overhaul. Names track selected objects.
 A smaller green travel lever and red Cancel button slide above the compact
-terminal or beside its expanded screen, leaving selected views clear. The lever
+terminal or straight horizontally beside its expanded screen, leaving selected views clear.
+A 68px instrument row centers the wider corner-fitted joystick and equal-sized
+Center/Follow controls; narrow screens wrap two full-size rows. The compact
+terminal casing follows the lower-right curve and sits slightly inward.
+Follow eases back two seconds after the last pan without changing zoom. The lever
 moves forward/backward. Coordinate travel in both space layers and on planet/moon
 surfaces requires two nearby taps; samples, landers and celestial objects retain
 single-tap selection. Voyage logs are opaque.

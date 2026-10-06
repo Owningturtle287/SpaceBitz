@@ -33,7 +33,7 @@ export async function checkRelease1124(page,engine){
     const rect=id=>document.getElementById(id).getBoundingClientRect(),c=rect('homeButton'),w=rect('mapButton'),f=rect('followShipButton');
     return {center:c.toJSON(),warp:w.toJSON(),follow:f.toJSON(),centered:Math.abs((f.left+f.right-c.left-c.right)/2)};
   });
-  assert.ok(controls.follow.left>=controls.center.right&&controls.follow.width===controls.center.width/2&&controls.follow.height===controls.center.height/2&&controls.follow.bottom<=390,JSON.stringify(controls));
+  assert.ok(controls.follow.left>=controls.center.right&&controls.follow.width===controls.center.width&&controls.follow.height===controls.center.height&&controls.follow.bottom<=390,JSON.stringify(controls));
   assert.equal(controls.follow.left-controls.center.right,6);assert.ok(controls.warp.bottom<=390&&controls.warp.left>=0);
   const immediate=await page.evaluate(()=>{
     const g=window.__game;g.select(g.state.system.star);g.positionContext();const row=document.querySelector('.context-action-row'),s=getComputedStyle(row);
