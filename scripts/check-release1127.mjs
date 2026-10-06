@@ -6,6 +6,7 @@ export async function checkRelease1127(page,engine){
     const g=window.__game,{makeSystem,visualRadius}=await import('/model.js');globalThis.__qaPause=true;
     g.cancelTarget();g.state.scene='system';g.state.system=makeSystem('sol');g.state.save.currentSystem='sol';g.state.terminalSize=null;
     g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);
+    document.getElementById('terminalInput').value='';
     Object.assign(g.settings,{controls:'touch',centerButton:'right',joyX:16,joyOffset:0,dashboardHeight:80,terminalWidthScale:100,terminalHeightScale:100,dashboardResizeHandle:false,terminalResizeHandles:false,reducedMotion:false});
     g.applySettings();g.select(g.state.system.star);g.showDetails(g.state.selected);
   });await page.waitForTimeout(400);
@@ -25,6 +26,11 @@ export async function checkRelease1127(page,engine){
   assert.equal(initial.deck,160);assert.ok(Math.abs(initial.terminal.width-316.8)<1&&Math.abs(initial.terminal.height-504)<1,JSON.stringify(initial));
   assert.equal(initial.saved.dashboardHeight,160);assert.equal(initial.saved.terminalWidthScale,120);assert.equal(initial.saved.terminalHeightScale,80);
   for(const id of ['terminalResizeTop','terminalResizeLeft','dashboardResize'])assert.equal(await page.locator('#'+id).isVisible(),true);
+  const keyboardResize=await page.evaluate(()=>{
+    const g=window.__game,handle=document.getElementById('dashboardResize');g.state.keys.clear();
+    handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true,cancelable:true}));const raised=g.settings.dashboardHeight,steering=g.state.keys.size;
+    handle.dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true,cancelable:true}));return {raised,steering,restored:g.settings.dashboardHeight};
+  });assert.deepEqual(keyboardResize,{raised:172,steering:0,restored:160});
   const drag=async(id,dx,dy)=>{const r=await page.locator('#'+id).boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();await page.mouse.move(r.x+r.width/2+dx,r.y+r.height/2+dy,{steps:6});await page.mouse.up();await page.waitForTimeout(350);};
   await drag('terminalResizeLeft',-48,0);await drag('terminalResizeTop',0,-36);await drag('dashboardResize',0,-28);
   const resized=await page.evaluate(()=>({deck:document.getElementById('dashboardBase').getBoundingClientRect().height,terminal:document.getElementById('targetCard').getBoundingClientRect().toJSON(),saved:JSON.parse(localStorage.getItem('spacebitz:field:settings'))}));
@@ -45,7 +51,7 @@ export async function checkRelease1127(page,engine){
         const g=window.__game;Object.assign(g.settings,{dashboardHeight:80,terminalWidthScale:100,terminalHeightScale:100});g.state.terminalSize=null;g.cancelTarget();g.select(g.state.system.star);if(expanded)g.showDetails(g.state.selected);g.applySettings();
         if(expanded){g.updateTerminal(g.state.terminal.start+12000);g.updateTerminal(g.state.terminal.start+14000);}g.backdrop(0);g.drawSystem(0);
       },expanded);await page.waitForTimeout(400);
-      await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations())a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+      await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations())a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);window.__game.positionContext();});
       const fit=await page.evaluate(()=>{
         const r=id=>document.getElementById(id).getBoundingClientRect().toJSON(),card=r('targetCard'),deck=r('dashboardBase'),joy=r('joystick'),center=r('homeButton'),follow=r('followShipButton'),warp=r('mapButton'),log=r('journalButton'),clock=r('flightReadout'),chart=r('systemChart'),system=r('systemFit'),settings=r('settingsOpen');
         const inside=a=>a.left>=deck.left&&a.right<=deck.right&&a.top>=deck.top&&a.bottom<=deck.bottom,overlap=(a,b)=>a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top;

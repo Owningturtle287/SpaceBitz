@@ -1099,7 +1099,7 @@ dashboardHandle.onpointerdown=e=>{if(e.button!==0||!settings.dashboardResizeHand
 dashboardHandle.onpointermove=e=>{if(e.pointerId!==dashboardResize?.id)return;settings.dashboardHeight=clamp(dashboardResize.height+dashboardResize.y-e.clientY,80,260);layoutDashboard();applyCenterButtonLayout();};
 const finishDashboardResize=e=>{if(e.pointerId!==dashboardResize?.id)return;dashboardResize=null;saveSettings();};
 dashboardHandle.onpointerup=finishDashboardResize;dashboardHandle.onpointercancel=finishDashboardResize;
-dashboardHandle.onkeydown=e=>{const direction={ArrowUp:1,ArrowDown:-1}[e.key];if(!direction||!settings.dashboardResizeHandle)return;e.preventDefault();settings.dashboardHeight=clamp(settings.dashboardHeight+direction*12,80,260);saveSettings();layoutDashboard();applyCenterButtonLayout();};
+dashboardHandle.onkeydown=e=>{const direction={ArrowUp:1,ArrowDown:-1}[e.key];if(!direction||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();settings.dashboardHeight=clamp(settings.dashboardHeight+direction*12,80,260);saveSettings();layoutDashboard();applyCenterButtonLayout();};
 function layoutDashboard(){
   const card=$('targetCard'),compact=innerWidth<700&&innerHeight>innerWidth&&!card.hidden;
   document.body.classList.toggle('deck-compact',compact);
