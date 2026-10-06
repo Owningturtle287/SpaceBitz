@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {coordinateHeading} from '../target-ui.js';
+import {coordinateHeading,isCoordinateDoubleTap} from '../target-ui.js';
+
+test('space confirmation requires two nearby taps in the same scene and time window',()=>{
+  const first={x:100,y:200,scene:'system',time:1000};
+  assert.equal(isCoordinateDoubleTap(null,first),false);
+  assert.equal(isCoordinateDoubleTap(first,{...first,x:112,y:205,time:1250}),true);
+  assert.equal(isCoordinateDoubleTap(first,{...first,time:1500}),true);
+  for(const next of [{...first,time:1501},{...first,time:999},{...first,x:140},{...first,scene:'chart'}])assert.equal(isCoordinateDoubleTap(first,next),false);
+});
 
 test('coordinate arrow follows travel vectors in every quadrant and after ship movement',()=>{
   for(const ship of [{x:0,y:0},{x:152,y:-230}])for(const [dx,dy]of [[0,-1],[1,0],[0,1],[-1,0],[3,-4],[-3,-4],[3,4],[-3,4]]){

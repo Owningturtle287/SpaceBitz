@@ -49,8 +49,8 @@ export async function checkRelease1125(page,engine){
   });await page.mouse.click(deck.x,deck.y);
   assert.equal(await page.evaluate(()=>Boolean(window.__game.state.selected||window.__game.state.waypoint)),false,'Dashboard tap selected space');
   await page.evaluate(()=>{const g=window.__game;g.settings.centerButton='custom';g.settings.centerX=72;g.settings.centerY=22;g.applyCenterButtonLayout();});await page.waitForTimeout(150);
-  assert.equal(await page.locator('#dashboardControls').evaluate(e=>e.hidden),true,'Separated controls created an oversized blocking plate');
-  await page.mouse.click(700,250);assert.equal(await page.evaluate(()=>Boolean(window.__game.state.selected||window.__game.state.waypoint)),true,'A custom control plate blocked the open scene');
+  assert.equal(await page.locator('.dashboard-controls').count(),0,'Separate control plates remain');
+  await page.mouse.click(700,250);await page.mouse.click(700,250);assert.equal(await page.evaluate(()=>Boolean(window.__game.state.selected||window.__game.state.waypoint)),true,'The dashboard blocked the open scene');
   await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.settings.centerButton='right';g.applyCenterButtonLayout();});await page.waitForTimeout(350);
   await page.locator('#terminalButton').click();await page.waitForTimeout(400);await page.locator('#terminalInput').focus();await page.waitForTimeout(400);
   for(const mode of ['Shift','CapsLock'])if(await page.locator(`[data-key="${mode}"]`).getAttribute('aria-pressed')==='true')await page.locator(`[data-key="${mode}"]`).click();
@@ -72,8 +72,10 @@ export async function checkRelease1125(page,engine){
   });assert.ok(keyboard.capsAlign<1&&keyboard.slashAlign<1&&keyboard.deleteRight<1&&keyboard.cursor==='terminal-blink'&&keyboard.cursorVisible,JSON.stringify(keyboard));
   await page.locator('[data-key="Enter"]').click();
   const before=await page.locator('#targetCard').boundingBox(),left=await page.locator('#terminalResizeLeft').boundingBox();
-  await page.mouse.move(left.x+left.width/2,left.y+left.height/2);await page.mouse.down();await page.mouse.move(left.x+left.width/2+90,left.y+left.height/2,{steps:6});await page.mouse.up();await page.waitForTimeout(400);
-  const narrower=await page.locator('#targetCard').boundingBox();assert.ok(Math.abs(narrower.width-before.width+90)<2,'Width handle did not slide');
+  await page.mouse.move(left.x+left.width/2,left.y+left.height/2);await page.mouse.down();await page.mouse.move(left.x+left.width/2-90,left.y+left.height/2,{steps:6});await page.mouse.up();await page.waitForTimeout(400);
+  const wider=await page.locator('#targetCard').boundingBox();assert.ok(Math.abs(wider.width-before.width-90)<2,'Width handle did not widen');
+  const nextLeft=await page.locator('#terminalResizeLeft').boundingBox();await page.mouse.move(nextLeft.x+nextLeft.width/2,nextLeft.y+nextLeft.height/2);await page.mouse.down();await page.mouse.move(nextLeft.x+nextLeft.width/2+90,nextLeft.y+nextLeft.height/2,{steps:6});await page.mouse.up();await page.waitForTimeout(400);
+  const narrower=await page.locator('#targetCard').boundingBox();assert.ok(Math.abs(narrower.width-before.width)<2,'Width handle did not return to the minimum');
   const top=await page.locator('#terminalResizeTop').boundingBox();await page.mouse.move(top.x+top.width/2,top.y+top.height/2);await page.mouse.down();await page.mouse.move(top.x+top.width/2,top.y+top.height/2+90,{steps:6});await page.mouse.up();await page.waitForTimeout(400);
   const shorter=await page.locator('#targetCard').boundingBox();assert.ok(Math.abs(shorter.height-narrower.height+90)<2,'Height handle did not slide');
   const layouts=[];
