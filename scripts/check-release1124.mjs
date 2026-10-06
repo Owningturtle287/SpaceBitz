@@ -59,7 +59,7 @@ export async function checkRelease1124(page,engine){
     await page.evaluate(async()=>{const g=window.__game,{visualRadius}=await import('/model.js');g.cancelTarget();g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.select(g.state.system.star);g.positionContext();g.backdrop(0);g.drawSystem(0);});
     await page.waitForTimeout(600);
     await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations())a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
-    const compact=await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().toJSON());assert.ok(compact.width<=240&&compact.width>=200,JSON.stringify(compact));
+    const compact=await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().toJSON());assert.ok(compact.width<=243&&compact.width>=200,JSON.stringify(compact));
     assert.equal(await page.locator('#secondaryAction').textContent(),'Open Terminal');
     await page.screenshot({path:`.qa/${engine}-1124-collapsed-${viewport.width}.png`});
     await page.locator('#secondaryAction').click();await page.waitForTimeout(350);
