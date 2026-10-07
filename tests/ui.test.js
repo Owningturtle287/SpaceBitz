@@ -10,8 +10,8 @@ test('flight HUD keeps settings at the top and log beside the terminal in the da
   assert.doesNotMatch(index,/class="brand"/);
   assert.doesNotMatch(index,/id="statusText"/);
   assert.match(index,/<header class="topbar">[\s\S]*id="systemChart"/);
-  assert.match(index,/id="mapButton" class="warp-drive-button"/);
-  assert.match(index,/class="warp-label">Warp Drive</);
+  assert.match(index,/id="mapButton" class="flight-speed"/);
+  assert.match(index,/id="flightSpeed" type="range"/);
   assert.doesNotMatch(index,/class="warp-sub"|id="gridToggle"/);
   const utilities=index.match(/class="utility-stack"[\s\S]*?<\/div>/)[0];
   assert.match(utilities,/id="settingsOpen"/);assert.doesNotMatch(utilities,/id="journalButton"/);

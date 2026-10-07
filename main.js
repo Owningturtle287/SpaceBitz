@@ -25,6 +25,7 @@ import {readVoyages,writeVoyages,persistVoyage,deleteVoyage,saveBeforeExit} from
 import {bodyLabel,bodyCounts} from './body-classification.js';
 import {collectSample} from './exploration.js';
 import {registerAppWorker} from './pwa.js';
+import {FLIGHT_STAGES,flightStage,isLandscape} from './flight-drive.js';
 import {placeControls,paintLocator} from './hud.js';
 
 const $ = id => document.getElementById(id);
@@ -48,13 +49,13 @@ const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,
   panUntil:0, centerZoom:null, centerReady:false, followShip:false, followPanRemaining:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, fps:60,
   waypoint:null,coordinateTap:null,warpUntil:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
-const {showDetails,toggleTerminal,buildTerminal,setTerminalKeyboard,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
+const {showDetails,toggleTerminal,buildTerminal,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
 const loadSaves = () => {
   try{return readVoyages(localStorage).filter(s=>s&&typeof s.id==='string'&&typeof s.seed==='string');}
-  catch(error){toast(error.message);return [];}
+  catch(error){notify(error.message);return [];}
 };
 function readJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
-function saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}catch{toast('Settings could not be saved on this device.');}}
+function saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}catch{notify('Settings could not be saved on this device.');}}
 let centerDrag=null,centerSuppressClick=false;
 function applyCenterButtonLayout(){
   const btn=$('homeButton'),group=$('navigationControls');if(!btn||!group)return;
@@ -67,10 +68,9 @@ function applyCenterButtonLayout(){
     const joyRect=$('joystick').getBoundingClientRect(),deck=$('dashboardBase').getBoundingClientRect();
     const row=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-row-height'));
     const safe=deck.height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
-    const wrap=document.body.classList.contains('deck-wrap');
-    let left=wrap?6:joyRect.width?joyRect.right+8:12;
-    let top=innerHeight-safe-(wrap?row*1.5+4:row/2)-bh/2;
-    if(mode==='above'&&!wrap){left=Math.max(6,joyRect.left+(joyRect.width-width)/2);top=joyRect.top-bh-8;}
+    let left=joyRect.width?joyRect.right+8:12;
+    let top=innerHeight-safe-row/2-bh/2;
+    if(mode==='above'){left=Math.max(6,joyRect.left+(joyRect.width-width)/2);top=joyRect.top-bh-8;}
     if(mode==='custom'){
       const desired={x:innerWidth*settings.centerX/100-bw/2,y:innerHeight*settings.centerY/100-bh/2};
       const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','mapButton'].map($).filter(el=>el&&!el.hidden).map(el=>{const r=el.getBoundingClientRect();return {x:r.left,y:r.top,width:r.width,height:r.height};});
@@ -82,7 +82,6 @@ function applyCenterButtonLayout(){
 function applySettings(){
   document.body.dataset.controls=settings.controls;
   document.body.dataset.reducedMotion=String(settings.reducedMotion);
-  document.body.dataset.orientation=settings.orientation;
   document.documentElement.style.setProperty('--joy-x',settings.joyX+'%');
   document.documentElement.style.setProperty('--joy-offset',settings.joyOffset+'px');
   musicAudio.volume=settings.volume;
@@ -103,14 +102,11 @@ function persist() {
   if (!state.save) return true;
   try {persistVoyage(localStorage,state.save);persist.failedAt=0;return true;}
   catch(error) {
-    if(!persist.failedAt||Date.now()-persist.failedAt>15000){toast(error.name==='QuotaExceededError'?'Storage is full. Voyage kept open; export it or free storage before leaving.':error.message);persist.failedAt=Date.now();}
+    if(!persist.failedAt||Date.now()-persist.failedAt>15000){notify(error.name==='QuotaExceededError'?'Storage is full. Voyage kept open; export it or free storage before leaving.':error.message);persist.failedAt=Date.now();}
     return false;
   }
 }
-function toast(message) {
-  $('toast').textContent = message; $('toast').classList.add('show');
-  clearTimeout(toast.timer); toast.timer = setTimeout(()=>$('toast').classList.remove('show'),2900);
-}
+function notify(message){appendTerminalEntry(message);}
 function allBodies() { return state.system?.planets.flatMap(p=>[p,...p.moons]) || []; }
 function systemStars(){return state.system?.stars||(state.system?[state.system.star]:[]);}
 function findBody(id) { return [...allBodies(),...systemStars()].find(p=>p.id===id); }
@@ -156,23 +152,22 @@ function makeBackgroundStar(){
     rgb:STAR_PALETTE[Math.floor(r()*STAR_PALETTE.length)],shape:Math.floor(r()*3)
   };
 }
-function applyOrientationPreference(){
-  document.body.dataset.orientation=settings.orientation;
+function requestLandscape(){
   const orientation=globalThis.screen?.orientation;
   if(!orientation)return Promise.resolve(false);
   try{
-    if(settings.orientation==='auto'){
-      orientation.unlock?.();
-      return Promise.resolve(true);
-    }
     if(typeof orientation.lock!=='function')return Promise.resolve(false);
-    return Promise.resolve(orientation.lock(settings.orientation)).then(()=>true).catch(()=>false);
+    return Promise.resolve(orientation.lock('landscape')).then(()=>true).catch(()=>false);
   }catch{return Promise.resolve(false);}
 }
 function fit() {
   const rect = canvas.getBoundingClientRect();
   if(rect.width!==state.width||rect.height!==state.height)state.terminalSize=null;
   state.width=rect.width; state.height=rect.height;
+  const blocked=!isLandscape(rect.width,rect.height);
+  if(blocked&&!state.landscapeBlocked)queueMicrotask(resetInput);
+  state.landscapeBlocked=blocked;$('landscapeGate').hidden=!blocked;
+  for(const id of ['app','welcome','modal'])$(id).inert=blocked;
   state.dpr=settings.resolution==='auto'?Math.min(window.devicePixelRatio||1,2):Number(settings.resolution);
   canvas.width=Math.round(rect.width*state.dpr); canvas.height=Math.round(rect.height*state.dpr);
   ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
@@ -186,8 +181,8 @@ window.addEventListener('orientationchange',()=>setTimeout(()=>{fit();updateUI()
 globalThis.screen?.orientation?.addEventListener?.('change',()=>setTimeout(()=>{fit();updateUI();applyCenterButtonLayout();},80));
 applySettings();
 function start(save) {
-  try{save=restoreVoyage(save);}catch(error){toast(error.message+' The stored voyage has not been changed.');return;}
-  state.save=save; state.scene=save.scene || 'system';
+  try{save=restoreVoyage(save);}catch(error){notify(error.message+' The stored voyage has not been changed.');return;}
+  state.save=save; state.scene=save.scene || 'system';state.terminalNotice=null;state.terminalEntries.length=0;
   if(save.generation)save.generation=checkedGeneration(save.generation);
   state.system=makeSystem(save.currentSystem || save.homeSeed,save.generation);
   terrain.clear();state.sampleBody=null;state.samples=null;state.listKey=null;
@@ -205,7 +200,7 @@ function start(save) {
   else if(state.scene==='surface') state.camera={...save.surface};
   else state.camera={...save.ship};
   $('welcome').classList.remove('visible'); $('app').hidden=false;
-  applyOrientationPreference();
+  requestLandscape();
   applyCenterButtonLayout();
   keepStationNearShip();persist(); updateUI();
 }
@@ -220,7 +215,7 @@ function create(sol=false) {
   const save={id:crypto.randomUUID?.()||String(Date.now()),name,seed,homeSeed,currentSystem:homeSeed,
     scene:home?'surface':'system',ship:{x:h.x+offset,y:h.y},chart:{x:0,y:0},generation,
     surface:{x:50,y:35},landed:home?.id||null,homePlanet:home?.id||null,days:startDays,discoveries:home?[home.id]:[],log:[{name:home?.name||system.name,action:home?'Home planet · voyage started':'Stellar survey started',days:startDays}],layoutVersion:4,updated:Date.now()};
-  start(save);toast(home?`${home.name} · your home planet`:`${system.name} · no landable home world; stellar survey started`);
+  start(save);notify(home?`${home.name} · your home planet`:`${system.name} · no landable home world; stellar survey started`);
 }
 function renderSaves() {
   const list=$('savedGames'); list.replaceChildren(); const saves=loadSaves();
@@ -233,7 +228,7 @@ function renderSaves() {
     const date=document.createElement('small');date.textContent=new Date(save.updated||Date.now()).toLocaleDateString();
     const del=document.createElement('button');del.className='delete-save';del.textContent='✕';del.setAttribute('aria-label','Delete '+play.textContent);
     del.onclick=()=>{if(!confirm(`Delete “${save.name}” from this device?`))return;
-      try{deleteVoyage(localStorage,save.id);renderSaves();}catch{toast('The voyage could not be deleted. Your stored data is unchanged.');}};
+      try{deleteVoyage(localStorage,save.id);renderSaves();}catch{notify('The voyage could not be deleted. Your stored data is unchanged.');}};
     row.append(play,date,del);list.append(row);
   }
 }
@@ -247,7 +242,7 @@ function showMenuStage(stage='main'){
 renderSaves();
 $('startGame').onclick=()=>showMenuStage('generation');
 $('backToMain').onclick=()=>showMenuStage('main');
-$('multiplayerGame').onclick=()=>toast('Multiplayer is coming in a future update.');
+$('multiplayerGame').onclick=()=>notify('Multiplayer is coming in a future update.');
 function updateUniverseMode(){
   $('scientificMode').checked=universePreset.scientific;
   $('generationOptions').hidden=universePreset.scientific;
@@ -255,7 +250,7 @@ function updateUniverseMode(){
 }
 $('scientificMode').onchange=()=>{
   universePreset=$('scientificMode').checked?defaults(true):checkedGeneration({...customPreset,scientific:false});
-  try{localStorage.setItem(GENERATION_KEY,JSON.stringify({...customPreset,scientific:universePreset.scientific}));}catch{toast('Could not save generation preset.');}
+  try{localStorage.setItem(GENERATION_KEY,JSON.stringify({...customPreset,scientific:universePreset.scientific}));}catch{notify('Could not save generation preset.');}
   updateUniverseMode();
 };
 $('generationOptions').onclick=showGenerationOptions;
@@ -312,7 +307,7 @@ function showGenerationOptions(){
   generationObserver=new ResizeObserver(layout);generationObserver.observe(rows);
   const close=()=>{generationObserver.disconnect();box.hidden=true;$('generationFields').hidden=false;};
   cancel.onclick=close;restore.onclick=()=>{Object.assign(draft,defaults(false));draft.pools=structuredClone(defaults(true).pools);render();};
-  apply.onclick=()=>{if(validateGeneration(draft).length)return;customPreset=checkedGeneration(draft);universePreset=structuredClone(customPreset);try{localStorage.setItem(GENERATION_KEY,JSON.stringify(customPreset));}catch{toast('Could not save generation preset.');}close();updateUniverseMode();};render();
+  apply.onclick=()=>{if(validateGeneration(draft).length)return;customPreset=checkedGeneration(draft);universePreset=structuredClone(customPreset);try{localStorage.setItem(GENERATION_KEY,JSON.stringify(customPreset));}catch{notify('Could not save generation preset.');}close();updateUniverseMode();};render();
 }
 $('newGame').onclick=()=>create(false); $('solGame').onclick=()=>create(true);
 $('importButton').onclick=()=>$('importFile').click();
@@ -325,8 +320,8 @@ $('importFile').onchange=async e=>{
     const converted=source.map(raw=>importVoyage(raw,crypto.randomUUID?.()||String(Date.now()+Math.random())));
     if(!converted.length)throw Error('No voyages found.');
     writeVoyages(localStorage,converted);
-    renderSaves();toast(`Imported ${converted.length} voyage${converted.length===1?'':'s'}.`);
-  }catch(error){toast(error.message||'Could not import this save.');}
+    renderSaves();notify(`Imported ${converted.length} voyage${converted.length===1?'':'s'}.`);
+  }catch(error){notify(error.message||'Could not import this save.');}
   e.target.value='';
 };
 let installPrompt;
@@ -334,11 +329,11 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installProm
 $('installButton').onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installButton').hidden=true;}};
 let applyPendingUpdate=()=>{};
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))window.addEventListener('load',()=>{
-  applyPendingUpdate=registerAppWorker({serviceWorker:navigator.serviceWorker,isSafe:()=>!state.save,reload:()=>location.reload(),onReady:()=>toast('Update ready. It will apply after Save & Main Menu.')});
+  applyPendingUpdate=registerAppWorker({serviceWorker:navigator.serviceWorker,isSafe:()=>!state.save,reload:()=>location.reload(),onReady:()=>notify('Update ready. It will apply after Save & Main Menu.')});
 });
 
 function beginSelection(){
-  closeSystemChart();state.coordinateTap=null;state.contextPlacement=null;
+  closeSystemChart();state.terminalNotice=null;state.coordinateTap=null;state.contextPlacement=null;
   const row=$('travelControls').querySelector('.context-action-row');row.style.transition='none';
   $('travelControls').classList.remove('ready');$('travelControls').hidden=false;
   $('contextActions').classList.remove('ready');
@@ -347,7 +342,7 @@ function beginSelection(){
   void row.offsetHeight;row.style.transition='';
   $('contextActions').classList.add('ready');$('travelControls').classList.add('ready');
 }
-function select(object) { beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=null;state.selected=object; state.autopilot=null;updateUI(); }
+function select(object) { beginSelection();state.terminalNotice=null;state.terminal=null;state.terminalExpanded=false;state.waypoint=null;state.selected=object; state.autopilot=null;updateUI(); }
 function keepStationNearShip(){
   if(state.scene!=='system')return;
   const ship=state.save.ship;
@@ -359,7 +354,7 @@ function markDiscovery(body) {
   if(state.save.discoveries.includes(body.id)) return;
   state.save.discoveries.push(body.id);
   state.save.log.unshift({name:body.name,action:'First landing',days:state.save.days});
-  toast(`First landing on ${body.name} · added to logbook`);persist();
+  notify(`First landing on ${body.name} · added to logbook`);persist();
 }
 function enterChart() {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
@@ -381,11 +376,11 @@ function enterSystem(star) {state.coordinateTap=null;state.terminal=null;state.t
   state.save.log.unshift({name:state.system.name,action:'Entered system',days:state.save.days});
   if(state.save.route.at(-1)!==star.seed)state.save.route.push(star.seed);
   state.save.route=state.save.route.slice(-40);
-  toast(`${state.system.name} · arriving at ${outer.name}`);persist();updateUI();
+  notify(`${state.system.name} · arriving at ${outer.name}`);persist();updateUI();
 }
 function enterSurface(body) {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
-  if(!body.solid){toast('No solid surface here. Explore one of its moons.');return;}
+  if(!body.solid){notify('No solid surface here. Explore one of its moons.');return;}
   state.followBody=null;state.actorMotion={direction:'down',steps:0};
   state.selected=null;state.scene='surface';state.save.scene='surface';state.save.landed=body.id;
   state.save.surface={x:50,y:35};state.camera={...state.save.surface};state.zoom=1.3;
@@ -399,7 +394,7 @@ function launch() {state.coordinateTap=null;state.terminal=null;state.terminalEx
     state.save.ship={x:p.x+visualRadius(body.diameter,body.kind)+44,y:p.y+12};}
   state.scene='system';state.save.scene='system';state.save.landed=null;
   state.camera={...state.save.ship};state.selected=body||null;state.zoom=.95;
-  keepStationNearShip();toast('Launch complete. The stars are yours.');persist();updateUI();
+  keepStationNearShip();notify('Launch complete. The stars are yours.');persist();updateUI();
 }
 function surfaceSamples() {
   const body=findBody(state.save.landed);const r=rng('samples:'+body?.id);
@@ -423,15 +418,15 @@ function primary() {
   if(state.waypoint){
     state.panUntil=0;state.followBody=null;
     state.autopilot={type:'waypoint',x:state.waypoint.x,y:state.waypoint.y};
-    toast((state.scene==='system'?'Hyperdrive · ':'Course set · ')+formatCoordinates(state.waypoint,state.scene));updateUI();return;
+    notify((state.scene==='system'?'Hyperdrive · ':'Course set · ')+formatCoordinates(state.waypoint,state.scene));updateUI();return;
   }
   if(state.scene==='surface'){
     const sample=state.selected?.kind==='sample'?state.selected:nearestSample();const d=sample?Math.hypot(sample.x-state.save.surface.x,sample.y-state.save.surface.y):Infinity;
     if(state.selected?.kind==='sample'&&d<SURFACE_UNIT){
       const collected=collectSample(state.save,sample,findBody(state.save.landed)?.name||'World');
-      cancelTarget();if(collected){toast('Sample secured · added to logbook');persist();}updateUI();return;}
+      cancelTarget();if(collected){notify('Sample secured · added to logbook');persist();}updateUI();return;}
     if(state.selected?.kind!=='sample'&&Math.hypot(state.save.surface.x,state.save.surface.y)<62){launch();return;}
-    state.autopilot={type:'surface',x:state.selected?.kind==='sample'?state.selected.x:0,y:state.selected?.kind==='sample'?state.selected.y:0};toast(state.selected?.kind==='sample'?'Course set to sample':'Returning to lander');updateUI();return;
+    state.autopilot={type:'surface',x:state.selected?.kind==='sample'?state.selected.x:0,y:state.selected?.kind==='sample'?state.selected.y:0};notify(state.selected?.kind==='sample'?'Course set to sample':'Returning to lander');updateUI();return;
   }
   if(state.scene==='system'){
     if(!state.selected){select(state.system.planets[0]||state.system.star);return;}
@@ -439,34 +434,40 @@ function primary() {
       const radius=visualRadius(state.selected.diameter),pos=bodyPosition(state.selected,state.save.days,state.system),local={x:state.save.ship.x-pos.x,y:state.save.ship.y-pos.y},goal=starApproachPoint(local,radius);
       state.panUntil=0;state.focusBody=null;state.followBody=null;
       state.autopilot={type:'stellar',id:state.selected.id,...goal};
-      toast(`Hyperdrive to ${state.selected.name}`);updateUI();return;
+      notify(`Hyperdrive to ${state.selected.name}`);updateUI();return;
     }
     const body=state.selected,pos=bodyPosition(body,state.save.days,state.system);
     const dist=Math.hypot(pos.x-state.save.ship.x,pos.y-state.save.ship.y);
     if(dist<visualRadius(body.diameter,body.kind)+48){enterSurface(body);return;}
     const drive=systemDrive(state.save.ship,body,state.system,state.save.days,state.followBody?.id);
     state.panUntil=0;state.followBody=null;
-    state.autopilot={type:'body',id:body.id,drive};toast(`${drive==='orbit'?'Orbit Drive':'Hyperdrive'} to ${body.name}`);updateUI();return;
+    state.autopilot={type:'body',id:body.id,drive};notify(`${drive==='orbit'?'Orbit Drive':'Hyperdrive'} to ${body.name}`);updateUI();return;
   }
   const star=state.selected;
   if(!star){select(currentStar());return;}
   const distance=Math.hypot(star.x-state.save.chart.x,star.y-state.save.chart.y);
   if(distance<38){enterSystem(star);return;}
-  state.autopilot={type:'star',id:star.seed};toast(`Jump course set for ${starName(star.seed)}`);updateUI();
+  state.autopilot={type:'star',id:star.seed};notify(`Jump course set for ${starName(star.seed)}`);updateUI();
 }
 function cancelTravel(){state.coordinateTap=null;state.autopilot=null;state.warpUntil=0;state.waypoint=null;state.shipMotion.thrust=0;updateUI();}
-function cancelTarget(){cancelTravel();state.selected=null;state.terminal=null;state.terminalExpanded=false;updateUI();}
+function cancelTarget(){cancelTravel();state.terminalNotice=null;state.selected=null;state.terminal=null;state.terminalExpanded=false;updateUI();}
 $('cancelTravel').onclick=cancelTarget;
 $('primaryAction').onclick=primary;
 $('secondaryAction').onclick=toggleTerminal;
 $('terminalButton').onclick=toggleTerminal;
 $('focusSelected').onclick=focusSelected;
-$('mapButton').onclick=()=>{
-  if(state.scene==='surface'||state.warpUntil)return;
+function setFlightStage(value){
+  if(!state.save||state.scene==='surface'||state.warpUntil||state.autopilot)return;
+  const stage=Number(value);if(!Number.isInteger(stage)||!FLIGHT_STAGES[stage])return;
+  if(stage<2){settings.flightMode=FLIGHT_STAGES[stage];saveSettings();}
+  if(state.scene==='system'&&stage<2){notify((stage===0?'Orbit':'Hyperspace')+' free-flight speed selected');updateUI();return;}
+  if(state.scene==='chart'&&stage===2)return;
   resetInput();state.autopilot=null;state.centerZoom=null;
   state.warpUntil=performance.now()+(settings.reducedMotion?120:650);
+  notify(state.scene==='chart'?'Leaving Deep Space · entering local system':'Warp Drive engaged · entering Deep Space');
   updateUI();
-};
+}
+$('flightSpeed').oninput=e=>setFlightStage(e.target.value);
 $('systemFit').onclick=()=>{
   state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false;
   const to=systemFitZoom(state.system,state.width,state.height,state.save.days);
@@ -513,7 +514,7 @@ $('homeButton').addEventListener('pointermove',e=>{
 });
 const finishCenterDrag=e=>{
   if(!centerDrag||e.pointerId!==centerDrag.id)return;
-  if(centerDrag.moved){centerSuppressClick=true;saveSettings();toast('Center control position saved');}
+  if(centerDrag.moved){centerSuppressClick=true;saveSettings();notify('Center control position saved');}
   centerDrag=null;document.body.classList.remove('center-editing');
 };
 $('homeButton').addEventListener('pointerup',finishCenterDrag);
@@ -601,13 +602,14 @@ function updateUI() {
   if(state.warpUntil){title='WARP DRIVE';action='ENGAGING';destination=null;}
   $('cancelTravel').hidden=false;
   const hasTarget=Boolean(sel||state.waypoint||traveling);
-  $('targetCard').hidden=$('systemChart').classList.contains('open')||(!hasTarget&&!state.terminalExpanded);$('contextActions').hidden=!sel||Boolean(state.warpUntil);
+  $('targetCard').hidden=$('systemChart').classList.contains('open')||(!hasTarget&&!state.terminalExpanded&&!state.terminalNotice);$('contextActions').hidden=!sel||Boolean(state.warpUntil);
   $('travelControls').hidden=!hasTarget||$('systemChart').classList.contains('open')||Boolean(state.warpUntil);
   $('targetName').textContent=title||'Ship Terminal';$('focusSelected').hidden=!sel&&!state.waypoint;
   $('targetStatus').textContent=state.waypoint?'Coordinate selected':scene==='chart'&&sel?.seed===state.save.homeSeed||scene==='system'&&sel?.kind==='star'&&state.save.currentSystem===state.save.homeSeed?'Home System':sel?.id===state.save.homePlanet?'Home World':traveling?'Course active':sel?.familyLabel||(sel?bodyLabel(sel):'Target selected');
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
   $('terminalInputBar').hidden=!state.terminalExpanded;
   if(!hasTarget)$('targetStatus').textContent='Ready · '+(scene==='chart'?'Deep Space':scene==='surface'?'Surface':'System');
+  if(!state.terminalExpanded&&state.terminalNotice)$('targetStatus').textContent=state.terminalNotice;
   if(!state.terminalExpanded){setTerminalKeyboard(false);if(document.activeElement===$('terminalInput'))$('terminalInput').blur();}
   if(state.terminalExpanded&&!state.terminal)buildTerminal();
   $('targetDistance').textContent=destination?(state.terminalExpanded&&state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
@@ -623,12 +625,11 @@ function updateUI() {
   const warp=$('mapButton');
   const wasHidden=warp.hidden;warp.hidden=scene==='surface';
   if(wasHidden!==warp.hidden)applyCenterButtonLayout();
-  const returning=scene==='chart',engaged=state.warpUntil>0||state.autopilot?.type==='star';
-  warp.dataset.warpMode=returning?'return':'warp';warp.classList.toggle('engaged',Boolean(engaged));
-  warp.classList.toggle('latched',returning); // Physical lever stays right while in interstellar space.
-  warp.setAttribute('aria-busy',String(Boolean(engaged)));
-  warp.setAttribute('aria-label',returning?'Engage Warp Drive to local system':'Engage Warp Drive to interstellar chart');
-  warp.disabled=scene==='surface'||state.warpUntil>0;
+  const stage=flightStage(scene,settings.flightMode,state.autopilot),engaged=state.warpUntil>0;
+  const input=$('flightSpeed');input.value=stage;input.disabled=scene==='surface'||engaged||Boolean(state.autopilot);
+  input.setAttribute('aria-valuetext',FLIGHT_STAGES[stage]==='hyper'?'Hyperspace':FLIGHT_STAGES[stage]==='warp'?'Warp Drive':'Orbit speed');
+  warp.dataset.stage=stage;warp.setAttribute('aria-busy',String(engaged));
+  $('flightSpeedLabel').textContent=(state.autopilot?'AUTO · ':'')+(engaged?'ENGAGING':stage===0?'ORBIT':stage===1?'HYPERSPACE':'WARP DRIVE');
   const centerLabel=(state.centerReady?'Zoom in on ':'Center on ')+(scene==='surface'?'explorer':'ship');
   $('homeButton').setAttribute('aria-label',centerLabel);$('homeButton').title=centerLabel;
   const following=state.followShip||state.centerZoom?.centerAction==='follow';
@@ -640,7 +641,7 @@ function updateUI() {
   $('coordsReadout').hidden=!settings.showCoords;$('coordsReadout').textContent=formatCoordinates(pos,scene);
   $('fpsReadout').hidden=!settings.showFPS;$('fpsReadout').textContent=`${Math.round(state.fps)} FPS`;
   const speedVisible=settings.showSpeed&&scene!=='surface';
-  $('speedReadout').hidden=!speedVisible;$('speedReadout').textContent=(scene==='system'?settings.flightMode.toUpperCase()+' · ':'')+formatDistance(manualSpeed(scene,settings.flightMode),scene)+'/s';
+  $('speedReadout').hidden=!speedVisible;$('speedReadout').textContent=(scene==='system'?(settings.flightMode==='hyper'?'HYPERSPACE':'ORBIT')+' · ':'')+formatDistance(manualSpeed(scene,settings.flightMode),scene)+'/s';
   $('telemetry').hidden=!settings.showCoords&&!settings.showFPS&&!speedVisible;
   $('flightReadout').hidden=!settings.showClock&&!settings.showCoords&&!settings.showFPS&&!speedVisible;
   applyCenterButtonLayout();
@@ -686,8 +687,7 @@ function openSettings(){
       if(key==='terminalWidthScale'||key==='terminalHeightScale')state.terminalSize=null;
       sync();saveSettings();applySettings();
       if(key==='music'||key==='volume')applyMusicSetting();
-      if(key==='orientation')applyOrientationPreference();
-      if(key==='centerButton'&&settings.centerButton==='custom')toast('Close Settings, then drag CENTER anywhere you want.');
+      if(key==='centerButton'&&settings.centerButton==='custom')notify('Close Settings, then drag CENTER anywhere you want.');
     });
     const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
   }
@@ -718,9 +718,7 @@ function openSettings(){
   control('reducedMotion','Reduce motion','checkbox');
 
   heading('Controls');
-  control('flightMode','System flight speed','select',[['maneuver','Maneuver · precise'],['cruise','Cruise · 20 ls/s']]);
   control('controls','Input mode','select',[['auto','Automatic'],['touch','Touch joystick'],['desktop','Keyboard / mouse']]);
-  control('orientation','Screen orientation','select',[['landscape','Landscape · preferred'],['portrait','Portrait · lock'],['auto','Follow device']]);
   control('joyX','Joystick position (%)','range',[8,92,1]);control('joyOffset','Control row height offset (px)','range',[-70,120,1]);
   control('centerButton','Center button','select',[['right','Right of joystick'],['above','Above joystick'],['custom','Custom · drag in game'],['hidden','Hidden']]);
   control('cheats','Instant travel','checkbox');
@@ -765,7 +763,7 @@ function targetPoint() {
   return null;
 }
 function update(dt,clockDt=dt) {
-  if(!state.save || $('modal').classList.contains('visible'))return;
+  if(!state.save || state.landscapeBlocked || $('modal').classList.contains('visible'))return;
   if(state.warpUntil){
     if(performance.now()>=state.warpUntil){state.warpUntil=0;state.scene==='chart'?enterSystem(currentStar()):enterChart();}
     return;
@@ -797,7 +795,7 @@ function update(dt,clockDt=dt) {
         if(isWaypoint){p.x=destination.x;p.y=destination.y;state.waypoint=null;}
         if(state.scene==='system'&&!isWaypoint){const b=findBody(state.autopilot.id);if(b){const center=bodyPosition(b,state.save.days,state.system);state.followBody={id:b.id,x:p.x-center.x,y:p.y-center.y};}}
         state.autopilot=null;
-        updateUI();toast(isStellar?'Holding position near star':isWaypoint?'Coordinate reached':state.scene==='chart'?'Star reached · enter the system':state.scene==='surface'?'Lander reached':'Orbit achieved · station keeping active');
+        updateUI();notify(isStellar?'Holding position near star':isWaypoint?'Coordinate reached':state.scene==='chart'?'Star reached · enter the system':state.scene==='surface'?'Lander reached':'Orbit achieved · station keeping active');
       }
     }else state.autopilot=null;
   }else if(state.scene==='system'&&state.followBody){
@@ -1149,7 +1147,7 @@ function drawGround(now) {
 function frame(now) {
   const realDt=Math.max(0,now-state.last),dt=Math.min(100,realDt);state.last=now;
   if(realDt>0)state.fps+=(1000/realDt-state.fps)*.06;
-  if(!document.hidden){
+  if(!document.hidden&&!state.landscapeBlocked){
     if(state.save){update(dt,realDt);if(!$('modal').classList.contains('visible')&&!settings.reducedMotion)state.stellarSeconds+=dt/1000;}
     backdrop(now);ctx.save();
     try{
@@ -1200,7 +1198,7 @@ function pick(e){if(onDashboard(e.clientX,e.clientY))return;const rect=canvas.ge
   }
   if(state.scene==='surface'){const lander=screen(0,0);if(Math.hypot(x-lander.x,y-lander.y)<32*state.zoom){select({id:'lander',kind:'lander',name:'Lander',x:0,y:0});return;}for(const sample of surfaceSamples()){if(state.save.discoveries.includes(sample.id))continue;const p=screen(sample.x,sample.y);if(Math.hypot(x-p.x,y-p.y)<Math.max(15,10*state.zoom)){select({...sample,kind:'sample',name:'Surface sample'});return;}}}
   const cell=gridCell(world(x,y),state.scene);
-  if(state.scene==='system'&&systemStars().some(s=>{const pos=bodyPosition(s,state.save.days,state.system);return Math.hypot(cell.x-pos.x,cell.y-pos.y)<visualRadius(s.diameter)+24;})){toast('Choose a coordinate outside the stars.');return;}
+  if(state.scene==='system'&&systemStars().some(s=>{const pos=bodyPosition(s,state.save.days,state.system);return Math.hypot(cell.x-pos.x,cell.y-pos.y)<visualRadius(s.diameter)+24;})){notify('Choose a coordinate outside the stars.');return;}
   const tap={x,y,scene:state.scene,time:performance.now()},confirmed=isCoordinateDoubleTap(state.coordinateTap,tap);
   state.coordinateTap=confirmed?null:tap;if(!confirmed)return;
   beginSelection();state.terminal=null;state.terminalExpanded=false;state.waypoint=cell;state.selected=null;state.autopilot=null;updateUI();
@@ -1210,6 +1208,7 @@ canvas.addEventListener('pointerup',e=>{if(!pointers.has(e.pointerId))return;poi
 canvas.addEventListener('pointercancel',e=>{state.coordinateTap=null;pointers.delete(e.pointerId);gesture=null;state.pinch=null;});
 canvas.addEventListener('wheel',e=>{if(!state.save)return;e.preventDefault();zoom(e.deltaY<0?1.12:1/1.12);},{passive:false});
 window.addEventListener('keydown',e=>{
+  if(state.landscapeBlocked)return;
   if(e.key==='Escape'){if($('modal').classList.contains('visible'))closeModal();else if(state.autopilot||state.warpUntil||state.waypoint||state.selected){cancelTarget();}else if(!$('universeMenuStage').hidden&&!state.save)showMenuStage('main');return;}
   if($('modal').classList.contains('visible')){
     if(e.key==='Tab'){

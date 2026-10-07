@@ -4,7 +4,7 @@ export async function checkRelease112(page,engine){
   // Prevent pagehide autosave from replacing the deliberately overflowing fixture.
   await page.evaluate(()=>{window.__game.state.save=null;localStorage.setItem('spacebitz:field:v1',JSON.stringify(Array.from({length:30},(_,i)=>({id:'layout-'+i,seed:'layout-'+i,name:'Saved voyage '+i,updated:Date.now()}))));});
   await page.reload();await page.locator('#startGame').click();
-  for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667},{width:1024,height:768}]){
+  for(const viewport of [{width:844,height:390},{width:667,height:375},{width:1024,height:768}]){
     await page.setViewportSize(viewport);await page.waitForTimeout(120);
     const layout=await page.evaluate(()=>{const list=document.getElementById('savedGames'),stage=document.getElementById('universeMenuStage'),card=document.querySelector('.welcome-card');list.scrollTop=list.scrollHeight;return {viewport:[innerWidth,innerHeight],listCount:list.children.length,listHeight:list.clientHeight,listContent:list.scrollHeight,columnsHeight:document.querySelector('.generation-columns').clientHeight,columnRows:getComputedStyle(document.querySelector('.generation-columns')).gridTemplateRows,listScroll:list.scrollTop,stageOverflow:stage.scrollHeight-stage.clientHeight,cardOverflow:card.scrollHeight-card.clientHeight,bodyOverflow:document.scrollingElement.scrollHeight-innerHeight};});
     assert.ok(layout.listScroll>100,JSON.stringify(layout));assert.ok(layout.stageOverflow<=1&&layout.cardOverflow<=1&&layout.bodyOverflow<=1,JSON.stringify(layout));

@@ -45,7 +45,7 @@ test('one-kilometre ship retains detail and the camera can resolve its full spri
 });
 test('terminal outputs universal facts, conditional home status and independently typed records',()=>{
   const system=makeSystem('sol',defaults()),earth=system.planets[2],moon=earth.moons[0];
-  const star=terminalLines(system.star,system,{homeSystem:true});for(const key of ['Home System','STELLAR FAMILY','RADIUS','TEMPERATURE','ROTATION PERIOD','COORDINATES','DISTANCE FROM SHIP','MULTIPLICITY','UV OUTPUT'])assert.ok(star.includes(key));
+  const star=terminalLines(system.star,system,{homeSystem:true});for(const key of ['Home System','STELLAR FAMILY','DIAMETER','TEMPERATURE','ROTATION PERIOD','COORDINATES','DISTANCE FROM SHIP','MULTIPLICITY','UV OUTPUT'])assert.ok(star.includes(key));
   assert.ok(terminalLines(earth,system,{homeWorld:true}).includes('Home World'));assert.ok(terminalLines(moon,system).includes('HOST : Earth'));
   assert.equal(typedLength(star,0),0);assert.ok(typedLength(star,.1)>0&&typedLength(star,.1)<star.length);assert.equal(typedLength(star,8),star.length);assert.equal(typedLength(star,0,true),star.length);
 });

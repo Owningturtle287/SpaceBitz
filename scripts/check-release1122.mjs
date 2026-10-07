@@ -52,10 +52,10 @@ export async function checkRelease1122(page,engine){
     g.settings.reducedMotion=true;g.applySettings();g.showDetails(g.state.selected);g.updateTerminal(performance.now());g.updateUI();
     return {manual,cancelled,reducedTop:screen.scrollTop,full:g.state.terminal.count===g.state.terminal.text.length,rewind:!!g.state.terminal.rewind};
   });assert.ok(reading.manual===60&&reading.cancelled&&reading.reducedTop===0&&reading.full&&!reading.rewind,JSON.stringify(reading));
-  for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667}]){
+  for(const viewport of [{width:844,height:390},{width:667,height:375}]){
     await page.setViewportSize(viewport);await page.waitForTimeout(100);await page.evaluate(()=>{const g=window.__game;g.updateUI();g.positionContext();g.backdrop(0);g.drawSystem(0);});
     const fits=await page.evaluate(()=>{const r=document.getElementById('targetCard').getBoundingClientRect(),screen=document.getElementById('terminalScreen'),log=document.getElementById('journalButton').getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,log:log.bottom,overflow:screen.scrollWidth-screen.clientWidth};});
-    const bottom=viewport.height-3-(viewport.width<620?await page.locator('#dashboardBase').evaluate(e=>e.getBoundingClientRect().height):0);assert.ok(fits.left>=0&&fits.right<=viewport.width&&Math.abs(fits.bottom-bottom)<1&&fits.top>=60&&fits.log<=viewport.height-2&&fits.overflow<=1,JSON.stringify(fits));
+    const bottom=viewport.height-3;assert.ok(fits.left>=0&&fits.right<=viewport.width&&Math.abs(fits.bottom-bottom)<1&&fits.top>=60&&fits.log<=viewport.height-2&&fits.overflow<=1,JSON.stringify(fits));
     await page.screenshot({path:`.qa/${engine}-1122-terminal-${viewport.width}.png`});
   }
   await page.setViewportSize({width:844,height:390});

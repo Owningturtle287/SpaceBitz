@@ -260,6 +260,6 @@ Start a new voyage to see the new population model. Barren systems remain valid.
 
 Node and Chromium/WebKit checks cover the tables, forced rare families/subtypes,
 restoration, wide hierarchies, stable projected names, docked travel controls, terminal typing/scrolling,
-opaque panels, reduced motion, 1 km scale, mobile portrait/landscape layouts and
+opaque panels, reduced motion, 1 km scale, mobile landscape layouts and the portrait rotation guard and
 render/cache stress. Desktop engine tests do not establish real-device battery,
 thermal, audio-policy or GPU behavior; the README retains physical-device checks.

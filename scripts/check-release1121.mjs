@@ -3,7 +3,7 @@ import {writeFile} from 'node:fs/promises';
 export async function checkRelease1121(page,engine){
   await page.evaluate(()=>{window.__game.state.save=null;localStorage.removeItem('spacebitz:field:v1');});await page.reload();await page.locator('#startGame').click();
   const layouts=[];
-  for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667},{width:1024,height:768},{width:1440,height:900}]){
+  for(const viewport of [{width:844,height:390},{width:667,height:375},{width:1024,height:768},{width:1440,height:900}]){
     await page.setViewportSize(viewport);await page.waitForTimeout(150);
     await page.locator('#universeName').fill('Viewport check');await page.locator('#universeSeed').fill('stable-input');
     assert.deepEqual(await page.evaluate(()=>({scale:visualViewport.scale,fonts:['universeName','universeSeed'].map(id=>parseFloat(getComputedStyle(document.getElementById(id)).fontSize))})),{scale:1,fonts:[16,16]});
@@ -40,14 +40,14 @@ export async function checkRelease1121(page,engine){
   assert.equal(await page.locator('#cancelTravel svg').getAttribute('shape-rendering'),'crispEdges');assert.equal(await page.locator('#cancelTravel').getAttribute('aria-label'),'Cancel target');assert.equal(await page.locator('#contextName').innerText(),'Sol');
   assert.equal(await page.locator('#contextName').evaluate(e=>getComputedStyle(e).backgroundColor),'rgba(0, 0, 0, 0)');
   await page.evaluate(()=>window.__game.positionContext());await page.screenshot({path:`.qa/${engine}-1121-actions.png`});
-  for(const viewport of [{width:844,height:390},{width:390,height:844},{width:375,height:667},{width:1440,height:900}]){
+  for(const viewport of [{width:844,height:390},{width:667,height:375},{width:1440,height:900}]){
     await page.setViewportSize(viewport);
     await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.applySettings();g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(performance.now());g.updateUI();g.frame(performance.now());});await page.waitForTimeout(250);
     const layout=await page.evaluate(()=>{
       const card=document.getElementById('targetCard'),r=card.getBoundingClientRect(),log=document.getElementById('journalButton').getBoundingClientRect(),screen=document.getElementById('terminalScreen'),out=document.getElementById('terminalOutput');
       return {bottom:r.bottom,right:r.right,top:r.top,width:r.width,logBottom:log.bottom,logTop:log.top,logRight:log.right,columns:getComputedStyle(out).gridTemplateColumns.split(' ').length,overflow:screen.scrollWidth-screen.clientWidth,fonts:parseFloat(getComputedStyle(out).fontSize),text:out.textContent};
     });
-    const expected=viewport.height-3-(viewport.width<620?await page.locator('#dashboardBase').evaluate(e=>e.getBoundingClientRect().height):0);assert.ok(Math.abs(layout.bottom-expected)<=1);assert.ok(layout.top>=60&&layout.logBottom<=viewport.height-2&&(viewport.width<620?layout.logTop>=layout.bottom:layout.logRight<layout.right-layout.width),JSON.stringify({viewport,layout}));assert.equal(layout.columns,2);assert.ok(layout.overflow<=1);assert.ok(layout.text.startsWith('Object Data\n')&&!layout.text.includes('SPACEBITZ /'));assert.ok(layout.text.includes('DISTANCE FROM SHIP'));
+    const expected=viewport.height-3;assert.ok(Math.abs(layout.bottom-expected)<=1);assert.ok(layout.top>=60&&layout.logBottom<=viewport.height-2&&layout.logRight<layout.right-layout.width,JSON.stringify({viewport,layout}));assert.equal(layout.columns,2);assert.ok(layout.overflow<=1);assert.ok(layout.text.startsWith('Object Data: ')&&!layout.text.includes('SPACEBITZ /'));assert.ok(layout.text.includes('DISTANCE FROM SHIP'));
     await page.screenshot({path:`.qa/${engine}-1121-terminal-${viewport.width}.png`});
   }
   await page.setViewportSize({width:844,height:390});
