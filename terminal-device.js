@@ -59,7 +59,10 @@ function toggleTerminal(){
   if(!state.save)return;
   state.terminalExpanded=!state.terminalExpanded;
   if(state.terminalExpanded){closeSystemChart();buildTerminal();}
-  else {$('terminalInput').blur();setTerminalKeyboard(false);}
+  else {
+    $('terminalInput').blur();setTerminalKeyboard(false);
+    if(!state.selected&&!state.waypoint&&!state.autopilot&&!state.warpUntil)state.terminalNotice=null;
+  }
   updateUI();
 }
 let terminalShift=false,terminalCaps=false;

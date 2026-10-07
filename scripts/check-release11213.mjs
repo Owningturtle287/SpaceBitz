@@ -236,6 +236,10 @@ export async function checkRelease11213(page,engine){
   await page.locator('#terminalInput').fill('virtual entry');await page.locator('#terminalInput').focus();await settle();await page.locator('[data-key="Enter"]').click();
   assert.equal(await page.locator('#terminalInput').inputValue(),'');assert.equal(await page.locator('#terminalMessages .input').count(),priorEntries+1,'Keyboard entries should echo exactly once');
   const history=await page.locator('#terminalMessages').innerText();
+  await page.locator('#secondaryAction').click();await settle();
+  assert.equal(await page.locator('#targetCard').isVisible(),false,'Closing a notification-only terminal should restore its launcher');
+  await page.locator('#terminalButton').click();await settle();
+  assert.equal(await page.locator('#terminalMessages').innerText(),history,'Closing the standalone device erased its history');
   await page.evaluate(()=>{const g=window.__game;g.select(g.state.system.planets.find(p=>p.name==='Earth'));g.showDetails(g.state.selected);g.updateTerminal(g.state.terminal.start+15000);});await settle();
   assert.equal(await page.locator('#terminalMessages').innerText(),history,'Selecting an object erased terminal history');
   const layouts=[];
