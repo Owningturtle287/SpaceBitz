@@ -45,5 +45,16 @@ export async function checkRelease11217(page,engine){
   await tap('secondaryAction');assert.equal(await page.evaluate(()=>window.__game.state.terminalExpanded),false);
   // Keyboard activation remains native even immediately after a touch.
   await page.locator('#followShipButton').press('Enter');assert.equal(await page.locator('#followShipButton').getAttribute('aria-pressed'),'true');
-  return {touchActionsWithoutCompatibilityClicks:true,noDuplicateTouchActions:true,keyboardAfterTouch:true};
+  await page.locator('#followShipButton').click();assert.equal(await page.locator('#followShipButton').getAttribute('aria-pressed'),'false');
+  await page.evaluate(()=>{
+    const button=document.getElementById('followShipButton'),r=button.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;
+    const pointer=(type,dx=0)=>button.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerType:'touch',pointerId:41,button:0,clientX:x+dx,clientY:y}));
+    pointer('pointerdown');pointer('pointermove',20);pointer('pointerup');
+    if(button.getAttribute('aria-pressed')!=='false')throw Error('Dragging over a button activated it');
+    pointer('pointerdown');pointer('pointercancel');pointer('pointerup');
+    if(button.getAttribute('aria-pressed')!=='false')throw Error('Cancelled touch activated a button');
+    button.disabled=true;pointer('pointerdown');pointer('pointerup');button.disabled=false;
+    if(button.getAttribute('aria-pressed')!=='false')throw Error('Disabled button accepted a touch');
+  });
+  return {touchActionsWithoutCompatibilityClicks:true,noDuplicateTouchActions:true,keyboardAfterTouch:true,mouseAfterTouch:true,dragAndCancellationSafe:true};
 }

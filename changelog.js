@@ -1,6 +1,14 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.17",
+    "items": [
+      "Activate buttons directly on touch release so iPhone/iPad flight actions, terminal, camera controls and menus still work when Safari omits its compatibility click. Consume duplicate clicks, preserve mouse and keyboard input, and keep drags, joystick controls and resize grips separate from taps.",
+      "Remove the document-wide rapid-touch cancellation. Canvas gestures and UI buttons already prevent double-tap zoom through their touch-action styles.",
+      "Verify Deep Space Follow, Center, Terminal, Settings, Log, star travel and system entry with compatibility clicks deliberately suppressed, then check normal taps activate only once."
+    ]
+  },
+  {
     "version": "1.12.16",
     "items": [
       "Activate the green travel lever for automatic target selections after launching and entering Deep Space. Exercise Follow, Center, travel, log closing and immediate Warp exits through native touch input with the real game loop running.",

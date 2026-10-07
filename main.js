@@ -30,6 +30,7 @@ import {applyInterfaceFonts} from './interface-fonts.js';
 import {recordAction,recordObject} from './voyage-log.js';
 import {createLogDevice} from './log-device.js';
 import {placeControls,paintLocator} from './hud.js';
+import {enableTouchButtons} from './touch-buttons.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('sky');
@@ -98,17 +99,8 @@ function applySettings(){
   if(!settings.music)stopMusic();
   fit();updateUI();applyCenterButtonLayout();
 }
+enableTouchButtons(document);
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
-let lastSingleTouchEnd=0;
-document.addEventListener('touchend',e=>{
-  if(e.touches.length||e.changedTouches.length!==1)return;
-  // UI controls handle zoom through touch-action. Rapid taps must still activate
-  // camera buttons immediately after using the drive or another control.
-  if(e.target.closest?.('button,input,select,summary,#terminalKeyboard,#terminalInputBar')){lastSingleTouchEnd=0;return;}
-  const now=performance.now();
-  if(now-lastSingleTouchEnd<320)e.preventDefault();
-  lastSingleTouchEnd=now;
-},{passive:false});
 function persist() {
   if (!state.save) return true;
   try {persistVoyage(localStorage,state.save);persist.failedAt=0;return true;}
