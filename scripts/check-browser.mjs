@@ -518,5 +518,5 @@ try{
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
   const release11212=await checkRelease11212(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

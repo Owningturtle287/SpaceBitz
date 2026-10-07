@@ -2,7 +2,7 @@ import {clamp} from './model.js';
 
 export function createLogDevice({state,settings,$,formatDate,resetInput,saveSettings,updateUI,closeSystemChart,setTerminalKeyboard}){
   const overlay=$('journal'),panel=$('journalPanel'),branch=$('journalBranch');
-  let previousFocus=null,serial=0,resize=null;
+  let previousFocus=null,serial=0,resize=null,closing=false;
   const reduced=()=>settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
   function applySize(){
     panel.style.width=clamp(Math.min(660,innerWidth*.82)*settings.logWidthScale/100,Math.min(320,innerWidth-24),innerWidth-24)+'px';
@@ -41,11 +41,11 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
     path.style.strokeDasharray=String(length);path.style.strokeDashoffset='0';
     const duration=opening?620:360;
     path.animate(opening?[{strokeDashoffset:length,opacity:1},{strokeDashoffset:0,opacity:.6,offset:.8},{strokeDashoffset:0,opacity:0}]:[{strokeDashoffset:0,opacity:.8},{strokeDashoffset:length,opacity:0}],{duration,easing:'ease-out',fill:'forwards'});
-    return panel.animate(opening?frames:frames.toReversed(),{duration,easing:'cubic-bezier(.22,.7,.25,1)',fill:'none'});
+    return panel.animate(opening?frames:[...frames].reverse(),{duration,easing:'cubic-bezier(.22,.7,.25,1)',fill:'none'});
   }
   function open(){
     if(!state.save)return;if(state.journalOpen){close();return;}
-    serial++;previousFocus=document.activeElement;resetInput();closeSystemChart();
+    serial++;closing=false;previousFocus=document.activeElement;resetInput();closeSystemChart();
     const dock=$('terminalDock');state.journalDeckTarget=dock.classList.contains('has-target');
     document.documentElement.style.setProperty('--journal-dock-width',dock.getBoundingClientRect().width+'px');
     state.journalOpen=true;state.terminalExpanded=false;setTerminalKeyboard(false);$('terminalInput').blur();
@@ -55,10 +55,10 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
   }
   function close(immediate=false){
     if(!state.journalOpen&&overlay.hidden)return;
-    const token=++serial;
+    const token=++serial;closing=true;
     const finish=()=>{
       if(token!==serial)return;
-      state.journalOpen=false;overlay.hidden=true;document.body.classList.remove('journal-open');$('app').inert=Boolean(state.landscapeBlocked);$('targetCard').inert=false;
+      closing=false;state.journalOpen=false;overlay.hidden=true;document.body.classList.remove('journal-open');$('app').inert=Boolean(state.landscapeBlocked);$('targetCard').inert=false;
       $('journalButton').setAttribute('aria-expanded','false');updateUI();
       if(previousFocus?.isConnected&&!previousFocus.closest('[hidden]'))previousFocus.focus({preventScroll:true});else $('journalButton').focus({preventScroll:true});
     };
@@ -86,6 +86,6 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
     handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=finish;
     handle.onkeydown=e=>{const d={ArrowLeft:1,ArrowUp:1,ArrowRight:-1,ArrowDown:-1}[e.key];if(!d)return;e.preventDefault();e.stopPropagation();change(panel.offsetWidth+(axis==='width'?d*12:0),panel.offsetHeight+(axis==='height'?d*12:0));saveSettings();};
   }
-  window.addEventListener('resize',()=>{if(state.journalOpen){applySize();for(const a of panel.getAnimations())a.cancel();origin();}});
+  window.addEventListener('resize',()=>{if(state.journalOpen){if(closing){close(true);return;}applySize();for(const a of panel.getAnimations())a.cancel();origin();}});
   return {open,close,applySize};
 }

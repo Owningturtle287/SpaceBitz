@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 
 export async function checkRelease11214(page,engine){
+  const settleLog=async()=>page.evaluate(async()=>{for(const id of ['journalPanel','journalBranchPath'])for(const a of document.getElementById(id).getAnimations({subtree:true}))if(Number.isFinite(a.effect.getComputedTiming().endTime))a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
   const settle=async()=>{await page.waitForTimeout(350);await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','travelControls','mapButton','journalButton'])for(const a of document.getElementById(id).getAnimations({subtree:true}))if(Number.isFinite(a.effect.getComputedTiming().endTime))a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});};
   await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;g.settings.paused=true;g.settings.controls='touch';g.settings.joyX=92;g.settings.centerButton='right';g.enterChart();g.applySettings();});
   const follow=[];
@@ -58,25 +59,26 @@ export async function checkRelease11214(page,engine){
   await page.getByRole('tab',{name:'Log',exact:true}).click();await page.locator('#setting-logResizeHandles').check();await setRange('logHeaderFont',12);
   await page.locator('#modalClose').click();await settle();
   const rects=()=>page.evaluate(()=>Object.fromEntries(['joystick','navigationControls','mapButton','journalButton'].map(id=>[id,document.getElementById(id).getBoundingClientRect().toJSON()])));
-  const deckBefore=await rects();await page.locator('#journalButton').click();await page.waitForTimeout(700);
+  const deckBefore=await rects();await page.locator('#journalButton').click();await settleLog();
   assert.equal(await page.locator('#journal').isVisible(),true);assert.equal(await page.locator('#targetCard').isVisible(),false);assert.equal(await page.locator('#systemChartContent').isVisible(),false);
   assert.deepEqual(await rects(),deckBefore,'Log animation moved dashboard controls');
   const centered=await page.locator('#journalPanel').evaluate(e=>{const r=e.getBoundingClientRect();return {x:(r.left+r.right)/2-innerWidth/2,y:(r.top+r.bottom)/2-innerHeight/2,left:r.left,right:r.right,top:r.top,bottom:r.bottom};});
   assert.ok(Math.abs(centered.x)<1&&Math.abs(centered.y)<1&&centered.left>=12&&centered.right<=1024-12,JSON.stringify(centered));
   const survey=page.locator('.object-survey').filter({has:page.locator('summary').filter({hasText:/^Earth ·/})});assert.equal(await survey.count(),1);
-  await survey.locator('summary').click();assert.match(await survey.locator('pre').innerText(),/DIAMETER : 12,742 km/);
+  await survey.locator('summary').click();await settleLog();assert.match(await survey.locator('pre').innerText(),/DIAMETER : 12,742 km/);
+  assert.equal(await survey.locator('pre').evaluate(e=>getComputedStyle(e).opacity),'1');
   assert.equal(await page.locator('#journalTitle').evaluate(e=>getComputedStyle(e).fontSize),'12px');
   await page.locator('#journalResizeWidth').press('ArrowLeft');await page.locator('#journalResizeHeight').press('ArrowDown');
   assert.equal(await page.evaluate(()=>Boolean(window.__game.state.keys.size)),false);
   const saved=await page.evaluate(async()=>{const g=window.__game,{importVoyage}=await import('/saves.js');const copy=importVoyage(JSON.parse(JSON.stringify(g.state.save)),'copy');return {surveys:copy.log.filter(e=>e.kind==='object').map(e=>e.name),status:copy.log.some(e=>e.action==='Survey queued after Earth')};});
   assert.ok(saved.surveys.includes('Earth')&&saved.surveys.includes('Moon')&&saved.status);
-  await page.keyboard.press('Escape');await page.waitForTimeout(400);assert.equal(await page.locator('#journal').isVisible(),false);
+  await page.keyboard.press('Escape');await settleLog();assert.equal(await page.locator('#journal').isVisible(),false);
   await page.evaluate(async()=>{const g=window.__game,{DEFAULT_SETTINGS}=await import('/settings.js');Object.assign(g.settings,DEFAULT_SETTINGS,{paused:true,controls:'touch',terminalResizeHandles:true});g.state.terminalSize=null;g.applySettings();g.clearTerminal();g.showDetails(g.state.system.planets.find(p=>p.name==='Earth'));g.updateTerminal(g.state.terminal.start+10000);g.notify('Survey complete · saved in voyage log');});
   for(const viewport of [{width:1440,height:900},{width:844,height:390},{width:667,height:375}]){
     await page.setViewportSize(viewport);await settle();
     await page.locator('#terminalScreen').evaluate(e=>{e.scrollTop=0;});
     await page.screenshot({path:`.qa/${engine}-11214-terminal-${viewport.width}.png`});
-    await page.locator('#journalButton').click();await page.waitForTimeout(700);await page.locator('.object-survey summary').first().click();
+    await page.locator('#journalButton').click();await settleLog();await page.locator('.object-survey summary').first().click();await settleLog();
     await page.screenshot({path:`.qa/${engine}-11214-log-${viewport.width}.png`});
     await page.evaluate(()=>window.__game.closeJournal());await settle();
     await page.locator('#settingsOpen').click();await page.getByRole('tab',{name:'Terminal',exact:true}).click();

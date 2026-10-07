@@ -60,7 +60,7 @@
 .object-survey summary::before{content:'+';flex:none;color:#8ee9d4}
 .object-survey[open] summary::before{content:'−'}
 .journal-object-data{margin:0;padding:12px;border-top:1px solid #315842;font:var(--log-data-font)/1.8 var(--pixel);white-space:pre-wrap;overflow-wrap:anywhere;color:#9af5b1;animation:record-unfold .24s ease-out}
-@keyframes record-unfold{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes record-unfold{from{opacity:.75;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 .journal-panel .terminal-resize{width:44px;height:44px;min-width:44px;min-height:44px;top:2px;background:#304d5b;color:#fff;border:2px solid #879fa5;clip-path:var(--pixel-corners)}
 .journal-resize-height{left:4px;cursor:ns-resize}
 .journal-resize-width{left:50px;cursor:ew-resize}
