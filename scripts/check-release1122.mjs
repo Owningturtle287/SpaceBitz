@@ -31,15 +31,13 @@ export async function checkRelease1122(page,engine){
   const typing=await page.evaluate(()=>{
     const g=window.__game,record=g.state.terminal,screen=document.getElementById('terminalScreen');
     for(let elapsed=0;elapsed<=8000;elapsed+=100){g.updateTerminal(record.start+elapsed);if(record.finished)break;}
-    if(!record.rewind)throw Error('Finished record did not start scrolling to the beginning');
-    const start=record.rewind.start,from=screen.scrollTop;g.updateTerminal(start+300);const halfway=screen.scrollTop;
-    g.updateTerminal(start+650);const end=screen.scrollTop;g.updateTerminal(start+3000);
-    return {from,halfway,end,stable:screen.scrollTop,full:record.count===record.text.length};
+    const from=screen.scrollTop;g.updateTerminal(record.start+10000);
+    return {from,stable:screen.scrollTop,full:record.count===record.text.length};
   });
-  assert.ok(typing.full&&typing.from>0&&typing.halfway>0&&typing.halfway<typing.from&&typing.end===0&&typing.stable===0,JSON.stringify(typing));
+  assert.ok(typing.full&&typing.stable===typing.from,JSON.stringify(typing));
   const layout=await page.evaluate(()=>{
     const card=document.getElementById('targetCard'),screen=document.getElementById('terminalScreen'),r=card.getBoundingClientRect(),log=document.getElementById('journalButton').getBoundingClientRect();
-    return {width:r.width,header:screen.getBoundingClientRect().top-r.top,distance:parseFloat(getComputedStyle(document.getElementById('targetDistance')).fontSize),status:parseFloat(getComputedStyle(document.getElementById('targetStatus')).fontSize),overflow:screen.scrollWidth-screen.clientWidth,columns:getComputedStyle(document.getElementById('terminalOutput')).gridTemplateColumns.split(' ').length,logBottom:log.bottom,top:r.top};
+    return {width:r.width,header:screen.getBoundingClientRect().top-r.top,distance:parseFloat(getComputedStyle(document.getElementById('targetDistance')).fontSize),status:parseFloat(getComputedStyle(document.getElementById('targetStatus')).fontSize),overflow:screen.scrollWidth-screen.clientWidth,columns:getComputedStyle(window.__game.state.terminal.node).gridTemplateColumns.split(' ').length,logBottom:log.bottom,top:r.top};
   });
   assert.ok(layout.width<=267&&layout.header<64&&layout.distance<layout.status&&layout.overflow<=1&&layout.logBottom<=896,JSON.stringify(layout));assert.equal(layout.columns,2);
   await page.evaluate(()=>{const g=window.__game;g.positionContext();document.getElementById('contextActions').classList.add('ready');g.backdrop(0);g.drawSystem(0);});
@@ -47,11 +45,11 @@ export async function checkRelease1122(page,engine){
   const reading=await page.evaluate(()=>{
     const g=window.__game,screen=document.getElementById('terminalScreen');g.showDetails(g.state.selected);const record=g.state.terminal;
     for(let elapsed=0;elapsed<=8000;elapsed+=100){g.updateTerminal(record.start+elapsed);if(record.finished)break;}
-    const start=record.rewind.start;g.updateTerminal(start+150);screen.dispatchEvent(new WheelEvent('wheel',{deltaY:1}));screen.scrollTop=60;g.updateTerminal(start+4000);
+    screen.dispatchEvent(new WheelEvent('wheel',{deltaY:1}));screen.scrollTop=60;g.updateTerminal(record.start+14000);
     const manual=screen.scrollTop,cancelled=!record.rewind;
     g.settings.reducedMotion=true;g.applySettings();g.showDetails(g.state.selected);g.updateTerminal(performance.now());g.updateUI();
     return {manual,cancelled,reducedTop:screen.scrollTop,full:g.state.terminal.count===g.state.terminal.text.length,rewind:!!g.state.terminal.rewind};
-  });assert.ok(reading.manual===60&&reading.cancelled&&reading.reducedTop===0&&reading.full&&!reading.rewind,JSON.stringify(reading));
+  });assert.ok(reading.manual===60&&reading.cancelled&&reading.reducedTop===60&&reading.full&&!reading.rewind,JSON.stringify(reading));
   for(const viewport of [{width:844,height:390},{width:667,height:375}]){
     await page.setViewportSize(viewport);await page.waitForTimeout(100);await page.evaluate(()=>{const g=window.__game;g.updateUI();g.positionContext();g.backdrop(0);g.drawSystem(0);});
     const fits=await page.evaluate(()=>{const r=document.getElementById('targetCard').getBoundingClientRect(),screen=document.getElementById('terminalScreen'),log=document.getElementById('journalButton').getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,log:log.bottom,overflow:screen.scrollWidth-screen.clientWidth};});

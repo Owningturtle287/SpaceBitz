@@ -1,5 +1,6 @@
 import {makeSystem,bodyPosition,visualRadius,currentDays} from './model.js';
 import {checkedGeneration} from './universe.js';
+import {restoreLogEntry} from './voyage-log.js';
 const seedValue=(value,label)=>{
   if(typeof value!=='string'||!value.length||value.length>180)throw Error(`Invalid ${label}.`);
   return value;
@@ -23,7 +24,7 @@ export function importVoyage(raw,id,now=Date.now()){
   const common={id,name:String(raw.name||'Imported universe').slice(0,40),seed,homeSeed,
     days:savedDays(raw.days,currentDays(now)),updated:now,
     discoveries:Array.isArray(raw.discoveries)?[...new Set(raw.discoveries.filter(x=>typeof x==='string'&&x.length<=360))]:[],
-    log:Array.isArray(raw.log)?raw.log.filter(x=>x&&typeof x.name==='string').map(x=>({...x,name:x.name.slice(0,180),action:typeof x.action==='string'?x.action.slice(0,500):'Discovery',days:savedDays(x.days,raw.days??currentDays(now))})):[]};
+    log:Array.isArray(raw.log)?raw.log.filter(x=>x&&typeof x.name==='string').map(x=>restoreLogEntry(x,savedDays(x.days,raw.days??currentDays(now)))):[]};
   if(raw.generation!==undefined)common.generation=checkedGeneration(raw.generation);
   // Field-format saves restore every location and exploration field. Import as a
   // separate voyage so a backup never silently replaces the existing original.

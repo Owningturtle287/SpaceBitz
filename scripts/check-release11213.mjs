@@ -241,7 +241,7 @@ export async function checkRelease11213(page,engine){
   await page.locator('#terminalButton').click();await settle();
   assert.equal(await page.locator('#terminalMessages').innerText(),history,'Closing the standalone device erased its history');
   await page.evaluate(()=>{const g=window.__game;g.select(g.state.system.planets.find(p=>p.name==='Earth'));g.showDetails(g.state.selected);g.updateTerminal(g.state.terminal.start+15000);});await settle();
-  assert.equal(await page.locator('#terminalMessages').innerText(),history,'Selecting an object erased terminal history');
+  assert.ok((await page.locator('#terminalMessages').innerText()).includes(history),'Selecting an object erased terminal history');
   const layouts=[];
   for(const viewport of [{width:1440,height:900,bottom:0,right:0},{width:844,height:390,bottom:21,right:47},{width:667,height:375,bottom:21,right:47}]){
     await page.setViewportSize({width:viewport.width,height:viewport.height});await page.waitForFunction(v=>window.__game.state.width===v.width&&window.__game.state.height===v.height,viewport);
