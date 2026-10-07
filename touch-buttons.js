@@ -19,16 +19,19 @@ export function enableTouchButtons(root){
     const press=presses.get(e.pointerId);
     if(press&&Math.hypot(e.clientX-press.x,e.clientY-press.y)>12)press.moved=true;
   },{passive:true});
-  root.addEventListener('pointercancel',e=>presses.delete(e.pointerId));
+  root.addEventListener('pointercancel',e=>{
+    const press=presses.get(e.pointerId);if(press)handled.set(press.button,performance.now());
+    presses.delete(e.pointerId);
+  });
   root.addEventListener('pointerup',e=>{
     const press=presses.get(e.pointerId);if(!press)return;
     presses.delete(e.pointerId);
     const {button}=press;
+    handled.set(button,performance.now());
     if(press.moved||!available(button))return;
     // Implicit touch capture can send release to the original button after the
     // finger or an animated panel has moved away. Treat that as a cancelled tap.
     if(buttonAt(root.elementFromPoint(e.clientX,e.clientY))!==button)return;
-    handled.set(button,performance.now());
     e.preventDefault();button.focus({preventScroll:true});button.click();
   },{passive:false});
   root.addEventListener('click',e=>{

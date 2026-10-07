@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 export async function checkRelease11217(page,engine){
-  const tap=async id=>{const r=await page.locator('#'+id).boundingBox();assert.ok(r,id+' has no bounds');await page.touchscreen.tap(r.x+r.width/2,r.y+r.height/2);};
+  const tap=async id=>{const button=page.locator('#'+id);await button.click({trial:true});const r=await button.boundingBox();assert.ok(r,id+' has no bounds');await page.touchscreen.tap(r.x+r.width/2,r.y+r.height/2);};
   await page.setViewportSize({width:844,height:390});
   await page.evaluate(()=>{
     const g=window.__game;g.settings.controls='touch';g.settings.reducedMotion=false;g.state.followShip=false;g.state.centerZoom=null;
