@@ -1,0 +1,49 @@
+import assert from 'node:assert/strict';
+
+export async function checkRelease11217(page,engine){
+  const tap=async id=>{const r=await page.locator('#'+id).boundingBox();assert.ok(r,id+' has no bounds');await page.touchscreen.tap(r.x+r.width/2,r.y+r.height/2);};
+  await page.setViewportSize({width:844,height:390});
+  await page.evaluate(()=>{
+    const g=window.__game;g.settings.controls='touch';g.settings.reducedMotion=false;g.state.followShip=false;g.state.centerZoom=null;
+    g.enterChart();g.applySettings();window.__qaPause=false;g.frame(performance.now());
+    // Model the reported iPhone failure: touch/pointer events still arrive,
+    // but Safari's subsequent compatibility click does not reach the action.
+    // Real touchscreen input must operate the dashboard in this condition.
+    window.__blockCompatibilityClick=true;
+    document.addEventListener('click',e=>{
+      if(window.__blockCompatibilityClick&&e.isTrusted){e.preventDefault();e.stopImmediatePropagation();}
+    },{capture:true});
+  });
+  await page.waitForFunction(()=>document.body.dataset.scene==='chart'&&getComputedStyle(document.getElementById('travelControls')).opacity!=='0');
+  await tap('followShipButton');
+  await page.waitForFunction(()=>window.__game.state.followShip,undefined,{timeout:5000});
+  await tap('followShipButton');
+  assert.equal(await page.locator('#followShipButton').getAttribute('aria-pressed'),'false');
+  await tap('homeButton');await page.waitForFunction(()=>window.__game.state.centerReady);
+  await tap('secondaryAction');await page.waitForFunction(()=>window.__game.state.terminalExpanded);
+  await page.waitForFunction(()=>{const e=document.getElementById('secondaryAction'),r=e.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('button')===e;});
+  await tap('secondaryAction');assert.equal(await page.evaluate(()=>window.__game.state.terminalExpanded),false);
+  await tap('settingsOpen');assert.equal(await page.locator('#modal').isVisible(),true);
+  await tap('modalClose');assert.equal(await page.locator('#modal').isVisible(),false);
+  await tap('journalButton');assert.equal(await page.locator('#journal').isVisible(),true);
+  await tap('journalClose');await page.waitForFunction(()=>!window.__game.state.journalOpen);
+  const before=await page.evaluate(()=>Math.hypot(window.__game.state.selected.x-window.__game.state.save.chart.x,window.__game.state.selected.y-window.__game.state.save.chart.y));
+  await tap('primaryAction');
+  await page.waitForFunction(d=>Math.hypot(window.__game.state.selected.x-window.__game.state.save.chart.x,window.__game.state.selected.y-window.__game.state.save.chart.y)<d,before);
+  await page.waitForFunction(()=>!window.__game.state.autopilot);
+  assert.equal(await page.locator('#flightSpeed').inputValue(),'2');
+  await page.screenshot({path:`.qa/${engine}-11217-touch-actions.png`});
+  await tap('primaryAction');assert.equal(await page.evaluate(()=>window.__game.state.scene),'system');
+  await page.evaluate(async()=>{window.__blockCompatibilityClick=false;window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+  // A normal browser click following a touch must not toggle the action twice.
+  await page.evaluate(()=>{const g=window.__game;g.enterChart();g.state.followShip=false;g.state.centerZoom=null;g.updateUI();});
+  await page.waitForFunction(()=>{const e=document.getElementById('secondaryAction'),r=e.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('button')===e;});
+  await tap('followShipButton');assert.equal(await page.locator('#followShipButton').getAttribute('aria-pressed'),'true');
+  await tap('followShipButton');assert.equal(await page.locator('#followShipButton').getAttribute('aria-pressed'),'false');
+  await tap('secondaryAction');assert.equal(await page.evaluate(()=>window.__game.state.terminalExpanded),true);
+  await page.waitForFunction(()=>{const e=document.getElementById('secondaryAction'),r=e.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('button')===e;});
+  await tap('secondaryAction');assert.equal(await page.evaluate(()=>window.__game.state.terminalExpanded),false);
+  // Keyboard activation remains native even immediately after a touch.
+  await page.locator('#followShipButton').press('Enter');assert.equal(await page.locator('#followShipButton').getAttribute('aria-pressed'),'true');
+  return {touchActionsWithoutCompatibilityClicks:true,noDuplicateTouchActions:true,keyboardAfterTouch:true};
+}
