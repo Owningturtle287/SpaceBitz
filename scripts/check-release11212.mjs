@@ -32,7 +32,7 @@ export async function checkRelease11212(page,engine){
   await page.evaluate(()=>{const g=window.__game,pluto=g.state.system.planets.find(p=>p.name==='Pluto');g.select(pluto);g.showDetails(pluto);g.updateTerminal(performance.now()+10000);g.updateUI();});
   assert.match(await page.locator('#terminalOutput').innerText(),/Dwarf planet/i);
   await page.waitForTimeout(600);
-  await page.evaluate(()=>{const g=window.__game;g.updateTerminal(performance.now()+11000);g.focusSelected();g.frame(performance.now());document.getElementById('toast').classList.remove('show');});
+  await page.evaluate(()=>{const g=window.__game;g.updateTerminal(performance.now()+11000);g.focusSelected();g.frame(performance.now());});
   await page.screenshot({path:`.qa/${engine}-11212-dwarf-terminal.png`});
   await page.evaluate(()=>window.__game.cancelTarget());
   return {terrain,quotaKeptSession:true,headerKeyboardFlight:true,inputBlocksFlight:true,dwarfTerminal:true};

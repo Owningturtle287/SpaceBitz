@@ -1,6 +1,17 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.13",
+    "items": [
+      "Action notifications and submitted terminal text share a bounded plain-text terminal history instead of a floating toast. Menu actions use the same terminal-style console.",
+      "Object Data headings include the selected name. Body radius fields are removed; orbital periods explicitly use Earth days, and rotations use Earth days/hours/minutes, retaining fractional-minute precision for compact stars.",
+      "Landscape-only play replaces portrait controls and orientation preferences. Turning the device upright pauses gameplay behind a rotate prompt.",
+      "A blue/yellow/purple tapered three-position flight slider replaces the Warp Drive lever. Orbit and Hyperspace control manual system flight; automatic transfers retain their own drive selection. Deep Space always uses Warp Drive.",
+      "The terminal scrollbar sits near the right rim, resize handles move to the upper-left corner, and Cancel is centered above the green travel lever. The date/coordinate and system-chart panels follow the upper screen corners; Settings sits beside the date/coordinates.",
+      "Browser coverage now checks the current landscape flight deck, terminal history/input, drive transitions, resized device contours and rotation guard."
+    ]
+  },
+  {
     "version": "1.12.12",
     "items": [
       "Voyage storage never evicts older saves. Failed saves keep the session open, corrupt stored records are protected, and imports/restoration validate dates and coordinates before use.",

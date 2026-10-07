@@ -3,8 +3,33 @@ import {terminalLines,typedLength} from './terminal.js';
 import {contextPosition} from './target-ui.js';
 import {formatCoordinates,SYSTEM_MAX_ZOOM} from './scale.js';
 import {systemMinZoom} from './navigation.js';
+import {addTerminalEntry} from './terminal-history.js';
 
 export function createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,resetInput,saveSettings,applyCenterButtonLayout,screen}){
+state.terminalEntries=[];
+function appendTerminalEntry(text,kind='message'){
+  const entry=addTerminalEntry(state.terminalEntries,text,kind);if(!entry)return;
+  if(kind==='message')state.terminalNotice=entry.text;
+  renderTerminalHistory();
+  if(state.terminal){state.terminal.rewind=null;state.terminal.finished=true;}
+  if(state.terminalExpanded)requestAnimationFrame(()=>{$('terminalScreen').scrollTop=$('terminalScreen').scrollHeight;});
+  if(!state.save){
+    $('menuTerminal').hidden=false;
+    $('menuTerminalMessages').replaceChildren(...state.terminalEntries.slice(-2).map(terminalEntryNode));
+  }else updateUI();
+  return entry;
+}
+function terminalEntryNode(entry){
+  const node=document.createElement('div');node.className='terminal-history-entry '+entry.kind;
+  node.textContent=(entry.kind==='input'?'> ':'STATUS : ')+entry.text;return node;
+}
+function renderTerminalHistory(){
+  $('terminalMessages').replaceChildren(...state.terminalEntries.map(terminalEntryNode));
+}
+function submitTerminalInput(){
+  const input=$('terminalInput');if(!input.value.trim())return;
+  appendTerminalEntry(input.value,'input');input.value='';input.dispatchEvent(new Event('input',{bubbles:true}));
+}
 function selectedRecord(){
   const chart=state.scene==='chart',selected=state.selected;
   const system=chart&&selected?.seed?chartSystem(selected.seed):state.system;
@@ -16,14 +41,14 @@ function selectedRecord(){
 function buildTerminal(){
   if(!state.save)return;const record=selectedRecord();
   state.terminal={text:terminalLines(record.object,record.system,{days:state.save.days,scene:state.scene,position:record.position,ship:record.ship,homeSystem:state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.save.currentSystem===state.save.homeSeed&&record.object.kind==='star',homeWorld:record.object.id===state.save.homePlanet}),start:performance.now(),count:-1};
-  if(!state.selected&&!state.waypoint)state.terminal.text='Object Data\n\nSTATUS : READY\nLAYER : '+(state.scene==='chart'?'Deep Space':state.scene==='surface'?'Surface':'System')+'\nPOSITION : '+formatCoordinates(record.ship,state.scene)+'\nVOYAGE : '+state.save.name+'\n\nSelect an object or area to retrieve its data.\nCommand input is on standby.';
+  if(!state.selected&&!state.waypoint)state.terminal.text='Object Data: Ship Terminal\n\nSTATUS : READY\nLAYER : '+(state.scene==='chart'?'Deep Space':state.scene==='surface'?'Surface':'System')+'\nPOSITION : '+formatCoordinates(record.ship,state.scene)+'\nVOYAGE : '+state.save.name+'\n\nSelect an object or area to retrieve its data.';
   const output=$('terminalOutput');output.replaceChildren();let offset=0;
   state.terminal.lines=state.terminal.text.split('\n').map((text,index)=>{
     const node=document.createElement('div'),colon=text.indexOf(' : '),key=document.createElement('span'),value=document.createElement('span');
     node.className=!text?'terminal-break':index===0?'terminal-title':colon<0?'terminal-note':'terminal-field';
     key.className='terminal-key';value.className='terminal-value';node.append(key,value);node.hidden=true;output.append(node);
     const row={text,offset,node,key,value,colon};offset+=text.length+1;return row;
-  });$('terminalScreen').scrollTop=0;
+  });renderTerminalHistory();$('terminalScreen').scrollTop=0;
 }
 function showDetails(body){
   closeSystemChart();
@@ -34,7 +59,10 @@ function toggleTerminal(){
   if(!state.save)return;
   state.terminalExpanded=!state.terminalExpanded;
   if(state.terminalExpanded){closeSystemChart();buildTerminal();}
-  else {$('terminalInput').blur();setTerminalKeyboard(false);}
+  else {
+    $('terminalInput').blur();setTerminalKeyboard(false);
+    if(!state.selected&&!state.waypoint&&!state.autopilot&&!state.warpUntil)state.terminalNotice=null;
+  }
   updateUI();
 }
 let terminalShift=false,terminalCaps=false;
@@ -51,7 +79,7 @@ function terminalCharacter(key){return terminalShift?(terminalSymbols[key]||key)
 function terminalKey(key){
   const input=$('terminalInput'),start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
   if(key==='Shift'||key==='CapsLock'){if(key==='Shift')terminalShift=!terminalShift;else terminalCaps=!terminalCaps;renderTerminalKeyboard();return;}
-  if(key==='Enter'){setTerminalKeyboard(false);input.blur();return;}
+  if(key==='Enter'){submitTerminalInput();setTerminalKeyboard(false);input.blur();return;}
   if(key==='Clear'){input.value='';input.setSelectionRange(0,0);input.dispatchEvent(new Event('input',{bubbles:true}));return;}
   const from=key==='Backspace'&&start===end?Math.max(0,start-1):start;
   const text=key==='Backspace'?'':key==='Space'?' ':terminalCharacter(key);
@@ -107,7 +135,7 @@ renderTerminalKeyboard();bindTerminalKey($('terminalDelete'),'Backspace');
 $('terminalInput').onfocus=()=>{resetInput();setTerminalKeyboard(true);};
 $('terminalInput').onblur=updateInputCaret;
 $('terminalInput').oninput=updateInputCaret;
-$('terminalInput').onkeydown=e=>{if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();setTerminalKeyboard(false);$('terminalInput').blur();}else requestAnimationFrame(updateInputCaret);};
+$('terminalInput').onkeydown=e=>{if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();if(e.key==='Enter'&&!e.repeat)submitTerminalInput();setTerminalKeyboard(false);$('terminalInput').blur();}else requestAnimationFrame(updateInputCaret);};
 document.addEventListener('selectionchange',()=>{if(document.activeElement===$('terminalInput'))updateInputCaret();});
 window.addEventListener('blur',stopTerminalKeys);
 $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden;if(open)$('terminalInput').focus({preventScroll:true});setTerminalKeyboard(open);};
@@ -116,14 +144,14 @@ $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden
 let terminalResize=null;
 function terminalResizeSize(){
   const r=$('targetCard').getBoundingClientRect(),dock=getComputedStyle($('terminalDock'));
-  const safe=document.body.classList.contains('deck-wrap')?0:$('dashboardBase').getBoundingClientRect().height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
+  const safe=$('dashboardBase').getBoundingClientRect().height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
   return {width:r.width-Math.max(0,parseFloat(dock.right)-3),height:r.height-safe+1};
 }
 function terminalLimits(){
-  const wrap=innerWidth<620,joyRect=$('joystick').getBoundingClientRect();
-  const reserve=wrap?(state.terminalExpanded?102:116):Math.max(330,joyRect.width?joyRect.right+242:0);
-  const maxWidth=Math.max(200,innerWidth-reserve),row=Math.max(68,Math.min(settings.dashboardHeight+(settings.joyOffset||0),innerHeight*.25));
-  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,innerHeight-(wrap?row*2+74:115))};
+  const joyRect=$('joystick').getBoundingClientRect();
+  const reserve=Math.max(354,joyRect.width?joyRect.right+258:0);
+  const maxWidth=Math.max(200,innerWidth-reserve);
+  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,innerHeight-88)};
 }
 function applyTerminalSize(){
   const dock=$('terminalDock'),limits=terminalLimits();
@@ -133,7 +161,7 @@ function applyTerminalSize(){
   const expanded=clamp(state.terminalSize?.width??264*settings.terminalWidthScale/100,limits.minWidth,limits.maxWidth);
   dock.style.setProperty('--terminal-expanded-width',expanded+'px');
   const terminalWidth=$('targetCard').hidden?94:state.terminalExpanded?expanded:collapsed;
-  document.documentElement.style.setProperty('--deck-joy-max',Math.max(6,innerWidth-terminalWidth-($('targetCard').hidden?302:338))+'px');
+  document.documentElement.style.setProperty('--deck-joy-max',Math.max(6,innerWidth-terminalWidth-($('targetCard').hidden?338:354))+'px');
   const height=clamp(state.terminalSize?.height??innerHeight*.7*settings.terminalHeightScale/100,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight);
   dock.style.setProperty('--terminal-user-height',height+'px');
   for(const id of ['terminalResizeTop','terminalResizeLeft'])$(id).hidden=!state.terminalExpanded||!settings.terminalResizeHandles;
@@ -159,10 +187,8 @@ const finishDashboardResize=e=>{if(e.pointerId!==dashboardResize?.id)return;dash
 dashboardHandle.onpointerup=finishDashboardResize;dashboardHandle.onpointercancel=finishDashboardResize;
 dashboardHandle.onkeydown=e=>{const direction={ArrowUp:1,ArrowDown:-1}[e.key];if(!direction||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();settings.dashboardHeight=clamp(settings.dashboardHeight+direction*12,68,260);saveSettings();layoutDashboard();applyCenterButtonLayout();};
 function layoutDashboard(){
-  const wrap=innerWidth<620;
-  document.body.classList.remove('deck-compact');document.body.classList.toggle('deck-wrap',wrap);
-  const row=Math.max(68,Math.min(settings.dashboardHeight+(settings.joyOffset||0),innerHeight*(wrap ? .25 : .5)));
-  const height=wrap?row*2+4:Math.max(row,settings.centerButton==='above'?136:68);
+  const row=Math.max(68,Math.min(settings.dashboardHeight+(settings.joyOffset||0),innerHeight*.5));
+  const height=Math.max(row,settings.centerButton==='above'?136:68);
   document.documentElement.style.setProperty('--dashboard-row-height',row+'px');
   document.documentElement.style.setProperty('--dashboard-height',height+'px');
   $('terminalDock').style.setProperty('--terminal-compact-height',(row-2)+'px');
@@ -219,5 +245,5 @@ const terminalObserver=new ResizeObserver(scheduleTerminalLayout);
 terminalObserver.observe($('targetCard'));terminalObserver.observe($('terminalPocket'));
 for(const event of ['wheel','touchstart','pointerdown','keydown'])$('terminalScreen').addEventListener(event,()=>{if(state.terminal)state.terminal.rewind=null;},{passive:true});
 
-return {showDetails,toggleTerminal,buildTerminal,setTerminalKeyboard,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext};
+return {showDetails,toggleTerminal,buildTerminal,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext};
 }

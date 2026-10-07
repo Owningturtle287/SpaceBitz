@@ -1,0 +1,60 @@
+/* Landscape flight instruments and the shared terminal message stream. */
+.landscape-gate{position:fixed;inset:0;z-index:30;display:grid;align-content:center;justify-items:center;gap:18px;padding:28px;background:#030b12;color:#b8f6db;text-align:center;font:10px/1.8 var(--pixel)}
+.landscape-gate svg{width:96px;height:64px;image-rendering:pixelated}
+.landscape-gate h2{font:13px/1.8 var(--pixel);margin:0}
+.landscape-gate p{margin:0;color:#8faab1}
+.menu-terminal{margin-top:10px;border:2px solid #728f96;background:#03110d;color:#9af5b1;padding:7px 10px;max-height:96px;overflow:auto;font:8px/1.7 var(--pixel)}
+.menu-terminal h2{font:8px/1.5 var(--pixel);margin:0 0 5px;color:#c4ffd2}
+#welcome .welcome-card:has(#menuTerminal:not([hidden])) .generation-stage{height:calc(100dvh - 126px)}
+.terminal-messages{border-top:1px solid #315842;margin-top:10px;padding-top:7px;color:#9af5b1;font:8px/1.8 var(--pixel);overflow-wrap:anywhere}
+.terminal-messages:empty{display:none}
+.terminal-history-entry+.terminal-history-entry{margin-top:7px}
+.terminal-history-entry.input{color:#d6ffdf}
+#targetCard .terminal-screen{margin-right:-7px;padding-right:9px;scrollbar-gutter:stable}
+#terminalScreen::-webkit-scrollbar{width:5px}
+#terminalScreen::-webkit-scrollbar-track{background:#03110d}
+#terminalScreen::-webkit-scrollbar-thumb{background:#4d8a61;border:1px solid #03110d}
+#targetCard:not(.expanded) .terminal-status{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5}
+.resize-top{left:16px;top:0;width:32px;height:10px}
+.resize-left{left:0;top:15px;width:10px;height:32px}
+#targetCard:has(.terminal-resize:not([hidden])) .terminal-head{padding-left:28px;padding-top:10px}
+.travel-controls .context-action-row{flex-direction:column-reverse;align-items:center;gap:4px}
+
+/* Thin framed panels follow the same screen-corner curve as the dashboard. */
+.topbar{padding:3px 3px 0;gap:12px;align-items:flex-start}
+.flight-instruments{display:flex;align-items:center;gap:10px;min-width:0;pointer-events:none}
+.flight-instruments .utility-stack{pointer-events:auto;flex:none}
+.topbar .flight-readout{flex:none;width:224px;max-width:calc(48vw - 50px);min-height:58px;padding:10px 12px 7px max(20px,env(safe-area-inset-left));margin:0;border:2px solid #81979d;border-top-left-radius:calc(var(--dashboard-corner) - 3px);clip-path:none;box-shadow:inset 1px 1px #bfd0cb,inset -1px -1px #293f4e;background:rgb(16 30 50 / 25%);overflow:hidden}
+.topbar .flight-readout #clock{white-space:nowrap;font-size:8px;line-height:1.6}
+.topbar .flight-readout #telemetry{font-size:7px;line-height:1.7;overflow-wrap:anywhere}
+.top-actions{margin-left:auto;gap:0}
+.top-actions .mission-tools{display:flex;align-items:center;gap:10px;width:auto;flex:none}
+.topbar .top-system-chart{width:194px;max-width:32vw;margin:0;border:2px solid #81979d;border-top-right-radius:calc(var(--dashboard-corner) - 3px);clip-path:none;box-shadow:inset 1px 1px #bfd0cb,inset -1px -1px #293f4e;background:rgb(16 30 50 / 25%)}
+.top-system-chart .mission-toggle{min-height:58px;border:0;box-shadow:none;clip-path:none;background:none;padding:10px max(18px,env(safe-area-inset-right)) 7px 10px;border-top-right-radius:inherit}
+.top-system-chart .mission-toggle strong{font-size:10px}
+.top-system-chart .mission-toggle .eyebrow{font-size:7px;white-space:normal}
+.top-system-chart .mission-chevron{font-size:16px}
+.top-system-chart .mission-content{left:auto;right:-2px}
+#settingsOpen{width:32px;height:32px;min-width:32px;min-height:32px}
+
+/* Three physical drive detents over a stepped, widening velocity scale. */
+#mapButton.flight-speed{position:absolute;right:calc(100% + 4px);bottom:calc((var(--dashboard-row-height) - 60px)/2 - 2px);width:98px;height:60px;min-width:98px;min-height:60px;padding:4px 6px;display:flex;flex-direction:column;justify-content:space-between;gap:0;border:2px solid #6c8da3;background:rgb(28 51 76 / 25%);box-shadow:var(--frame);clip-path:var(--pixel-corners);pointer-events:auto;transition:right .24s cubic-bezier(.22,.7,.25,1);touch-action:manipulation}
+.terminal-dock.has-target #mapButton.flight-speed{right:calc(100% + 40px)}
+.flight-speed-label{display:block;font:6px/1.5 var(--pixel);color:#b4f1fa;text-align:center;white-space:nowrap}
+.flight-speed[data-stage="1"] .flight-speed-label{color:#ffe398}
+.flight-speed[data-stage="2"] .flight-speed-label{color:#d4b7ff}
+.flight-speed-track{position:relative;width:100%;height:30px}
+.speed-taper{display:block;width:100%;height:30px;image-rendering:pixelated}
+#flightSpeed{position:absolute;inset:0;width:100%;height:30px;margin:0;padding:0;border:0;background:transparent;appearance:none;-webkit-appearance:none;cursor:ew-resize;touch-action:none}
+#flightSpeed::-webkit-slider-runnable-track{height:30px;background:transparent}
+#flightSpeed::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:12px;height:30px;border:2px solid #d9e8da;border-radius:0;background:linear-gradient(90deg,#516e81 0 2px,#b7d0d2 2px 4px,#294653 4px 8px,#819bad 8px);box-shadow:1px 1px #07121d}
+#flightSpeed::-moz-range-track{height:30px;background:transparent}
+#flightSpeed::-moz-range-thumb{width:8px;height:26px;border:2px solid #d9e8da;border-radius:0;background:#819bad;box-shadow:inset 2px 0 #c5d8d5,1px 1px #07121d}
+#flightSpeed:disabled{opacity:.7;cursor:wait}
+.flight-speed-stops{display:flex;justify-content:space-between;font:5px/1.3 var(--pixel)}
+.flight-speed-stops span:first-child{color:#85dbf5}
+.flight-speed-stops span:nth-child(2){color:#efc85a}
+.flight-speed-stops span:last-child{color:#b48cf2}
+body[data-reduced-motion=true] #mapButton.flight-speed{transition:none}
+@media(prefers-reduced-motion:reduce){#mapButton.flight-speed{transition:none}}
+@media(orientation:portrait){#app,#welcome,#modal{visibility:hidden;pointer-events:none}}

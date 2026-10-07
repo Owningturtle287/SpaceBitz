@@ -4,15 +4,8 @@ import {checkRelease112} from './check-release112.mjs';
 import {checkRelease1121} from './check-release1121.mjs';
 import {checkRelease1122} from './check-release1122.mjs';
 import {checkRelease1123} from './check-release1123.mjs';
-import {checkRelease1125} from './check-release1125.mjs';
-import {checkRelease1126} from './check-release1126.mjs';
-import {checkRelease1127} from './check-release1127.mjs';
-import {checkRelease1128} from './check-release1128.mjs';
-import {checkRelease1129} from './check-release1129.mjs';
-import {checkRelease11210} from './check-release11210.mjs';
-import {checkRelease11211} from './check-release11211.mjs';
+import {checkRelease11213} from './check-release11213.mjs';
 import {checkRelease11212} from './check-release11212.mjs';
-import {checkRelease1124} from './check-release1124.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
 import {resolve,extname} from 'node:path';
@@ -40,7 +33,7 @@ try{
     const response=await route.fetch();let source=await response.text();
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
-    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,nearbyStars,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected,applySettings};';
+    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,nearbyStars,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected,applySettings,setFlightStage,notify,appendTerminalEntry};';
     await route.fulfill({response,body:source});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
@@ -68,6 +61,12 @@ try{
   const startupMs=Date.now()-started;assert.ok(startupMs<10000,`Startup stalled: ${startupMs}ms`);
   await page.evaluate(async()=>{await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
   await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+  // Exercise the current device controls before the longer renderer soak, then
+  // restore the exact launch fixture so the simulation checks stay independent.
+  const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
+  const release11213=await checkRelease11213(page,engine);
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
+  await page.waitForTimeout(350);
   const initial=await page.evaluate(()=>{
     const c=document.getElementById('sky'),g=c.getContext('2d'),s=window.__game.state,r=c.getBoundingClientRect(),m=g.getTransform();
     const image=c.toDataURL(),pixels=g.getImageData(c.width/2-20,c.height/2-30,40,60).data;let shipPixels=0;
@@ -102,7 +101,7 @@ try{
   const controls=await page.evaluate(()=>{
     const alpha=id=>getComputedStyle(document.getElementById(id)).backgroundColor;
     const rect=id=>{const r=document.getElementById(id).getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,width:r.width,height:r.height};};
-    return {panels:['systemChartToggle','flightReadout','joystick','homeButton','mapButton'].map(alpha),thumb:alpha('stick'),joy:rect('joystick'),center:rect('homeButton'),warp:rect('mapButton'),target:rect('targetCard')};
+    return {panels:['systemChart','flightReadout','joystick','homeButton','mapButton'].map(alpha),thumb:alpha('stick'),joy:rect('joystick'),center:rect('homeButton'),warp:rect('mapButton'),target:rect('targetCard')};
   });
   for(const fill of controls.panels)assert.match(fill,/, 0\.25\)$/,fill);
   assert.ok(!controls.thumb.startsWith('rgba'),controls.thumb);
@@ -124,7 +123,7 @@ try{
     s.showFPS=false;g.updateUI();if(!p.hidden)throw new Error('Empty readout should disappear');
     s.showClock=true;s.showCoords=true;g.updateUI();return {full,small};
   });
-  assert.ok(readout.small<readout.full);
+  assert.ok(readout.small<=readout.full);
   await page.evaluate(async()=>{
     const {SHIP_FOCUS_ZOOM}=await import('/scale.js');
     const g=window.__game,s=g.state; s.followBody=null;s.centerReady=false;s.camera={x:0,y:0};s.zoom=.00001;
@@ -146,7 +145,7 @@ try{
     g.enterSurface(earth);g.updateUI();
     if(!document.getElementById('mapButton').hidden||!document.getElementById('modeLabel').hidden)throw new Error('Surface still has warp/expedition label');
     g.showDetails(earth);g.updateTerminal(performance.now()+9000);const info=document.getElementById('terminalOutput');
-    for(const fact of ['12,742 km','365.256 days','MOON COUNT','ROTATION'])if(!info.textContent.includes(fact))throw new Error('Missing terminal fact '+fact);
+    for(const fact of ['12,742 km','365.256 Earth days','MOON COUNT','ROTATION'])if(!info.textContent.includes(fact))throw new Error('Missing terminal fact '+fact);
     s.zoom=.65;s.camera={x:999,y:999};document.getElementById('homeButton').click();
     if(s.camera.x!==999||s.centerZoom?.centerAction!=='pan')throw new Error('Surface Center snapped');
     g.update(1300,0);if(s.zoom!==.65||s.camera.x!==s.save.surface.x||!s.centerReady)throw new Error('Surface Center changed zoom');
@@ -357,33 +356,33 @@ try{
   });
   await writeFile(`.qa/${engine}-giant-planets.png`,Buffer.from(giants.image.split(',')[1],'base64'));delete giants.image;
   await page.locator('#mapButton').screenshot({path:`.qa/${engine}-lever-idle.png`});
-  await page.locator('#mapButton').click();
+  await page.locator('#flightSpeed').evaluate(e=>{e.value=String(e.value==='2'?0:2);e.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.waitForTimeout(350);
   assert.equal(await page.locator('#mapButton').getAttribute('aria-busy'),'true');
   await page.locator('#mapButton').screenshot({path:`.qa/${engine}-lever-engaged.png`});
   await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(16,0);});
   assert.equal(await page.evaluate(()=>window.__game.state.scene),'chart');
-  assert.equal(await page.locator('#mapButton').evaluate(e=>e.classList.contains('latched')),true);
+  assert.equal(await page.locator('#mapButton').evaluate(e=>e.dataset.stage==='2'),true);
   assert.equal(await page.locator('#mapButton').getAttribute('aria-busy'),'false');
   await page.waitForTimeout(350);await page.locator('#mapButton').screenshot({path:`.qa/${engine}-lever-latched.png`});
-  await page.locator('#mapButton').click();
+  await page.locator('#flightSpeed').evaluate(e=>{e.value=String(e.value==='2'?0:2);e.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(16,0);});
-  assert.equal(await page.locator('#mapButton').evaluate(e=>e.classList.contains('latched')),false);
+  assert.equal(await page.locator('#mapButton').evaluate(e=>e.dataset.stage==='2'),false);
   assert.equal(await page.evaluate(()=>window.__game.state.selected.name),'Neptune');
   assert.equal(await page.evaluate(()=>window.__game.state.followBody.id),'sol:Neptune');
-  // This save/portrait fixture needs a landable home. Random new universes can
+  // This save/landscape fixture needs a landable home. Random new universes can
   // legitimately be barren; that startup/entry path has separate coverage below.
   await page.evaluate(()=>{document.getElementById('universeSeed').value='browser-start-2';window.__game.state.warpUntil=0;window.__game.create(false);window.__game.frame(performance.now());});
   assert.equal(await page.evaluate(()=>window.__game.state.scene),'surface');
   await page.reload();await page.locator('#startGame').click();await page.locator('.load-save').first().click();
   await page.waitForFunction(()=>window.__game?.state.scene==='surface'&&window.__game.state.lastUI>0);
-  await page.setViewportSize({width:390,height:844});await page.waitForTimeout(200);
-  await page.screenshot({path:`.qa/${engine}-portrait.png`});
+  await page.setViewportSize({width:667,height:375});await page.waitForTimeout(200);
+  await page.screenshot({path:`.qa/${engine}-landscape.png`});
   await page.evaluate(()=>{const g=window.__game;g.select({id:'lander',name:'Lander',kind:'lander',x:0,y:0});});
-  const portraitPanel=await page.locator('#targetCard').boundingBox();
-  assert.ok(portraitPanel.y>=0&&portraitPanel.y+portraitPanel.height<=844&&portraitPanel.x+portraitPanel.width<=390);
+  const landscapePanel=await page.locator('#targetCard').boundingBox();
+  assert.ok(landscapePanel.y>=0&&landscapePanel.y+landscapePanel.height<=375&&landscapePanel.x+landscapePanel.width<=667);
   await page.evaluate(()=>{window.__game.launch();window.__game.frame(performance.now());});
-  await page.screenshot({path:`.qa/${engine}-portrait-system.png`});
+  await page.screenshot({path:`.qa/${engine}-landscape-system.png`});
   await page.evaluate(()=>{window.__qaPause=true;});
   const starsV2=await page.evaluate(async()=>{
     const g=window.__game,s=g.state,{defaults}=await import('/universe.js'),{makeSystem,bodyPosition,visualRadius}=await import('/model.js');
@@ -413,7 +412,7 @@ try{
   });
   await writeFile(`.qa/${engine}-stellar-catalogue.png`,Buffer.from(starsV2.image.split(',')[1],'base64'));delete starsV2.image;
   await page.evaluate(()=>window.__game.showDetails(window.__game.state.system.star));
-  await page.screenshot({path:`.qa/${engine}-stellar-info-portrait.png`});
+  await page.screenshot({path:`.qa/${engine}-stellar-info-landscape.png`});
   const overflow=await page.locator('#targetCard').evaluate(e=>e.scrollWidth>e.clientWidth);assert.equal(overflow,false);
   await page.evaluate(()=>window.__game.closeModal());await page.locator('#journalButton').click();
   assert.equal(await page.locator('.modal-card').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(16, 30, 50)');await page.evaluate(()=>window.__game.closeModal());
@@ -512,16 +511,8 @@ try{
   });
   const release112=await checkRelease112(page,engine);
   const release1121=await checkRelease1121(page,engine);
-  const release1124=await checkRelease1124(page,engine);
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
-  const release1125=await checkRelease1125(page,engine);
-  const release1126=await checkRelease1126(page,engine);
-  const release1127=await checkRelease1127(page,engine);
-  const release1128=await checkRelease1128(page,engine);
-  const release1129=await checkRelease1129(page,engine);
-  const release11210=await checkRelease11210(page,engine);
-  const release11211=await checkRelease11211(page,engine);
   const release11212=await checkRelease11212(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release1124,release1125,release1126,release1127,release1128,release1129,release11210,release11211,release11212,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

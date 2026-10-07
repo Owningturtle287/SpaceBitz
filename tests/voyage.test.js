@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {importVoyage} from '../saves.js';
-import {SYSTEM_VISUAL_SCALE} from '../scale.js';
+import {SYSTEM_UNIT,CHART_UNIT,ORBIT_DRIVE_LS_PER_SECOND,HYPERDRIVE_AU_PER_SECOND,LIGHT_SECONDS_PER_AU} from '../scale.js';
 import {makeSystem} from '../model.js';
 import {manualSpeed,outermostPlanet} from '../navigation.js';
 import {placeControls,overlaps,locatorPoint,paintLocator} from '../hud.js';
@@ -28,12 +28,13 @@ test('legacy import still migrates safely to the home system',()=>{
   assert.deepEqual(save.discoveries,['old-fact']);assert.ok(Number.isFinite(save.ship.x));
 });
 test('manual speeds are fixed by mode and independent of camera zoom',()=>{
-  assert.equal(manualSpeed('system','maneuver'),260*SYSTEM_VISUAL_SCALE);
-  assert.ok(manualSpeed('system','cruise')>manualSpeed('system','maneuver'));
-  assert.equal(manualSpeed('surface','cruise'),manualSpeed('surface','maneuver'));
+  assert.equal(manualSpeed('system','orbit'),SYSTEM_UNIT*ORBIT_DRIVE_LS_PER_SECOND);
+  assert.equal(manualSpeed('system','hyper'),SYSTEM_UNIT*LIGHT_SECONDS_PER_AU*HYPERDRIVE_AU_PER_SECOND);
+  assert.equal(manualSpeed('chart','orbit'),CHART_UNIT*9);
+  assert.equal(manualSpeed('surface','hyper'),manualSpeed('surface','orbit'));
 });
 test('custom controls move clear of panels and remain inside rotated viewports',()=>{
-  for(const viewport of [{width:844,height:390},{width:390,height:844}]){
+  for(const viewport of [{width:844,height:390},{width:667,height:375}]){
     const obstacles=[{x:20,y:20,width:170,height:70},{x:viewport.width-165,y:viewport.height-145,width:156,height:136}];
     for(const desired of [{x:22,y:22},{x:viewport.width-120,y:viewport.height-80},{x:-30,y:999}]){
       const p=placeControls(desired,{width:118,height:52},viewport,obstacles);

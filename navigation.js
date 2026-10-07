@@ -78,8 +78,8 @@ export function starApproachPoint(ship,radius){
 }
 
 // Manual control is a world-space speed; camera zoom never changes it.
-export function manualSpeed(scene,mode='maneuver'){
-  return scene==='surface'?SURFACE_UNIT*2.2:scene==='chart'?CHART_UNIT*4.5:mode==='cruise'?SYSTEM_UNIT*20:260*SYSTEM_VISUAL_SCALE;
+export function manualSpeed(scene,mode='orbit'){
+  return travelSpeed(scene,0,mode==='hyper'?'hyper':'orbit');
 }
 
 export function outermostPlanet(system,days=0){
