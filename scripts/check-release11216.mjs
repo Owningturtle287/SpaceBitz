@@ -10,6 +10,7 @@ export async function checkRelease11216(page,engine){
   // Keep the real animation loop running: delayed UI refreshes must not undo a
   // press, and automatic star selection must enable the actual touch controls.
   await page.evaluate(()=>{window.__qaPause=false;window.__game.frame(performance.now());});
+  await page.locator('#flightSpeed').click({trial:true});
   const range=await page.locator('#flightSpeed').boundingBox();
   await page.touchscreen.tap(range.x+range.width-3,range.y+range.height/2);
   await page.waitForFunction(()=>window.__game.state.scene==='chart');
@@ -32,6 +33,7 @@ export async function checkRelease11216(page,engine){
     await page.setViewportSize(viewport);
     await page.evaluate(()=>{const g=window.__game;g.state.followShip=false;g.state.centerZoom=null;g.settings.reducedMotion=false;g.settings.controls='touch';g.settings.terminalResizeHandles=true;g.applySettings();window.__qaPause=false;g.frame(performance.now());});
     await page.waitForTimeout(400);
+    await page.locator('#flightSpeed').click({trial:true});
     const input=await page.locator('#flightSpeed').boundingBox();
     await page.touchscreen.tap(input.x+input.width-3,input.y+input.height/2);
     await page.waitForFunction(()=>window.__game.state.scene==='chart');
