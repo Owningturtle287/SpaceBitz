@@ -56,5 +56,17 @@ export async function checkRelease11217(page,engine){
     button.disabled=true;pointer('pointerdown');pointer('pointerup');button.disabled=false;
     if(button.getAttribute('aria-pressed')!=='false')throw Error('Disabled button accepted a touch');
   });
+  await page.evaluate(()=>{
+    const g=window.__game,button=document.getElementById('homeButton'),r=button.getBoundingClientRect(),x=r.x+r.width/2,y=r.y+r.height/2;
+    g.settings.centerButton='custom';
+    // Pointer capture requires a hardware pointer; the deterministic drag
+    // fixture exercises the same bubbling events without claiming one.
+    const capture=button.setPointerCapture;button.setPointerCapture=()=>{};
+    try{
+      for(const [type,dx]of [['pointerdown',0],['pointermove',25],['pointerup',25]])button.dispatchEvent(new PointerEvent(type,{bubbles:true,cancelable:true,pointerType:'touch',pointerId:42,button:0,clientX:x+dx,clientY:y}));
+    }finally{button.setPointerCapture=capture;}
+    g.settings.centerButton='right';g.state.centerZoom=null;g.state.centerReady=false;g.state.followShip=false;g.state.camera.x+=100;g.applySettings();
+  });
+  await tap('homeButton');assert.equal(await page.evaluate(()=>window.__game.state.centerZoom?.centerAction),'pan','A previous touch drag swallowed the next Center press');
   return {touchActionsWithoutCompatibilityClicks:true,noDuplicateTouchActions:true,keyboardAfterTouch:true,mouseAfterTouch:true,dragAndCancellationSafe:true};
 }

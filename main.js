@@ -504,6 +504,7 @@ $('followShipButton').onclick=()=>{
   updateUI();
 };
 $('homeButton').addEventListener('pointerdown',e=>{
+  centerSuppressClick=false;
   if(settings.centerButton!=='custom')return;
   centerDrag={id:e.pointerId,startX:e.clientX,startY:e.clientY,moved:false};
   $('homeButton').setPointerCapture?.(e.pointerId);
@@ -524,6 +525,7 @@ const finishCenterDrag=e=>{
 };
 $('homeButton').addEventListener('pointerup',finishCenterDrag);
 $('homeButton').addEventListener('pointercancel',finishCenterDrag);
+$('homeButton').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')centerSuppressClick=false;});
 $('journalButton').onclick=showJournal;
 $('zoneToggle').onclick=()=>{settings.zone=!settings.zone;saveSettings();updateUI();};
 function closeSystemChart(){
