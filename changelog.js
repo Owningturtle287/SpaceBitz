@@ -1,6 +1,18 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.14",
+    "items": [
+      "Keep Warp selected throughout Deep Space camera actions and layer departure; bound joystick and Follow placement so they cannot overlap the speed slider.",
+      "Replace separate object/message sections with a chronological terminal stream of object records, action status and submitted text. Clear Terminal clears only the screen, preserving the saved voyage log. Completed output no longer rewinds to the beginning.",
+      "Use a fixed TERMINAL border title and an Object selected summary with the object name and main type when compact. Keep object headers and status messages at a consistent larger character size, independent of device resizing, while retaining the current object-data size.",
+      "Add framed, 44-pixel terminal resize grips near the top-left, with touch, pointer capture and keyboard sizing. Place Clear Terminal beside Close Terminal and move the full-size object focus control between Cancel and the green travel lever.",
+      "Organize Settings into Audio & sky, Clock, View, Controls, Terminal, Log and Voyage tabs. Add independent data, label, header, status and input character sizes plus master text-size controls.",
+      "Save object surveys and action status in the voyage log. Object surveys expand on demand and retain the latest record per object across save, export and import.",
+      "Open the green terminal-styled log along a branching connection from its dashboard button to a centered, adjustable panel. The log closes the terminal and system chart, keeps dashboard buttons stationary during its animation, pauses flight and respects reduced motion. Log sizing and text styles have their own settings."
+    ]
+  },
+  {
     "version": "1.12.13",
     "items": [
       "Action notifications and submitted terminal text share a bounded plain-text terminal history instead of a floating toast. Menu actions use the same terminal-style console.",

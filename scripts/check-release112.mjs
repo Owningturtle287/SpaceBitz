@@ -23,7 +23,7 @@ export async function checkRelease112(page,engine){
   const input=page.locator('input[data-pool="family"][data-type="brown"]');await input.fill('21');assert.equal(await page.locator('#applyGeneration').isDisabled(),true);
   await page.getByRole('button',{name:'RESTORE SCIENTIFIC DEFAULTS',exact:true}).click();assert.equal(await page.locator('#applyGeneration').isDisabled(),false);await page.locator('#applyGeneration').click();await page.locator('#scientificMode').check();
   await page.evaluate(()=>localStorage.removeItem('spacebitz:field:v1'));await page.locator('#solGame').click();await page.waitForFunction(()=>window.__game.state.scene==='surface');
-  const early=await page.evaluate(()=>{const g=window.__game;globalThis.__qaPause=true;g.settings.reducedMotion=false;g.launch();g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(g.state.terminal.start+40);return {text:document.getElementById('terminalOutput').textContent,length:g.state.terminal.text.length,count:g.state.terminal.count};});
+  const early=await page.evaluate(()=>{const g=window.__game;globalThis.__qaPause=true;g.settings.reducedMotion=false;g.launch();g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(g.state.terminal.start+40);return {text:g.state.terminal.node.textContent,length:g.state.terminal.text.length,count:g.state.terminal.count};});
   assert.ok(early.text.length>0&&early.text.length<early.length,JSON.stringify(early));
   await page.evaluate(()=>{const g=window.__game;g.updateTerminal(performance.now()+9000);g.positionContext();});
   await page.waitForTimeout(220);

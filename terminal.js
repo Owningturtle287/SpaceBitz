@@ -3,6 +3,11 @@ import {habitableZone,orbitalElements} from './model.js';
 import {formatCoordinates,formatDistance,formatSystemKm,formatDiameter} from './scale.js';
 import {bodyKind,bodyLabel} from './body-classification.js';
 const number=(v,d=3)=>Number.isFinite(v)?v.toLocaleString('en-US',{maximumFractionDigits:d}):'Unknown';
+export function objectType(object){
+  if(object.kind==='star')return object.familyLabel||object.type+' star';
+  if(['planet','moon','dwarf-planet'].includes(bodyKind(object)))return bodyLabel(object)+(object.type?' / '+object.type:'');
+  return object.kind==='lander'?'Landing shuttle':object.kind==='sample'?'Surface sample':'Coordinate square';
+}
 export function rotationText(days){
   if(!Number.isFinite(days))return 'Unknown';
   let minutes=Math.abs(days)*1440;

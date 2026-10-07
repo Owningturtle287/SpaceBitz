@@ -26,6 +26,9 @@ import {bodyLabel,bodyCounts} from './body-classification.js';
 import {collectSample} from './exploration.js';
 import {registerAppWorker} from './pwa.js';
 import {FLIGHT_STAGES,flightStage,isLandscape} from './flight-drive.js';
+import {applyInterfaceFonts} from './interface-fonts.js';
+import {recordAction,recordObject} from './voyage-log.js';
+import {createLogDevice} from './log-device.js';
 import {placeControls,paintLocator} from './hud.js';
 
 const $ = id => document.getElementById(id);
@@ -49,7 +52,9 @@ const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,
   panUntil:0, centerZoom:null, centerReady:false, followShip:false, followPanRemaining:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, fps:60,
   waypoint:null,coordinateTap:null,warpUntil:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
-const {showDetails,toggleTerminal,buildTerminal,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
+const {showDetails,toggleTerminal,buildTerminal,clearTerminal,finishTerminalRecord,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog:entry=>{if(state.save){if(entry.kind==='object')recordObject(state.save,entry);else recordAction(state.save,entry.text);}},resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
+const journal=createLogDevice({state,settings,$,formatDate:days=>formatGameDate(new Date(EPOCH+days*DAY_MS),true),resetInput,saveSettings,updateUI,closeSystemChart,setTerminalKeyboard});
+function closeJournal(immediate=true){journal.close(immediate);}
 const loadSaves = () => {
   try{return readVoyages(localStorage).filter(s=>s&&typeof s.id==='string'&&typeof s.seed==='string');}
   catch(error){notify(error.message);return [];}
@@ -58,6 +63,7 @@ function readJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(
 function saveSettings(){try{localStorage.setItem(SETTINGS_KEY,JSON.stringify(settings));}catch{notify('Settings could not be saved on this device.');}}
 let centerDrag=null,centerSuppressClick=false;
 function applyCenterButtonLayout(){
+  if(state.journalOpen)return;
   const btn=$('homeButton'),group=$('navigationControls');if(!btn||!group)return;
   const mode=settings.centerButton||'right';
   btn.hidden=mode==='hidden';$('followShipButton').hidden=btn.hidden;btn.dataset.centerPosition=mode;
@@ -70,6 +76,9 @@ function applyCenterButtonLayout(){
     const safe=deck.height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
     let left=joyRect.width?joyRect.right+8:12;
     let top=innerHeight-safe-row/2-bh/2;
+    const speed=$('mapButton').getBoundingClientRect(),log=$('journalButton').getBoundingClientRect();
+    const rightEdge=Math.min(...[speed,log].filter(r=>r.width&&r.height).map(r=>r.left),innerWidth-6);
+    if(mode==='right')left=Math.min(left,rightEdge-width-8);
     if(mode==='above'){left=Math.max(6,joyRect.left+(joyRect.width-width)/2);top=joyRect.top-bh-8;}
     if(mode==='custom'){
       const desired={x:innerWidth*settings.centerX/100-bw/2,y:innerHeight*settings.centerY/100-bh/2};
@@ -80,6 +89,7 @@ function applyCenterButtonLayout(){
   });
 }
 function applySettings(){
+  applyInterfaceFonts(settings);journal.applySize();
   document.body.dataset.controls=settings.controls;
   document.body.dataset.reducedMotion=String(settings.reducedMotion);
   document.documentElement.style.setProperty('--joy-x',settings.joyX+'%');
@@ -167,7 +177,7 @@ function fit() {
   const blocked=!isLandscape(rect.width,rect.height);
   if(blocked&&!state.landscapeBlocked)queueMicrotask(resetInput);
   state.landscapeBlocked=blocked;$('landscapeGate').hidden=!blocked;
-  for(const id of ['app','welcome','modal'])$(id).inert=blocked;
+  for(const id of ['app','welcome','modal'])$(id).inert=blocked||(id==='app'&&Boolean(state.journalOpen));
   state.dpr=settings.resolution==='auto'?Math.min(window.devicePixelRatio||1,2):Number(settings.resolution);
   canvas.width=Math.round(rect.width*state.dpr); canvas.height=Math.round(rect.height*state.dpr);
   ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
@@ -182,7 +192,7 @@ globalThis.screen?.orientation?.addEventListener?.('change',()=>setTimeout(()=>{
 applySettings();
 function start(save) {
   try{save=restoreVoyage(save);}catch(error){notify(error.message+' The stored voyage has not been changed.');return;}
-  state.save=save; state.scene=save.scene || 'system';state.terminalNotice=null;state.terminalEntries.length=0;
+  closeJournal();state.save=save; state.scene=save.scene || 'system';state.terminalNotice=null;state.terminalEntries.length=0;state.terminalRecordKey=null;state.terminalCleared=false;$('terminalMessages').replaceChildren();
   if(save.generation)save.generation=checkedGeneration(save.generation);
   state.system=makeSystem(save.currentSystem || save.homeSeed,save.generation);
   terrain.clear();state.sampleBody=null;state.samples=null;state.listKey=null;
@@ -333,7 +343,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http'))window.a
 });
 
 function beginSelection(){
-  closeSystemChart();state.terminalNotice=null;state.coordinateTap=null;state.contextPlacement=null;
+  closeJournal();finishTerminalRecord();closeSystemChart();state.terminalCleared=false;state.terminalNotice=null;state.coordinateTap=null;state.contextPlacement=null;
   const row=$('travelControls').querySelector('.context-action-row');row.style.transition='none';
   $('travelControls').classList.remove('ready');$('travelControls').hidden=false;
   $('contextActions').classList.remove('ready');
@@ -525,6 +535,7 @@ function closeSystemChart(){
   $('systemChart').classList.remove('open');$('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');
 }
 $('systemChartToggle').onclick=()=>{
+  closeJournal();
   if(state.scene==='surface'){select(findBody(state.save.landed));showDetails(state.selected);return;}
   const panel=$('systemChart'),content=$('systemChartContent'),open=!panel.classList.contains('open');
   if(open){state.terminalExpanded=false;state.terminal=null;$('terminalInput').blur();setTerminalKeyboard(false);}
@@ -604,14 +615,13 @@ function updateUI() {
   const hasTarget=Boolean(sel||state.waypoint||traveling);
   $('targetCard').hidden=$('systemChart').classList.contains('open')||(!hasTarget&&!state.terminalExpanded&&!state.terminalNotice);$('contextActions').hidden=!sel||Boolean(state.warpUntil);
   $('travelControls').hidden=!hasTarget||$('systemChart').classList.contains('open')||Boolean(state.warpUntil);
-  $('targetName').textContent=title||'Ship Terminal';$('focusSelected').hidden=!sel&&!state.waypoint;
-  $('targetStatus').textContent=state.waypoint?'Coordinate selected':scene==='chart'&&sel?.seed===state.save.homeSeed||scene==='system'&&sel?.kind==='star'&&state.save.currentSystem===state.save.homeSeed?'Home System':sel?.id===state.save.homePlanet?'Home World':traveling?'Course active':sel?.familyLabel||(sel?bodyLabel(sel):'Target selected');
+  $('targetName').textContent='TERMINAL';$('focusSelected').hidden=!sel&&!state.waypoint;
+  $('targetStatus').textContent=selectedSummary()||(traveling?'Course active':'Ready · '+(scene==='chart'?'Deep Space':scene==='surface'?'Surface':'System'));
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
   $('terminalInputBar').hidden=!state.terminalExpanded;
-  if(!hasTarget)$('targetStatus').textContent='Ready · '+(scene==='chart'?'Deep Space':scene==='surface'?'Surface':'System');
-  if(!state.terminalExpanded&&state.terminalNotice)$('targetStatus').textContent=state.terminalNotice;
+  if(!hasTarget&&state.terminalNotice)$('targetStatus').textContent=state.terminalNotice;
   if(!state.terminalExpanded){setTerminalKeyboard(false);if(document.activeElement===$('terminalInput'))$('terminalInput').blur();}
-  if(state.terminalExpanded&&!state.terminal)buildTerminal();
+  if(state.terminalExpanded&&!state.terminal&&!state.terminalCleared)buildTerminal();
   $('targetDistance').textContent=destination?(state.terminalExpanded&&state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
   $('primaryActionLabel').textContent=action;$('primaryAction').classList.toggle('engaged',traveling);
   $('primaryAction').setAttribute('aria-busy',String(traveling));
@@ -625,7 +635,9 @@ function updateUI() {
   const warp=$('mapButton');
   const wasHidden=warp.hidden;warp.hidden=scene==='surface';
   if(wasHidden!==warp.hidden)applyCenterButtonLayout();
-  const engaged=state.warpUntil>0,stage=engaged?(scene==='chart'?flightStage('system',settings.flightMode):2):flightStage(scene,settings.flightMode,state.autopilot);
+  // The chart's drive indication is invariant, including camera actions and
+  // the transition back to a system. Only the completed layer change can alter it.
+  const engaged=state.warpUntil>0,stage=scene==='chart'?2:engaged?2:flightStage(scene,settings.flightMode,state.autopilot);
   const input=$('flightSpeed');input.value=stage;input.disabled=scene==='surface'||engaged||Boolean(state.autopilot);
   input.setAttribute('aria-valuetext',FLIGHT_STAGES[stage]==='hyper'?'Hyperspace':FLIGHT_STAGES[stage]==='warp'?'Warp Drive':'Orbit speed');
   warp.dataset.stage=stage;warp.setAttribute('aria-busy',String(engaged));
@@ -647,6 +659,7 @@ function updateUI() {
   applyCenterButtonLayout();
 }
 function setModal(eyebrow,title,content,opaque=false) {
+  closeJournal();
   $('modal').querySelector('.modal-card').classList.toggle('opaque-panel',opaque);
   state.previousFocus=document.activeElement;resetInput();
   $('modalEyebrow').textContent=eyebrow;$('modalTitle').textContent=title;
@@ -658,17 +671,23 @@ function closeModal(){$('modal').hidden=true;$('modal').classList.remove('visibl
 $('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 function posSurface(){return state.save.surface;}
 function showJournal() {
-  const box=document.createElement('div');const p=document.createElement('p');p.textContent=`${state.save.discoveries.length} discoveries recorded in ${state.save.name}.`;
-  box.append(p);for(const entry of state.save.log.slice(0,30)){
-    const item=document.createElement('div');item.className='log-item';item.textContent=`${entry.action} · ${entry.name}`;
-    const date=document.createElement('small');date.textContent=formatGameDate(new Date(EPOCH+entry.days*DAY_MS),true);item.append(date);box.append(item);
-  }if(!state.save.log.length){const empty=document.createElement('p');empty.textContent='Your discoveries will appear here.';box.append(empty);}
-  setModal('CAPTAIN’S LOG','Voyage logbook',box,true);
+  persist();journal.open();
 }
 function openSettings(){
   const box=document.createElement('div');box.className='settings-content settings-compact';
-  const intro=document.createElement('p');intro.className='settings-intro';intro.textContent='Surface: 1 m per square. System: light-seconds (500 ls = 1 AU). Chart: light-years. Coordinates start at the lander, system star, or home system; +X is right and +Y is down.';box.append(intro);
-  const heading=text=>{const h=document.createElement('h3');h.textContent=text;box.append(h);};
+  const tabs=document.createElement('div');tabs.className='settings-tabs';tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','Settings categories');
+  const panes=document.createElement('div');panes.className='settings-panes';box.append(tabs,panes);
+  let activePanel;const panels=[];
+  const selectTab=index=>{state.settingsTab=index;panels.forEach(({button,panel},i)=>{button.setAttribute('aria-selected',String(index===i));button.tabIndex=index===i?0:-1;panel.hidden=index!==i;});};
+  const heading=text=>{
+    const index=panels.length,button=document.createElement('button'),panel=document.createElement('section');
+    button.type='button';button.className='settings-tab';button.id='settings-tab-'+index;button.textContent=text;button.setAttribute('role','tab');button.setAttribute('aria-controls','settings-panel-'+index);
+    panel.className='settings-pane';panel.id='settings-panel-'+index;panel.setAttribute('role','tabpanel');panel.setAttribute('aria-labelledby',button.id);panel.tabIndex=0;
+    button.onclick=()=>selectTab(index);tabs.append(button);panes.append(panel);panels.push({button,panel});activePanel=panel;
+  };
+  tabs.onkeydown=e=>{const index=panels.findIndex(p=>p.button===document.activeElement);if(index<0)return;let next;if(e.key==='ArrowRight')next=(index+1)%panels.length;else if(e.key==='ArrowLeft')next=(index+panels.length-1)%panels.length;else if(e.key==='Home')next=0;else if(e.key==='End')next=panels.length-1;else return;e.preventDefault();selectTab(next);panels[next].button.focus();};
+  const fontControls=[];
+  const syncFonts=()=>{for(const {prefix,key,input,row} of fontControls){const master=settings[prefix+'FontMode']==='master',disabled=key===prefix+'FontSize'?!master:master;input.disabled=disabled;row.classList.toggle('inactive-setting',disabled);}};
   function control(key,label,kind,options){
     const row=document.createElement('label');row.className='setting-row';
     const name=document.createElement('span');name.textContent=label;row.append(name);
@@ -686,10 +705,18 @@ function openSettings(){
       if(key==='timeMode'&&state.save&&settings.timeMode==='realtime')state.save.days=currentDays();
       if(key==='terminalWidthScale'||key==='terminalHeightScale')state.terminalSize=null;
       sync();saveSettings();applySettings();
+      syncFonts();
       if(key==='music'||key==='volume')applyMusicSetting();
       if(key==='centerButton'&&settings.centerButton==='custom')notify('Close Settings, then drag CENTER anywhere you want.');
     });
-    const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);box.append(row);
+    const wrap=document.createElement('span');wrap.className='setting-value';wrap.append(input);if(kind==='range')wrap.append(value);row.append(wrap);activePanel.append(row);
+    if(/^(terminal|log).+Font$|^(terminal|log)FontSize$/.test(key))fontControls.push({prefix:key.startsWith('terminal')?'terminal':'log',key,input,row});
+  }
+  function fontOptions(prefix){
+    const h=document.createElement('h3');h.textContent='Character sizes';activePanel.append(h);
+    control(prefix+'FontMode','Size control','select',[['individual','Individual text styles'],['master','One size for all text']]);
+    control(prefix+'FontSize','All characters (px)','range',[6,18,1]);
+    for(const [name,label] of [['Data','Object data'],['Label','Data labels'],['Header','Headers / object names'],['Status','Status updates']].concat(prefix==='terminal'?[['Input','Typed text / input']]:[]))control(prefix+name+'Font',label+' (px)','range',[6,18,1]);
   }
   const zoneValues=(()=>{
     const local=localTimeZone(),all=typeof Intl.supportedValuesOf==='function'?Intl.supportedValuesOf('timeZone'):[];
@@ -699,7 +726,7 @@ function openSettings(){
     return values;
   })();
 
-  heading('Sound & sky');
+  heading('Audio & sky');
   control('music','Soundtrack','checkbox');control('volume','Music volume','range',[0,1,.05]);
   control('starMotion','Moving stars','checkbox');control('twinkle','Star twinkle','checkbox');
 
@@ -710,6 +737,7 @@ function openSettings(){
   control('paused','Pause accelerated clock','checkbox');
 
   heading('View');
+  const intro=document.createElement('p');intro.className='settings-intro';intro.textContent='Surface: 1 m per square. System: light-seconds (500 ls = 1 AU). Deep Space: light-years. +X is right and +Y is down.';activePanel.append(intro);
   control('orbits','Orbit paths','checkbox');control('zone','Goldilocks zone','checkbox');
   control('labels','Body labels','checkbox');control('travelLines','Travel trail','checkbox');
   control('pixelSize','Terrain detail','select',[[2,'Fine · best'],[3,'Balanced'],[4,'Low power']]);
@@ -723,13 +751,20 @@ function openSettings(){
   control('centerButton','Center button','select',[['right','Right of joystick'],['above','Above joystick'],['custom','Custom · drag in game'],['hidden','Hidden']]);
   control('cheats','Instant travel','checkbox');
 
-  heading('Dashboard & terminal');
   control('dashboardHeight','Dashboard height (px)','range',[68,260,2]);
   control('dashboardResizeHandle','Show dashboard resize arrow','checkbox');
+  heading('Terminal');
   control('terminalWidthScale','Terminal width (%)','range',[60,240,5]);
   control('terminalHeightScale','Terminal height (%)','range',[40,130,5]);
   control('terminalResizeHandles','Show terminal resize arrows','checkbox');
-  const sizingNote=document.createElement('p');sizingNote.className='settings-intro';sizingNote.textContent='Sizes stay within the screen. Controls and the open keyboard set the minimum usable height. Resize arrows are optional; dragging them saves your preferred size.';box.append(sizingNote);
+  const sizingNote=document.createElement('p');sizingNote.className='settings-intro';sizingNote.textContent='Panel size and character sizes are independent. Drag the optional arrow grips or use their arrow keys to resize. Clearing the terminal keeps saved log records.';activePanel.append(sizingNote);
+  fontOptions('terminal');
+  heading('Log');
+  control('logWidthScale','Log width (%)','range',[50,140,5]);
+  control('logHeightScale','Log height (%)','range',[40,140,5]);
+  control('logResizeHandles','Show log resize arrows','checkbox');
+  fontOptions('log');
+  heading('Voyage');
 
   const details=document.createElement('details');details.className='changelog-details';
   const summary=document.createElement('summary');summary.textContent='Change log';details.append(summary);
@@ -741,14 +776,16 @@ function openSettings(){
     for(const note of release.items){const item=document.createElement('li');item.textContent=note;list.append(item);}
     entry.append(list);changelog.append(entry);
   }
-  details.append(changelog);box.append(details);
+  details.append(changelog);activePanel.append(details);
+  const footer=document.createElement('div');footer.className='settings-footer';box.append(footer);
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-    save.onclick=()=>saveBeforeExit(persist,()=>{closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();applyPendingUpdate();});box.append(save);
+    save.onclick=()=>saveBeforeExit(persist,()=>{closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();applyPendingUpdate();});footer.append(save);
     const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
     exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
-      const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};box.append(exportButton);
+      const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};footer.append(exportButton);
   }
+  selectTab(Math.min(state.settingsTab||0,panels.length-1));syncFonts();
   setModal('FLIGHT OPTIONS','Settings',box,Boolean(state.save));
 }
 $('settingsOpen').onclick=openSettings;$('menuSettings').onclick=openSettings;
@@ -763,7 +800,7 @@ function targetPoint() {
   return null;
 }
 function update(dt,clockDt=dt) {
-  if(!state.save || state.landscapeBlocked || $('modal').classList.contains('visible'))return;
+  if(!state.save || state.landscapeBlocked || state.journalOpen || $('modal').classList.contains('visible'))return;
   if(state.warpUntil){
     if(performance.now()>=state.warpUntil){state.warpUntil=0;state.scene==='chart'?enterSystem(currentStar()):enterChart();}
     return;
@@ -1209,10 +1246,11 @@ canvas.addEventListener('pointercancel',e=>{state.coordinateTap=null;pointers.de
 canvas.addEventListener('wheel',e=>{if(!state.save)return;e.preventDefault();zoom(e.deltaY<0?1.12:1/1.12);},{passive:false});
 window.addEventListener('keydown',e=>{
   if(state.landscapeBlocked)return;
+  if(state.journalOpen)return;
   if(e.key==='Escape'){if($('modal').classList.contains('visible'))closeModal();else if(state.autopilot||state.warpUntil||state.waypoint||state.selected){cancelTarget();}else if(!$('universeMenuStage').hidden&&!state.save)showMenuStage('main');return;}
   if($('modal').classList.contains('visible')){
     if(e.key==='Tab'){
-      const focusable=[...$('modal').querySelectorAll('button,input,select,a[href]')].filter(el=>!el.disabled&&!el.hidden);
+      const focusable=[...$('modal').querySelectorAll('button,input,select,a[href],summary')].filter(el=>!el.disabled&&!el.hidden&&el.getClientRects().length);
       const first=focusable[0],last=focusable.at(-1);
       if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
       else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}

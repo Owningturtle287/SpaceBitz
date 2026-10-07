@@ -5,6 +5,7 @@ import {checkRelease1121} from './check-release1121.mjs';
 import {checkRelease1122} from './check-release1122.mjs';
 import {checkRelease1123} from './check-release1123.mjs';
 import {checkRelease11213} from './check-release11213.mjs';
+import {checkRelease11214} from './check-release11214.mjs';
 import {checkRelease11212} from './check-release11212.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -33,7 +34,7 @@ try{
     const response=await route.fetch();let source=await response.text();
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
-    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,nearbyStars,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected,applySettings,setFlightStage,notify,appendTerminalEntry};';
+    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,nearbyStars,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected,applySettings,setFlightStage,notify,appendTerminalEntry,clearTerminal,showJournal,closeJournal,openSettings};';
     await route.fulfill({response,body:source});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
@@ -64,6 +65,8 @@ try{
   // Exercise the current device controls before the longer renderer soak, then
   // restore the exact launch fixture so the simulation checks stay independent.
   const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
+  const release11214=await checkRelease11214(page,engine);
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
   const release11213=await checkRelease11213(page,engine);
   await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
   await page.waitForTimeout(350);
@@ -111,6 +114,7 @@ try{
   assert.ok(controls.target.right<=844&&controls.target.bottom<=390&&controls.target.width<=430);
   await page.locator('#settingsOpen').click();
   assert.equal(await page.locator('.modal-card').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(16, 30, 50)');
+  await page.getByRole('tab',{name:'View',exact:true}).click();
   assert.equal(await page.locator('#setting-showGrid').isChecked(),false);
   await page.locator('#setting-showGrid').check();
   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('spacebitz:field:settings')).showGrid),true);
@@ -415,7 +419,7 @@ try{
   await page.screenshot({path:`.qa/${engine}-stellar-info-landscape.png`});
   const overflow=await page.locator('#targetCard').evaluate(e=>e.scrollWidth>e.clientWidth);assert.equal(overflow,false);
   await page.evaluate(()=>window.__game.closeModal());await page.locator('#journalButton').click();
-  assert.equal(await page.locator('.modal-card').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(16, 30, 50)');await page.evaluate(()=>window.__game.closeModal());
+  assert.equal(await page.locator('#journal').isVisible(),true);assert.equal(await page.locator('#systemChartContent').isVisible(),false);await page.evaluate(()=>window.__game.closeJournal());
   const v2Soak=await page.evaluate(async()=>{
     const g=window.__game,s=g.state,{defaults}=await import('/universe.js'),{makeSystem,bodyPosition,visualRadius}=await import('/model.js'),{stellarCacheStats}=await import('/stellar.js');
     const times=[];for(let i=0;i<360;i++){

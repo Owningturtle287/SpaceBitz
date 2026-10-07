@@ -19,11 +19,13 @@ For local development, serve this directory with `python3 -m http.server 8000` a
 
 ## Giant worlds and the extended Sol system
 
-Version **1.12.13** adds a three-stage flight-speed slider, terminal message history and submitted text, clearer Earth time units, corner-fitting instruments and landscape-only play. Rotate a portrait device to resume; no voyage time or movement advances behind the rotation prompt. Dwarf planets are classified separately in the system chart and Object Data terminal. Existing generated identities, orbital geometry, routes and discoveries are preserved. See [CHANGELOG.md](CHANGELOG.md) for the complete release history.
+Version **1.12.14** adds a chronological terminal stream, clearable output, larger touch resize grips, tabbed Settings and an expandable survey log. Warp remains selected during Deep Space camera actions, and Follow stays clear of the speed slider even with a right-positioned joystick. Landscape-only play pauses behind a rotate prompt when upright. Existing generated identities, orbital geometry, routes and discoveries are preserved. See [CHANGELOG.md](CHANGELOG.md) for the complete release history.
 
 New Universe contains default-on Scientific Mode, inspectable rarity tables and exact-total numerical custom settings beside the independently scrolling saved-voyage list. Names start blank. Objects use single-tap selection; empty coordinate squares in both space layers and planet/moon surfaces require two nearby taps. Selection outlines frame the square without filling it.
 
-The red Cancel X is centered above the green travel lever, beside the compact terminal and slide left as it expands. Object names remain beside their objects. **Open Terminal** expands the metallic device into two-column Object Data; completed typing returns smoothly to the beginning. Its keyboard, input and Backspace remain at the bottom. Physical or on-screen Enter submits text into the terminal screen; action messages use the same bounded history. Object records display diameter and name their subject in the heading. Orbit periods use Earth days; rotation periods use Earth days, hours and minutes. The terminal and system chart close each other. Device dimensions and optional resize handles are in Settings.
+The red Cancel X, full-size object Focus button and green travel lever form a vertical stack beside the terminal. Its border reads **TERMINAL**; the compact summary identifies the selected object and its main type. **Open Terminal** appends Object Data to the same chronological stream as status messages and submitted text. Output stays where it finishes, and scrolling back to read is respected. **Clear Terminal**, beside Close Terminal, clears the screen while keeping saved log records. Its keyboard, input and Backspace remain at the bottom. Object records display diameter and name their subject in the data heading. Orbit periods use Earth days; rotation periods use Earth days, hours and minutes. Optional 44-pixel arrow grips support touch, pointer and keyboard resizing. Panel dimensions do not change character sizes.
+
+The voyage **Log** preserves action status and the latest Object Data survey for each object. Click a survey to expand its full snapshot. Log grows from its dashboard button along a stepped branch to the center of the screen, without moving the dashboard controls during its animation. It closes the terminal and system chart and pauses flight while open. Settings has seven category tabs, with separate Terminal and Log panel sizing, per-style character sizes and a master size option. Master mode preserves individual choices for when you switch back.
 
 The transparent dashboard keeps the joystick, full-size Center/Follow controls, the speed slider, Log and Terminal launchers inside its metallic rim. Its rounded lower corners and terminal casing account for phone safe areas. A small solid green house marks the home star in Deep Space and the home world in system view; selected status also identifies them.
 
@@ -100,8 +102,10 @@ The full 68-second MP3 and pixel artwork are checked in; local play needs no gen
 - `hud.js`: control placement and ship locators.
 - `settings.js` / `audio.js`: validated preferences and native soundtrack lifecycle.
 - `flight-drive.js`: drive detents and landscape play guard.
+- `voyage-log.js` / `log-device.js`: saved survey snapshots, action history and centered log interaction.
+- `interface-fonts.js`: separate Terminal and Log text-size tokens, independent of panel geometry.
 - `main.js`: game state, input and canvas scene orchestration.
-- `style.css`, `styles-base.css`, `styles-devices.css`, `styles-flight.css`: common theme, menu and device styling.
+- `style.css`, `styles-base.css`, `styles-devices.css`, `styles-flight.css`, `styles-terminal.css`: common theme, tabbed Settings and device styling.
 - `CHANGELOG.md` and `package.json`: authoritative history and version; `changelog.js`, visible version and worker metadata are generated by `npm run release:sync`.
 - `sw.js`: app-shell cache scoped to this app, including every runtime module.
 - `assets/`: original pixel lettering and title, rebuilt with `python tools/build-retro-assets.py` (optional development dependency: `fonttools`; no runtime dependency).

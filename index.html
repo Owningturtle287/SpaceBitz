@@ -69,7 +69,7 @@
       <div class="flight-speed-stops" aria-hidden="true"><span>ORB</span><span>HYP</span><span>WARP</span></div>
     </div>
     <button id="terminalButton" class="icon-button utility-button" aria-label="Open Terminal" title="Open Terminal" aria-expanded="false"><svg class="terminal-glyph" viewBox="0 0 16 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="#8ee9d4" d="M1 1h14v10H1z"/><path fill="#071612" d="M3 3h10v6H3z"/><path fill="#b7ffd0" d="M4 4h1v1h1v1H5v1H4V6h1V5H4zm4 3h3v1H8z"/><path fill="#8dabb1" d="M6 12h4v1h3v1H3v-1h3z"/></svg><span class="utility-label">TERM</span></button>
-    <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
+    <button id="journalButton" class="icon-button log-button utility-button" aria-label="Open voyage log" aria-expanded="false" aria-controls="journal"><span class="log-glyph" aria-hidden="true">▤</span><span class="utility-label">LOG</span></button>
     <div id="travelControls" class="travel-controls" hidden aria-label="Selected target controls"><div class="context-action-row">
       <button id="primaryAction" class="travel-lever" type="button" aria-label="Go Here">
         <svg class="travel-mechanism" viewBox="0 0 32 38" shape-rendering="crispEdges" aria-hidden="true">
@@ -87,15 +87,16 @@
           <path fill="#284d3e" d="M3 34h26v3H3z"/><path fill="#a9c8ad" d="M4 34h24v1H4z"/><path class="travel-lamp" fill="#67ed86" d="M13 35h6v1h-6z"/>
         </svg><span id="primaryActionLabel">GO HERE</span>
       </button>
+      <button id="focusSelected" class="icon-button focus-object target-focus" aria-label="Focus View" title="Center on selected object"><span class="focus-glyph" aria-hidden="true"></span><span class="target-focus-label">FOCUS</span></button>
       <button id="cancelTravel" class="button cancel-target-button" aria-label="Cancel target" title="Cancel"><svg class="pixel-x" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 1h2v2H1z M3 3h2v2H3z M5 5h2v2H5z M7 7h2v2H7z M9 9h2v2H9z M9 1h2v2H9z M7 3h2v2H7z M3 7h2v2H3z M1 9h2v2H1z"/></svg></button>
     </div></div>
     <div id="terminalPocket" class="terminal-pocket">
     <section class="terminal" id="targetCard" aria-label="Object terminal" hidden>
       <button id="terminalResizeTop" class="terminal-resize resize-top" type="button" aria-label="Resize terminal height" hidden><svg viewBox="0 0 14 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M5 0h4v1h2v1h2v1H1V2h2V1h2zM1 4h12v1h-2v1H3V5H1z"/></svg></button>
       <button id="terminalResizeLeft" class="terminal-resize resize-left" type="button" aria-label="Resize terminal width" hidden><svg viewBox="0 0 6 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 5h1V3h1V1h1v12H2v-2H1V9H0zM4 1h1v2h1v8H5v2H4z"/></svg></button>
-      <div class="terminal-head"><h2 id="targetName">Object</h2><button id="focusSelected" class="icon-button focus-object" aria-label="Focus View" title="Focus View"><span class="focus-glyph" aria-hidden="true"></span></button><button id="secondaryAction" class="button subtle" aria-expanded="false">Open Terminal</button></div>
+      <div class="terminal-head"><h2 id="targetName">TERMINAL</h2><button id="terminalClear" class="icon-button terminal-clear" aria-label="Clear terminal" title="Clear terminal screen"><svg viewBox="0 0 18 18" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M5 1h8v2h3v2H2V3h3zM4 6h10v10H4z"/><path fill="#173d32" d="M6 7h2v7H6zm4 0h2v7h-2z"/></svg></button><button id="secondaryAction" class="button subtle" aria-expanded="false">Open Terminal</button></div>
       <div class="terminal-meta"><p id="targetStatus" class="terminal-status" role="status" aria-live="polite"></p><p id="targetDistance" class="target-distance"></p></div>
-      <div id="terminalScreen" class="terminal-screen" hidden tabindex="0" aria-label="Object information"><div id="terminalOutput" class="terminal-data"></div><span class="terminal-cursor" aria-hidden="true">█</span><div id="terminalMessages" class="terminal-messages" role="log" aria-live="polite" aria-label="Terminal messages and input"></div></div>
+      <div id="terminalScreen" class="terminal-screen" hidden tabindex="0" aria-label="Terminal output"><div id="terminalOutput"><div id="terminalMessages" class="terminal-stream" role="log" aria-live="polite" aria-label="Terminal output stream"></div></div><span class="terminal-cursor" aria-hidden="true">█</span></div>
       <div id="terminalInputBar" class="terminal-input-bar" hidden><label for="terminalInput" class="terminal-prompt" aria-label="Terminal input">&gt;</label><span class="terminal-input-wrap"><input id="terminalInput" type="text" inputmode="none" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="128" placeholder="Type here…" aria-label="Terminal text input"><span id="terminalInputCaret" class="terminal-input-caret" aria-hidden="true" hidden></span></span><button id="terminalKeyboardToggle" class="pixel-key" type="button" aria-label="Show terminal keyboard" aria-expanded="false"><svg viewBox="0 0 18 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 1h18v10H0z"/><path fill="#081b17" d="M2 3h2v2H2zm3 0h2v2H5zm3 0h2v2H8zm3 0h2v2h-2zm3 0h2v2h-2zM2 6h2v2H2zm3 0h8v2H5zm9 0h2v2h-2z"/></svg></button><button id="terminalDelete" class="pixel-key" type="button" aria-label="Backspace" title="Delete previous character"><svg viewBox="0 0 18 12" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M5 1h12v10H5V9H3V7H1V5h2V3h2z"/><path fill="#081b17" d="M7 3h2v2h2V3h2v2h-2v2h2v2h-2V7H9v2H7V7h2V5H7z"/></svg></button></div>
       <div id="terminalKeyboard" class="terminal-keyboard" role="group" aria-label="Terminal keyboard" hidden></div>
     </section>
@@ -117,7 +118,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.12.13</span>
+        <span class="version-chip main-menu-version">v1.12.14</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>
@@ -146,6 +147,15 @@
       </section>
       <section id="menuTerminal" class="menu-terminal" aria-label="Ship Terminal" hidden><h2>SHIP TERMINAL</h2><div id="menuTerminalMessages" role="log" aria-live="polite"></div></section>
     </div>
+  </div>
+  <div id="journal" class="journal-overlay" role="dialog" aria-modal="true" aria-labelledby="journalTitle" hidden>
+    <svg id="journalBranch" class="journal-branch" aria-hidden="true"><path id="journalBranchPath" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="miter"/></svg>
+    <section id="journalPanel" class="journal-panel">
+      <button id="journalResizeHeight" class="terminal-resize journal-resize-height" aria-label="Resize log height" hidden><svg viewBox="0 0 14 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M5 0h4v1h2v1h2v1H1V2h2V1h2zM1 4h12v1h-2v1H3V5H1z"/></svg></button>
+      <button id="journalResizeWidth" class="terminal-resize journal-resize-width" aria-label="Resize log width" hidden><svg viewBox="0 0 6 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 5h1V3h1V1h1v12H2v-2H1V9H0zM4 1h1v2h1v8H5v2H4z"/></svg></button>
+      <header class="journal-head"><div><h2 id="journalTitle">VOYAGE LOG</h2><p id="journalSummary"></p></div><button id="journalClose" class="icon-button" aria-label="Close voyage log">✕</button></header>
+      <div id="journalContent" class="journal-content" tabindex="0" aria-label="Recorded surveys and voyage actions"></div>
+    </section>
   </div>
   <div id="modal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
     <div class="modal-card glass"><div class="modal-head"><div class="modal-heading"><div class="eyebrow" id="modalEyebrow">FIELD NOTES</div><div class="modal-title-row"><h2 id="modalTitle">Details</h2></div></div><button id="modalClose" class="icon-button" aria-label="Close dialog">✕</button></div><div id="modalContent"></div></div>
