@@ -48,12 +48,12 @@ export async function checkRelease11216(page,engine){
       const rect=id=>document.getElementById(id).getBoundingClientRect(),head=document.querySelector('#targetCard .terminal-head').getBoundingClientRect();
       const ids=['terminalResizeTop','terminalResizeLeft','terminalClear','secondaryAction'];
       const buttons=ids.map(id=>{const r=rect(id);return {id,center:(r.top+r.bottom)/2,hit:document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2)?.closest('button')?.id};});
-      const readout=rect('flightReadout');return {buttons,headCenter:(head.top+head.bottom)/2,paddingTop:getComputedStyle(document.querySelector('#targetCard .terminal-head')).paddingTop,arrowFrame:getComputedStyle(document.getElementById('terminalResizeTop'),'::before').width,readout:{width:readout.width,left:readout.left,overflow:document.getElementById('flightReadout').scrollWidth>document.getElementById('flightReadout').clientWidth,clockFont:getComputedStyle(document.getElementById('clock')).fontSize,coordsFont:getComputedStyle(document.getElementById('coordsReadout')).fontSize}};
+      const readout=rect('flightReadout');return {buttons,headCenter:(head.top+head.bottom)/2,paddingTop:getComputedStyle(document.querySelector('#targetCard .terminal-head')).paddingTop,arrowFrame:(()=>{const s=getComputedStyle(document.getElementById('terminalResizeTop'),'::before');return parseFloat(s.width)+parseFloat(s.borderLeftWidth)+parseFloat(s.borderRightWidth);})(),readout:{width:readout.width,left:readout.left,overflow:document.getElementById('flightReadout').scrollWidth>document.getElementById('flightReadout').clientWidth,clockFont:getComputedStyle(document.getElementById('clock')).fontSize,coordsFont:getComputedStyle(document.getElementById('coordsReadout')).fontSize}};
     });
-    assert.equal(layout.paddingTop,'0px');assert.equal(layout.arrowFrame,'32px');
+    await page.screenshot({path:`.qa/${engine}-11216-terminal-${viewport.width}.png`});
+    assert.equal(layout.paddingTop,'0px');assert.equal(layout.arrowFrame,32);
     for(const b of layout.buttons){assert.ok(Math.abs(b.center-layout.headCenter)<=2,JSON.stringify({viewport,layout}));assert.equal(b.hit,b.id);}
     assert.ok(layout.readout.width<=180&&layout.readout.left<=4&&!layout.readout.overflow,JSON.stringify(layout));assert.equal(layout.readout.clockFont,'10px');assert.equal(layout.readout.coordsFont,'9px');
-    await page.screenshot({path:`.qa/${engine}-11216-terminal-${viewport.width}.png`});
     const oldWidth=await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().width);
     const grip=await page.locator('#terminalResizeLeft').boundingBox();await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await page.mouse.down();await page.mouse.move(grip.x+grip.width/2-12,grip.y+grip.height/2,{steps:4});await page.mouse.up();
     assert.ok(await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().width)>oldWidth,'Smaller arrow could not resize by dragging');
@@ -63,6 +63,11 @@ export async function checkRelease11216(page,engine){
     assert.equal(await page.locator('#app').evaluate(e=>e.inert),false);
     await page.evaluate(()=>{const g=window.__game;g.state.followShip=false;g.state.centerZoom=null;g.updateUI();});await tap('followShipButton');
     assert.equal(await page.evaluate(()=>window.__game.state.centerZoom?.centerAction),'follow');
+    await page.evaluate(()=>{const g=window.__game;g.update(1300,0);window.__qaPause=false;g.frame(performance.now());});
+    const beforeMove=await page.evaluate(()=>({...window.__game.state.save.chart})),joy=await page.locator('#joystick').boundingBox();
+    await page.mouse.move(joy.x+joy.width/2,joy.y+joy.height/2);await page.mouse.down();await page.mouse.move(joy.x+joy.width-10,joy.y+joy.height/2);await page.waitForTimeout(150);await page.mouse.up();
+    const moved=await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));const s=window.__game.state;return {position:s.save.chart,camera:s.camera,follow:s.followShip,joy:s.joy};});
+    assert.ok(moved.position.x>beforeMove.x,'Joystick did not move the ship in Deep Space');assert.equal(moved.follow,true);assert.deepEqual(moved.camera,moved.position);assert.deepEqual(moved.joy,{x:0,y:0});
     await page.evaluate(()=>{const g=window.__game;g.state.save.chart={x:g.state.selected.x,y:g.state.selected.y};g.updateUI();});await tap('primaryAction');
     assert.equal(await page.evaluate(()=>window.__game.state.scene),'system');layouts.push({viewport,layout});
   }
