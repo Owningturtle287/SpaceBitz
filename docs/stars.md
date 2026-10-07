@@ -220,21 +220,22 @@ shows terminal text immediately with a static cursor. Giant-planet weather and
 other existing bounded renderer caches retain their earlier limits.
 
 All objects use an opaque green terminal with name, Focus View, Open Terminal, status and
-distance. Open Terminal expands upward and types telemetry with brief section pauses;
+distance. Open Terminal expands upward and types Object Data: <object name> with brief section pauses;
 its own screen scrolls and smoothly returns to the beginning when typing finishes.
 Manual wheel, touch or keyboard reading interrupts this return. The narrower
 terminal reveals upward from the bottom, with a compact header and two columns;
 The compact device is flush with the smaller dashboard rim. Terminal rests at
-bottom-right with Log to its left; Warp Drive and Log slide along the baseline
+bottom-right with Log to its left; the three-stage speed slider and Log slide along the baseline
 when the device opens. Larger lower dashboard curves fit rounded phone screens.
 Stellar output includes physical, evolutionary, magnetic,
 radiation, habitable-zone and orbital data. Planet/moon data uses the same framework
 without adding the deferred environment overhaul. Names track selected objects.
-A smaller green travel lever and red Cancel button slide above the compact
+A smaller green travel lever, with red Cancel centered above it, slides above the compact
 terminal or straight horizontally beside its expanded screen, leaving selected views clear.
 A 68px instrument row centers the wider corner-fitted joystick and equal-sized
-Center/Follow controls; narrow screens wrap two full-size rows. The compact
+Center/Follow controls. Play is landscape-only; portrait orientation shows a rotation prompt and pauses voyage movement and time. The compact
 terminal casing follows the lower-right curve and sits slightly inward.
+Action messages and submitted keyboard text appear in a bounded terminal history. Records use diameter rather than body radius; orbit periods use Earth days and rotations use Earth days, hours and minutes. Resize arrows are optional and sit near the upper-left of the device. The speed slider selects light-blue Orbit or yellow Hyperspace free flight; purple Warp enters Deep Space, whose speed always uses Warp. Automatic transfers keep their appropriate drive.
 Follow eases back two seconds after the last pan without changing zoom. The lever
 moves forward/backward. Coordinate travel in both space layers and on planet/moon
 surfaces requires two nearby taps; samples, landers and celestial objects retain
