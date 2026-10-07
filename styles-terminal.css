@@ -1,6 +1,8 @@
 /* Text tokens never depend on the dimensions of the device. */
 :root{--terminal-data-font:9px;--terminal-label-font:7px;--terminal-header-font:11px;--terminal-status-font:11px;--terminal-input-font:9px;--log-data-font:9px;--log-label-font:7px;--log-header-font:11px;--log-status-font:11px}
-#targetCard .terminal-head{min-height:32px;gap:4px;padding:0;align-items:center}
+#targetCard .terminal-head{min-height:32px;gap:4px;padding:0 6px 0 0;align-items:center;justify-content:flex-end}
+#terminalClear{margin-left:auto}
+#targetCard:not(.expanded) #targetName{display:none}
 #targetCard.terminal h2{font:7px/1.5 var(--pixel);color:#b9d0d3}
 #targetCard .terminal-head .button{height:28px;min-height:28px;min-width:88px;padding:3px 4px;font:5.5px/1.5 var(--pixel)}
 #terminalClear.terminal-clear{width:32px;height:32px;min-width:32px;min-height:32px;flex:none;padding:6px;background:#173d32;color:#bdffd2;border:2px solid #71998b;box-shadow:var(--frame);clip-path:var(--pixel-corners);touch-action:manipulation}
@@ -14,6 +16,18 @@
 #targetCard.expanded .terminal-status{display:none}
 #targetCard.expanded .terminal-meta{justify-content:flex-end;margin:1px 0 0}
 #targetCard .target-distance{font:var(--terminal-label-font)/1.5 var(--pixel)}
+#targetCard.terminal.expanded{padding-right:0}
+#targetCard.expanded .terminal-head{margin-right:0}
+#targetCard.expanded .terminal-meta,#targetCard.expanded .terminal-input-bar,#targetCard.expanded .terminal-keyboard{margin-right:8px}
+#targetCard .terminal-screen{margin-right:0;padding-right:12px;scrollbar-gutter:stable;scrollbar-width:thin}
+#systemChartContent{padding-right:2px;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#4d8a61 #0b1b26;clip-path:none}
+#systemChartContent .body-list{margin-right:8px;min-width:0}
+#systemChartContent .body-entry>span:not(.body-dot){flex:1;min-width:0;overflow-wrap:anywhere}
+#systemChartContent .body-entry small{flex:none;white-space:nowrap}
+body[data-scene=chart] #mapButton.flight-speed{transition:none}
+body[data-scene=chart] #flightSpeed{opacity:1;cursor:default}
+#terminalScreen::-webkit-scrollbar,#systemChartContent::-webkit-scrollbar{width:6px}
+#terminalScreen::-webkit-scrollbar-thumb,#systemChartContent::-webkit-scrollbar-thumb{background:#4d8a61;border:1px solid #03110d}
 .terminal-stream{display:block;color:#9af5b1}
 .terminal-stream>.terminal-history-entry,.terminal-stream>.terminal-record{margin:10px 0 0;padding:8px 0 0;border-top:1px solid #315842}
 .terminal-stream>:first-child{margin-top:0;padding-top:0;border-top:0}
@@ -44,14 +58,18 @@
 
 /* The log owns an overlay, so its growth does not take room in the deck. */
 .journal-overlay{position:fixed;inset:0;z-index:22;background:rgb(1 10 9 / 35%)}
-.journal-branch{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;color:#89c9aa;shape-rendering:crispEdges}
-.journal-panel{position:absolute;left:50%;top:50%;translate:-50% -50%;display:flex;flex-direction:column;box-sizing:border-box;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);min-height:0;overflow:hidden;border:3px solid #8baba5;border-radius:3px 3px 18px 3px;background:repeating-linear-gradient(0deg,#03110d 0,#03110d 3px,#06180f 4px);color:#9af5b1;box-shadow:inset 2px 2px #c0d8cc,inset -2px -2px #183629,0 14px 40px #0008;transform-origin:center}
+.journal-panel{position:absolute;left:50%;top:50%;translate:-50% -50%;display:flex;flex-direction:column;box-sizing:border-box;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);min-height:0;overflow:hidden;border:3px solid #8baba5;border-radius:18px;background:repeating-linear-gradient(0deg,#03110d 0,#03110d 3px,#06180f 4px);color:#9af5b1;box-shadow:inset 2px 2px #c0d8cc,inset -2px -2px #183629,0 14px 40px #0008;transform-origin:center}
 .journal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;padding:9px 12px;border-bottom:3px solid #6f8b90;background:linear-gradient(#5e7a82 0 3px,#3b535d 3px calc(100% - 3px),#263f4b calc(100% - 3px))}
 .journal-head>div{min-width:0}
 .journal-head h2{font:var(--log-header-font)/1.6 var(--pixel);color:#c4ffd2;margin:0}
 #journalSummary{margin:4px 0 0;font:var(--log-label-font)/1.6 var(--pixel);color:#acc4b4;overflow-wrap:anywhere}
 #journalClose{width:40px;height:40px;min-width:40px;min-height:40px;flex:none;background:#173d32;color:#c4ffd2;border-color:#95b9a3}
 .journal-content{overflow:auto;overscroll-behavior:contain;flex:1;min-height:0;padding:6px 12px 12px;scrollbar-color:#4d8a61 #03110d}
+.journal-filters{display:flex;gap:4px;flex:none;overflow-x:auto;padding:6px 10px;border-bottom:1px solid #315842;scrollbar-width:thin;background:#071b15}
+.journal-filter{flex:1 0 auto;min-height:32px;padding:6px;border:1px solid #4c7960;background:#112b20;color:#a5cdb2;font:7px/1.5 var(--pixel);border-radius:4px;touch-action:manipulation}
+.journal-filter[aria-pressed=true]{background:#295b3f;color:#d0ffda;border-color:#a0eab6}
+.journal-filter:focus-visible{outline:2px solid #c4ffd2;outline-offset:-3px}
+.journal-empty{font:var(--log-status-font)/1.8 var(--pixel);color:#a5cdb2;padding:10px}
 .journal-entry{margin:8px 0;border:1px solid #315842;border-left:3px solid #578e6c;background:rgb(8 32 22 / 65%)}
 .journal-entry-heading{display:flex;align-items:start;justify-content:space-between;gap:12px;padding:10px;font:var(--log-status-font)/1.8 var(--pixel);overflow-wrap:anywhere}
 .journal-entry-heading>span{min-width:0}
@@ -72,7 +90,7 @@ body.journal-open #terminalPocket,body.journal-open #travelControls,body.journal
 body[data-reduced-motion=true] .journal-object-data{animation:none}
 
 /* One category scrolls at a time; tabs and voyage actions stay in view. */
-.modal-card:has(.settings-tabs){width:min(820px,100%);display:flex;flex-direction:column;overflow:hidden;height:min(86dvh,760px);max-height:calc(100dvh - 24px);padding:14px}
+.modal-card:has(.settings-tabs){width:min(820px,100%);display:flex;flex-direction:column;overflow:hidden;height:min(86dvh,760px);max-height:calc(100dvh - 24px);padding:14px;border-radius:18px;clip-path:none}
 .modal-card:has(.settings-tabs) .modal-head{position:static;flex:none;margin-bottom:8px;padding:0 0 7px;align-items:center;background:none}
 .modal-card:has(.settings-tabs) .modal-head h2{font-size:14px;margin:2px 0 0}
 .modal-card:has(.settings-tabs) #modalContent{flex:1;min-height:0;display:flex}

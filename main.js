@@ -102,8 +102,9 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 let lastSingleTouchEnd=0;
 document.addEventListener('touchend',e=>{
   if(e.touches.length||e.changedTouches.length!==1)return;
-  // These controls disable double-tap zoom with touch-action; every key must click.
-  if(e.target.closest?.('#terminalKeyboard, #terminalInputBar')){lastSingleTouchEnd=0;return;}
+  // UI controls handle zoom through touch-action. Rapid taps must still activate
+  // camera buttons immediately after using the drive or another control.
+  if(e.target.closest?.('button,input,select,summary,#terminalKeyboard,#terminalInputBar')){lastSingleTouchEnd=0;return;}
   const now=performance.now();
   if(now-lastSingleTouchEnd<320)e.preventDefault();
   lastSingleTouchEnd=now;
@@ -343,7 +344,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http'))window.a
 });
 
 function beginSelection(){
-  closeJournal();finishTerminalRecord();closeSystemChart();state.terminalCleared=false;state.terminalNotice=null;state.coordinateTap=null;state.contextPlacement=null;
+  closeJournal();closeSystemChart();state.terminalRecordKey=null;state.terminalCleared=false;state.terminalNotice=null;state.coordinateTap=null;state.contextPlacement=null;
   const row=$('travelControls').querySelector('.context-action-row');row.style.transition='none';
   $('travelControls').classList.remove('ready');$('travelControls').hidden=false;
   $('contextActions').classList.remove('ready');
@@ -366,14 +367,14 @@ function markDiscovery(body) {
   state.save.log.unshift({name:body.name,action:'First landing',days:state.save.days});
   notify(`First landing on ${body.name} · added to logbook`);persist();
 }
-function enterChart() {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
+function enterChart() {state.warpUntil=0;state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   const star=currentStar();state.scene='chart';state.selected=star;
   state.save.scene='chart';state.save.chart={x:star.x+38,y:star.y+30};
   state.camera={...state.save.chart};state.zoom=1;state.autopilot=null;persist();updateUI();
 }
-function enterSystem(star) {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
+function enterSystem(star) {state.warpUntil=0;state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   state.system=makeSystem(star.seed,state.save.generation);state.save.currentSystem=star.seed;
@@ -468,13 +469,15 @@ $('terminalButton').onclick=toggleTerminal;
 $('focusSelected').onclick=focusSelected;
 function setFlightStage(value){
   if(!state.save||state.scene==='surface'||state.warpUntil||state.autopilot)return;
+  // Deep Space has one drive. Only explicit target travel can enter a system;
+  // a stale range input or a tap during dashboard motion cannot do so.
+  if(state.scene==='chart'){updateUI();return;}
   const stage=Number(value);if(!Number.isInteger(stage)||!FLIGHT_STAGES[stage])return;
   if(stage<2){settings.flightMode=FLIGHT_STAGES[stage];saveSettings();}
   if(state.scene==='system'&&stage<2){notify((stage===0?'Orbit':'Hyperspace')+' free-flight speed selected');updateUI();return;}
-  if(state.scene==='chart'&&stage===2)return;
   resetInput();state.autopilot=null;state.centerZoom=null;
   state.warpUntil=performance.now()+(settings.reducedMotion?120:650);
-  notify(state.scene==='chart'?'Leaving Deep Space · entering local system':'Warp Drive engaged · entering Deep Space');
+  notify('Warp Drive engaged · entering Deep Space');
   updateUI();
 }
 $('flightSpeed').oninput=e=>setFlightStage(e.target.value);
@@ -615,7 +618,7 @@ function updateUI() {
   const hasTarget=Boolean(sel||state.waypoint||traveling);
   $('targetCard').hidden=$('systemChart').classList.contains('open')||(!hasTarget&&!state.terminalExpanded&&!state.terminalNotice);$('contextActions').hidden=!sel||Boolean(state.warpUntil);
   $('travelControls').hidden=!hasTarget||$('systemChart').classList.contains('open')||Boolean(state.warpUntil);
-  $('targetName').textContent='TERMINAL';$('focusSelected').hidden=!sel&&!state.waypoint;
+  $('targetName').textContent=state.terminalExpanded?'TERMINAL':'';$('focusSelected').hidden=!sel&&!state.waypoint;
   $('targetStatus').textContent=selectedSummary()||(traveling?'Course active':'Ready · '+(scene==='chart'?'Deep Space':scene==='surface'?'Surface':'System'));
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
   $('terminalInputBar').hidden=!state.terminalExpanded;
@@ -635,10 +638,9 @@ function updateUI() {
   const warp=$('mapButton');
   const wasHidden=warp.hidden;warp.hidden=scene==='surface';
   if(wasHidden!==warp.hidden)applyCenterButtonLayout();
-  // The chart's drive indication is invariant, including camera actions and
-  // the transition back to a system. Only the completed layer change can alter it.
+  // Camera controls and delayed inputs never change Deep Space's only drive.
   const engaged=state.warpUntil>0,stage=scene==='chart'?2:engaged?2:flightStage(scene,settings.flightMode,state.autopilot);
-  const input=$('flightSpeed');input.value=stage;input.disabled=scene==='surface'||engaged||Boolean(state.autopilot);
+  const input=$('flightSpeed');input.value=stage;input.disabled=scene==='chart'||scene==='surface'||engaged||Boolean(state.autopilot);
   input.setAttribute('aria-valuetext',FLIGHT_STAGES[stage]==='hyper'?'Hyperspace':FLIGHT_STAGES[stage]==='warp'?'Warp Drive':'Orbit speed');
   warp.dataset.stage=stage;warp.setAttribute('aria-busy',String(engaged));
   $('flightSpeedLabel').textContent=(state.autopilot?'AUTO · ':'')+(engaged?'ENGAGING':stage===0?'ORBIT':stage===1?'HYPERSPACE':'WARP DRIVE');

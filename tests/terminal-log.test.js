@@ -1,10 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {recordAction,recordObject} from '../voyage-log.js';
+import {recordAction,recordObject,logCategory,restoreLogEntry,LOG_FILTERS} from '../voyage-log.js';
 import {addTerminalEntry,TERMINAL_HISTORY_LIMIT} from '../terminal-history.js';
 import {normalizeSettings} from '../settings.js';
 import {interfaceFonts} from '../interface-fonts.js';
 import {importVoyage} from '../saves.js';
+
+test('log filters retain survey categories across saves and recognize legacy records',()=>{
+  assert.deepEqual(LOG_FILTERS.map(([key])=>key),['all','star','planet','moon','item','status']);
+  for(const [type,category] of [['Yellow dwarf','star'],['Planet / gas','planet'],['Dwarf planet / rock','planet'],['Moon / rock','moon'],['Surface sample','item']]){
+    const legacy={kind:'object',name:'Object',objectKey:'object',type,data:'Object Data',days:1};
+    assert.equal(logCategory(legacy),category);assert.equal(restoreLogEntry(legacy,1).category,category);
+  }
+  assert.equal(logCategory({action:'Sample collected'}),'item');assert.equal(logCategory({kind:'action',action:'Course reached'}),'status');
+  const save={days:1,log:[]};recordObject(save,{key:'star',name:'Test',type:'Unknown',category:'star',text:'Object Data'});
+  assert.equal(restoreLogEntry(save.log[0],1).category,'star');
+});
 
 test('screen records, status and input retain generation order within one bounded stream',()=>{
   const screen=[];

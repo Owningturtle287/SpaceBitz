@@ -224,9 +224,9 @@ export async function checkRelease11213(page,engine){
   await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(1,0);});
   assert.equal(await page.evaluate(()=>window.__game.state.scene),'chart');assert.equal(await page.locator('#flightSpeed').inputValue(),'2');
   await page.evaluate(async()=>{const g=window.__game,{manualSpeed}=await import('/navigation.js');const x=g.state.save.chart.x;g.state.keys.add('d');g.update(1000,0);g.state.keys.clear();if(Math.abs(g.state.save.chart.x-x-manualSpeed('chart','orbit'))>1e-7)throw Error('Deep Space did not use Warp speed');});
-  // Return beside the same local system; the lower detent becomes its manual speed.
-  await page.evaluate(()=>{window.__game.state.save.chart={x:0,y:0};});await setSpeed(0);
-  await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(1,0);g.cancelTarget();g.notify('Course test recorded in the terminal');g.updateUI();});
+  // System entry is explicit travel; the Deep Space slider cannot return us.
+  await page.evaluate(()=>{const g=window.__game;g.state.save.chart={x:g.state.selected.x,y:g.state.selected.y};g.primary();});await setSpeed(0);
+  await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.notify('Course test recorded in the terminal');g.updateUI();});
   assert.equal(await page.locator('#toast').count(),0);assert.match(await page.locator('#targetStatus').innerText(),/Course test recorded/);
   await page.locator('#secondaryAction').click();await settle();
   await page.locator('#terminalInput').fill('<b>pilot entry</b>');await page.keyboard.press('Enter');

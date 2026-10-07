@@ -7,14 +7,17 @@ import {addTerminalEntry} from './terminal-history.js';
 
 export function createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog,resetInput,saveSettings,applyCenterButtonLayout,screen}){
 state.terminalEntries=[];
+function canViewOutput(){return state.terminalExpanded&&!state.journalOpen&&!state.landscapeBlocked&&!$('targetCard').hidden&&!$('terminalScreen').hidden&&!$('modal').classList.contains('visible');}
 function atBottom(){const screen=$('terminalScreen');return screen.scrollHeight-screen.scrollTop-screen.clientHeight<24;}
 function renderRecord(record,count){
   record.count=count;
   for(const row of record.lines){const visible=count>row.offset,text=row.text.slice(0,Math.max(0,count-row.offset)),split=row.colon<0?0:Math.min(text.length,row.colon+3);row.node.hidden=!visible;row.key.textContent=text.slice(0,split);row.value.textContent=text.slice(split);}
   record.finished=count===record.text.length;
+  if(record.finished&&record.survey&&!record.logged&&canViewOutput()){recordLog?.(record.survey);record.logged=true;}
 }
 function finishTerminalRecord(){
-  const record=state.terminalEntries.findLast(entry=>entry.kind==='record');
+  if(!canViewOutput())return;
+  const record=state.terminal;
   if(record?.lines&&!record.finished)renderRecord(record,record.text.length);
 }
 function appendTerminalEntry(text,kind='message'){
@@ -54,14 +57,13 @@ function selectedSummary(){
   const {object}=selectedRecord();return 'Object selected: '+object.name+' · '+objectType(object);
 }
 function buildTerminal(){
-  if(!state.save||state.terminalCleared)return;const record=selectedRecord();
+  if(!state.save||!state.terminalExpanded||state.journalOpen||state.landscapeBlocked||state.terminalCleared)return;const record=selectedRecord();
   const key=state.scene+':'+record.system.seed+':'+(record.object.id||state.selected?.seed||state.waypoint&&formatCoordinates(state.waypoint,state.scene)||'ship');
   const prior=state.terminalEntries.findLast(entry=>entry.kind==='record'&&entry.key===key);
-  if(state.terminalRecordKey===key&&prior){state.terminal=prior;return;}
-  const follow=atBottom();finishTerminalRecord();
+  if(state.terminalRecordKey===key&&prior){state.terminal=prior;if(prior.pausedAt!=null){prior.start+=performance.now()-prior.pausedAt;prior.pausedAt=null;}return;}
   let text=terminalLines(record.object,record.system,{days:state.save.days,scene:state.scene,position:record.position,ship:record.ship,homeSystem:state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.save.currentSystem===state.save.homeSeed&&record.object.kind==='star',homeWorld:record.object.id===state.save.homePlanet});
   if(!state.selected&&!state.waypoint)text='Ship Terminal\n\nSTATUS : READY\nLAYER : '+(state.scene==='chart'?'Deep Space':state.scene==='surface'?'Surface':'System')+'\nPOSITION : '+formatCoordinates(record.ship,state.scene)+'\nVOYAGE : '+state.save.name+'\n\nSelect an object or area to retrieve its data.';
-  const entry=addTerminalEntry(state.terminalEntries,text,'record');Object.assign(entry,{key,start:performance.now(),count:-1});state.terminal=entry;state.terminalRecordKey=key;
+  const entry=addTerminalEntry(state.terminalEntries,text,'record');Object.assign(entry,{key,start:performance.now(),count:-1,followOutput:true});state.terminal=entry;state.terminalRecordKey=key;
   const output=document.createElement('div');output.className='terminal-record terminal-data';entry.node=output;let offset=0;
   entry.lines=entry.text.split('\n').map((text,index)=>{
     const node=document.createElement('div'),colon=text.indexOf(' : '),key=document.createElement('span'),value=document.createElement('span');
@@ -69,8 +71,8 @@ function buildTerminal(){
     key.className='terminal-key';value.className='terminal-value';node.append(key,value);node.hidden=true;output.append(node);
     const row={text,offset,node,key,value,colon};offset+=text.length+1;return row;
   });renderTerminalHistory();
-  if(state.selected||state.waypoint)recordLog?.({kind:'object',key:record.system.seed+':'+(record.object.id||state.selected?.seed||key),name:record.object.name,type:objectType(record.object),text:entry.text});
-  if(follow)$('terminalScreen').scrollTop=$('terminalScreen').scrollHeight;
+  if(state.selected||state.waypoint)entry.survey={kind:'object',key:record.system.seed+':'+(record.object.id||state.selected?.seed||key),name:record.object.name,type:objectType(record.object),category:record.object.kind,text:entry.text};
+  $('terminalScreen').scrollTop=$('terminalScreen').scrollHeight;
 }
 function clearTerminal(){
   state.terminalEntries.length=0;state.terminal=null;state.terminalRecordKey=null;state.terminalNotice=null;state.terminalCleared=true;
@@ -86,6 +88,7 @@ function toggleTerminal(){
   state.terminalExpanded=!state.terminalExpanded;
   if(state.terminalExpanded){closeJournal?.();closeSystemChart();buildTerminal();}
   else {
+    if(state.terminal&&!state.terminal.finished)state.terminal.pausedAt=performance.now();
     $('terminalInput').blur();setTerminalKeyboard(false);
     if(!state.selected&&!state.waypoint&&!state.autopilot&&!state.warpUntil)state.terminalNotice=null;
   }
@@ -234,12 +237,15 @@ function focusSelected(){
   state.camera={x:position.x,y:position.y};state.panUntil=Infinity;
 }
 function updateTerminal(now){
-  if(!state.terminalExpanded||!state.terminal)return;
+  if(!state.terminal)return;
   const record=state.terminal,screen=$('terminalScreen');
+  if(!canViewOutput()){if(!record.finished&&record.pausedAt==null)record.pausedAt=now;return;}
+  if(record.pausedAt!=null){record.start+=now-record.pausedAt;record.pausedAt=null;}
   const count=Math.max(record.count,typedLength(record.text,(now-record.start)/1000,settings.reducedMotion));
-  if(count===record.count)return;const follow=atBottom();renderRecord(record,count);
-  if(follow)screen.scrollTop=screen.scrollHeight;
+  if(count===record.count)return;renderRecord(record,count);
+  if(record.followOutput)screen.scrollTop=screen.scrollHeight;
 }
+for(const event of ['wheel','touchmove','pointerdown'])$('terminalScreen').addEventListener(event,()=>{if(state.terminal)state.terminal.followOutput=false;},{passive:true});
 function positionContext(){
   if($('contextActions').hidden||!state.save)return;const record=selectedRecord(),target=screen(record.position.x,record.position.y),element=$('contextActions');
   const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
