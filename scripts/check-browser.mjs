@@ -7,6 +7,7 @@ import {checkRelease1123} from './check-release1123.mjs';
 import {checkRelease11213} from './check-release11213.mjs';
 import {checkRelease11214} from './check-release11214.mjs';
 import {checkRelease11215} from './check-release11215.mjs';
+import {checkRelease11216} from './check-release11216.mjs';
 import {checkRelease11212} from './check-release11212.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -66,6 +67,8 @@ try{
   // Exercise the current device controls before the longer renderer soak, then
   // restore the exact launch fixture so the simulation checks stay independent.
   const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
+  const release11216=await checkRelease11216(page,engine);
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
   const release11215=await checkRelease11215(page,engine);
   await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
   const release11214=await checkRelease11214(page,engine);
@@ -521,5 +524,5 @@ try{
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
   const release11212=await checkRelease11212(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,release11216,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

@@ -618,10 +618,14 @@ function updateUI() {
   const hasTarget=Boolean(sel||state.waypoint||traveling);
   $('targetCard').hidden=$('systemChart').classList.contains('open')||(!hasTarget&&!state.terminalExpanded&&!state.terminalNotice);$('contextActions').hidden=!sel||Boolean(state.warpUntil);
   $('travelControls').hidden=!hasTarget||$('systemChart').classList.contains('open')||Boolean(state.warpUntil);
+  // Automatic selections after launch or a layer change need the same active
+  // controls as a manual selection. Never leave visible actions inert.
+  $('travelControls').classList.toggle('ready',hasTarget&&!state.warpUntil);
   $('targetName').textContent=state.terminalExpanded?'TERMINAL':'';$('focusSelected').hidden=!sel&&!state.waypoint;
   $('targetStatus').textContent=selectedSummary()||(traveling?'Course active':'Ready · '+(scene==='chart'?'Deep Space':scene==='surface'?'Surface':'System'));
   $('terminalScreen').hidden=!state.terminalExpanded;$('targetCard').classList.toggle('expanded',Boolean(state.terminalExpanded));
   $('terminalInputBar').hidden=!state.terminalExpanded;
+  $('terminalClear').hidden=!state.terminalExpanded;
   if(!hasTarget&&state.terminalNotice)$('targetStatus').textContent=state.terminalNotice;
   if(!state.terminalExpanded){setTerminalKeyboard(false);if(document.activeElement===$('terminalInput'))$('terminalInput').blur();}
   if(state.terminalExpanded&&!state.terminal&&!state.terminalCleared)buildTerminal();
@@ -648,11 +652,11 @@ function updateUI() {
   $('homeButton').setAttribute('aria-label',centerLabel);$('homeButton').title=centerLabel;
   const following=state.followShip||state.centerZoom?.centerAction==='follow';
   $('followShipButton').setAttribute('aria-pressed',String(Boolean(following)));$('followShipButton').title=following?'Stop following ship':'Follow ship';$('followShipButton').setAttribute('aria-label',$('followShipButton').title);
-  $('clock').textContent=formatGameDate();
+  $('clock').textContent=formatGameDate().replace(/ (\d{2}:\d{2})$/,'\n$1');
   $('clock').title=(settings.timeMode==='realtime'?'Real-time 1:1':'Accelerated · 1 real minute = 1 game hour')+' · '+preferredTimeZone()+(settings.paused&&settings.timeMode!=='realtime'?' · paused':'');
   $('telemetry').hidden=!settings.showCoords&&!settings.showFPS;
   $('clock').hidden=!settings.showClock;
-  $('coordsReadout').hidden=!settings.showCoords;$('coordsReadout').textContent=formatCoordinates(pos,scene);
+  $('coordsReadout').hidden=!settings.showCoords;$('coordsReadout').textContent=formatCoordinates(pos,scene).replace(' · ','\n');
   $('fpsReadout').hidden=!settings.showFPS;$('fpsReadout').textContent=`${Math.round(state.fps)} FPS`;
   const speedVisible=settings.showSpeed&&scene!=='surface';
   $('speedReadout').hidden=!speedVisible;$('speedReadout').textContent=(scene==='system'?(settings.flightMode==='hyper'?'HYPERSPACE':'ORBIT')+' · ':'')+formatDistance(manualSpeed(scene,settings.flightMode),scene)+'/s';
