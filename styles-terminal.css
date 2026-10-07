@@ -45,11 +45,11 @@ body[data-scene=chart] #flightSpeed{opacity:1;cursor:default}
 #terminalInput,#terminalInput::placeholder{font:var(--terminal-input-font)/1.5 var(--pixel)}
 .terminal-prompt{font-size:var(--terminal-input-font)}
 .terminal-input-caret{width:var(--terminal-input-font);height:calc(var(--terminal-input-font) + 5px)}
-#terminalResizeTop,#terminalResizeLeft{width:44px;height:44px;min-width:44px;min-height:44px;top:calc(50% - 22px);border:0;background:transparent;color:#fff;box-shadow:none;clip-path:none;touch-action:none;user-select:none;-webkit-user-select:none}
+#terminalResizeTop,#terminalResizeLeft{width:44px;height:44px;min-width:44px;min-height:44px;top:calc(50% - 22px);border:0;background:inherit;color:#fff;box-shadow:none;clip-path:none;touch-action:none;user-select:none;-webkit-user-select:none}
 #terminalResizeTop{left:0;cursor:ns-resize}
 #terminalResizeLeft{left:38px;cursor:ew-resize}
-#terminalResizeTop svg{position:relative;width:20px;height:10px}
-#terminalResizeLeft svg{position:relative;width:10px;height:20px}
+#terminalResizeTop svg{pointer-events:none;position:relative;width:20px;height:10px}
+#terminalResizeLeft svg{pointer-events:none;position:relative;width:10px;height:20px}
 #terminalResizeTop::before,#terminalResizeLeft::before{content:"";position:absolute;inset:6px;border:2px solid #627b89;background:linear-gradient(#64828e 0 2px,#304d5b 2px calc(100% - 3px),#152b37 calc(100% - 3px));box-shadow:inset 1px 0 #9db3b7,1px 1px #07121c;clip-path:var(--pixel-corners)}
 #terminalResizeTop:hover::before,#terminalResizeLeft:hover::before,#terminalResizeTop:active::before,#terminalResizeLeft:active::before{background:#496b79;border-color:#d7eeee}
 #targetCard:has(.terminal-resize:not([hidden])) .terminal-head{padding:0 6px 0 82px;min-height:44px}
