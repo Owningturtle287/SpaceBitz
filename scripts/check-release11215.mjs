@@ -28,7 +28,7 @@ export async function checkRelease11215(page,engine){
   // Entry is still available through the green target control.
   await page.evaluate(()=>{const g=window.__game;g.state.save.chart={x:g.state.selected.x,y:g.state.selected.y};g.primary();});
   assert.equal(await page.evaluate(()=>window.__game.state.scene),'system');
-  await page.evaluate(()=>{const g=window.__game;g.clearTerminal();g.settings.joyX=16;g.settings.reducedMotion=false;g.applySettings();g.state.save.log=[];g.select(g.state.system.planets.find(p=>p.name==='Earth'));});await settle();
+  await page.evaluate(()=>{const g=window.__game;g.clearTerminal();g.settings.joyX=16;g.settings.reducedMotion=false;g.state.terminalSize={width:264,height:180};g.applySettings();g.state.save.log=[];g.select(g.state.system.planets.find(p=>p.name==='Earth'));});await settle();
   assert.equal(await page.locator('#targetName').innerText(),'');
   assert.equal(await page.locator('#terminalMessages .terminal-record').count(),0);
   assert.equal(await page.evaluate(()=>window.__game.state.save.log.length),0);
@@ -61,7 +61,7 @@ export async function checkRelease11215(page,engine){
   assert.equal(await page.locator('.journal-entry').count(),Object.values(filters).reduce((a,b)=>a+b,0));
   const corners=await page.locator('#journalPanel').evaluate(e=>{const s=getComputedStyle(e);return [s.borderTopLeftRadius,s.borderTopRightRadius,s.borderBottomLeftRadius,s.borderBottomRightRadius];});assert.ok(corners.every(c=>parseFloat(c)>=12));
   await page.evaluate(()=>window.__game.closeJournal());await settle();
-  await page.evaluate(()=>{const g=window.__game;g.showDetails(g.state.system.star);g.updateTerminal(g.state.terminal.start+15000);g.settings.terminalResizeHandles=true;g.applySettings();});
+  await page.evaluate(()=>{const g=window.__game;g.state.terminalSize=null;g.showDetails(g.state.system.star);g.updateTerminal(g.state.terminal.start+15000);g.settings.terminalResizeHandles=true;g.applySettings();});
   const layouts=[];
   for(const viewport of [{width:1440,height:900},{width:844,height:390},{width:667,height:375}]){
     await page.setViewportSize(viewport);await settle();
