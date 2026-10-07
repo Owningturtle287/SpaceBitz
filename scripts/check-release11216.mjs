@@ -50,7 +50,7 @@ export async function checkRelease11216(page,engine){
     // Wait for natural hit testing, rather than a wall-clock animation guess.
     const opening=await page.evaluate(()=>{const r=id=>{const e=document.getElementById(id),b=e.getBoundingClientRect();return {id,inert:e.inert,top:b.top,bottom:b.bottom,height:b.height,hit:document.elementFromPoint((b.left+b.right)/2,(b.top+b.bottom)/2)?.id};};return {appInert:document.getElementById('app').inert,card:r('targetCard'),pocket:r('terminalPocket'),header:r('terminalResizeTop')};});
     console.log('11216 terminal opening',JSON.stringify({viewport,opening}));
-    await page.waitForFunction(()=>['terminalResizeTop','terminalResizeLeft','terminalClear','secondaryAction'].every(id=>{const e=document.getElementById(id),r=e.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('button')?.id===id;}),{timeout:5000});
+    await page.waitForFunction(()=>['terminalResizeTop','terminalResizeLeft','terminalClear','secondaryAction'].every(id=>{const e=document.getElementById(id),r=e.getBoundingClientRect();return document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('button')?.id===id;}),undefined,{timeout:5000});
     assert.equal(await page.locator('#terminalClear').isVisible(),true);
     const layout=await page.evaluate(()=>{
       const rect=id=>document.getElementById(id).getBoundingClientRect(),head=document.querySelector('#targetCard .terminal-head').getBoundingClientRect();
