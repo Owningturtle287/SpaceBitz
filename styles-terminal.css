@@ -6,12 +6,15 @@
 #targetCard:not(.expanded) #targetName{display:none}
 #targetCard.terminal h2{font:7px/1.5 var(--pixel);color:#b9d0d3}
 #targetCard .terminal-head .button{height:32px;min-height:32px;min-width:72px;padding:3px 4px;white-space:normal;font:5.5px/1.5 var(--pixel)}
+#targetCard:not(.expanded) .terminal-head{min-height:24px}
+#targetCard:not(.expanded) .terminal-head .button{height:24px;min-height:24px;min-width:88px;padding:2px 4px;white-space:nowrap}
+#targetCard.terminal:not(.expanded){padding-bottom:calc(5px + var(--dashboard-safe-bottom))}
 #terminalClear.terminal-clear{width:32px;height:32px;min-width:32px;min-height:32px;flex:none;padding:6px;background:#173d32;color:#bdffd2;border:2px solid #71998b;box-shadow:var(--frame);clip-path:var(--pixel-corners);touch-action:manipulation}
 #terminalClear svg{width:18px;height:18px}
 #terminalClear:hover{background:#245643}
 #terminalClear:active{background:#386d55}
 #targetCard .terminal-status{font:var(--terminal-header-font)/1.45 var(--pixel);color:#b6ffc7;overflow-wrap:anywhere}
-#targetCard:not(.expanded) .terminal-meta{display:block;margin:3px 0 0;padding:0}
+#targetCard:not(.expanded) .terminal-meta{display:block;margin:1px 0 0;padding:0}
 #targetCard:not(.expanded) .terminal-status{-webkit-line-clamp:2}
 #targetCard:not(.expanded) .target-distance{display:none}
 #targetCard.expanded .terminal-status{display:none}

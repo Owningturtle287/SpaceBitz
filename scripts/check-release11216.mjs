@@ -42,6 +42,8 @@ export async function checkRelease11216(page,engine){
     assert.equal(await page.evaluate(()=>window.__game.state.scene),'chart');
     await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
     assert.equal(await page.locator('#terminalClear').isVisible(),false);
+    const summary=await page.evaluate(()=>({bottom:document.getElementById('targetStatus').getBoundingClientRect().bottom,edge:document.getElementById('targetCard').getBoundingClientRect().bottom}));
+    assert.ok(summary.bottom<=summary.edge-2,'Closed terminal summary is clipped: '+JSON.stringify(summary));
     await tap('secondaryAction');await page.waitForTimeout(400);
     assert.equal(await page.locator('#terminalClear').isVisible(),true);
     const layout=await page.evaluate(()=>{
