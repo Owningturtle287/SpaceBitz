@@ -625,7 +625,7 @@ function updateUI() {
   const warp=$('mapButton');
   const wasHidden=warp.hidden;warp.hidden=scene==='surface';
   if(wasHidden!==warp.hidden)applyCenterButtonLayout();
-  const stage=flightStage(scene,settings.flightMode,state.autopilot),engaged=state.warpUntil>0;
+  const engaged=state.warpUntil>0,stage=engaged?(scene==='chart'?flightStage('system',settings.flightMode):2):flightStage(scene,settings.flightMode,state.autopilot);
   const input=$('flightSpeed');input.value=stage;input.disabled=scene==='surface'||engaged||Boolean(state.autopilot);
   input.setAttribute('aria-valuetext',FLIGHT_STAGES[stage]==='hyper'?'Hyperspace':FLIGHT_STAGES[stage]==='warp'?'Warp Drive':'Orbit speed');
   warp.dataset.stage=stage;warp.setAttribute('aria-busy',String(engaged));
