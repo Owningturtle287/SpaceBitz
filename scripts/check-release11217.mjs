@@ -26,7 +26,18 @@ export async function checkRelease11217(page,engine){
   await tap('settingsOpen');assert.equal(await page.locator('#modal').isVisible(),true);
   await tap('modalClose');assert.equal(await page.locator('#modal').isVisible(),false);
   await tap('journalButton');assert.equal(await page.locator('#journal').isVisible(),true);
-  await tap('journalClose');await page.waitForFunction(()=>!window.__game.state.journalOpen);
+  await page.waitForFunction(()=>!document.getElementById('journalPanel').getAnimations().some(a=>a.playState==='running'||a.playState==='pending'));
+  await page.evaluate(()=>{
+    window.__logTouchTrace=[];
+    for(const type of ['pointerdown','pointerup','click'])document.addEventListener(type,e=>{
+      if(window.__logTouchTrace.length>=12)return;
+      const button=e.target.closest?.('button'),hit=document.elementFromPoint(e.clientX,e.clientY)?.closest('button');
+      window.__logTouchTrace.push({type,button:button?.id,hit:hit?.id,trusted:e.isTrusted,inert:button?.closest('[inert]')?.id,hidden:button?.closest('[hidden]')?.id});
+    },{capture:true});
+  });
+  await tap('journalClose');
+  try{await page.waitForFunction(()=>!window.__game.state.journalOpen);}
+  catch(error){console.log('11217 log touch diagnostic',await page.evaluate(()=>({trace:window.__logTouchTrace,open:window.__game.state.journalOpen,animations:document.getElementById('journalPanel').getAnimations().map(a=>({state:a.playState,time:a.currentTime})),hidden:document.getElementById('journal').hidden})));throw error;}
   const before=await page.evaluate(()=>Math.hypot(window.__game.state.selected.x-window.__game.state.save.chart.x,window.__game.state.selected.y-window.__game.state.save.chart.y));
   await tap('primaryAction');
   await page.waitForFunction(d=>Math.hypot(window.__game.state.selected.x-window.__game.state.save.chart.x,window.__game.state.selected.y-window.__game.state.save.chart.y)<d,before);
