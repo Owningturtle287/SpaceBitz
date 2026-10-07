@@ -1,8 +1,15 @@
 import {clamp} from './model.js';
+import {LOG_FILTERS,logCategory} from './voyage-log.js';
 
 export function createLogDevice({state,settings,$,formatDate,resetInput,saveSettings,updateUI,closeSystemChart,setTerminalKeyboard}){
-  const overlay=$('journal'),panel=$('journalPanel'),branch=$('journalBranch');
+  const overlay=$('journal'),panel=$('journalPanel');
   let previousFocus=null,serial=0,resize=null,closing=false;
+  let filter='all';
+  const filters=$('journalFilters');
+  for(const [value,label] of LOG_FILTERS){
+    const button=document.createElement('button');button.type='button';button.className='journal-filter';button.textContent=label;button.dataset.filter=value;button.setAttribute('aria-pressed',String(value===filter));
+    button.onclick=()=>{filter=value;render();};filters.append(button);
+  }
   const reduced=()=>settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
   function applySize(){
     panel.style.width=clamp(Math.min(660,innerWidth*.82)*settings.logWidthScale/100,Math.min(320,innerWidth-24),innerWidth-24)+'px';
@@ -13,8 +20,10 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
   function render(){
     $('journalSummary').textContent=state.save.discoveries.length+' discoveries · '+state.save.name;
     const content=$('journalContent');content.replaceChildren();
-    for(const entry of state.save.log){
+    for(const button of filters.children)button.setAttribute('aria-pressed',String(button.dataset.filter===filter));
+    for(const entry of state.save.log.filter(entry=>filter==='all'||logCategory(entry)===filter)){
       const item=document.createElement(entry.kind==='object'?'details':'article');item.className='journal-entry '+(entry.kind==='object'?'object-survey':'action');
+      item.dataset.category=logCategory(entry);
       const heading=document.createElement(entry.kind==='object'?'summary':'div');heading.className='journal-entry-heading';
       const title=document.createElement('span');title.textContent=entry.kind==='object'?entry.name+' · '+entry.type:entry.kind==='action'?entry.action:entry.action+' · '+entry.name;
       const date=document.createElement('time');date.textContent=formatDate(entry.days);heading.append(title,date);item.append(heading);
@@ -23,24 +32,19 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
       }
       content.append(item);
     }
-    if(!content.childElementCount){const empty=document.createElement('p');empty.textContent='Object surveys and voyage actions will appear here.';content.append(empty);}
+    if(!content.childElementCount){const empty=document.createElement('p');empty.className='journal-empty';empty.textContent=filter==='all'?'Object surveys and voyage actions will appear here.':'No '+LOG_FILTERS.find(([value])=>value===filter)[1].toLowerCase()+' recorded yet.';content.append(empty);}
     content.scrollTop=0;
   }
   function origin(){
     const button=$('journalButton').getBoundingClientRect(),r=panel.getBoundingClientRect();
     const x=button.left+button.width/2,y=button.top+button.height/2,cx=r.left+r.width/2,cy=r.top+r.height/2;
-    const bend=Math.min(y-14,r.bottom+16);
-    branch.setAttribute('viewBox','0 0 '+innerWidth+' '+innerHeight);
-    $('journalBranchPath').setAttribute('d',`M ${x} ${y} V ${bend} H ${cx} V ${r.bottom}`);
     return {dx:x-cx,dy:y-cy};
   }
   function animate(opening){
     for(const a of panel.getAnimations())a.cancel();
-    const {dx,dy}=origin(),path=$('journalBranchPath'),length=path.getTotalLength();
+    const {dx,dy}=origin();
     const frames=[{transform:`translate(${dx}px,${dy}px) scale(.06,.04)`,opacity:0},{transform:`translate(${dx*.24}px,${dy*.2}px) scale(.48,.12)`,opacity:.85,offset:.4},{transform:'translate(0,0) scale(1)',opacity:1}];
-    path.style.strokeDasharray=String(length);path.style.strokeDashoffset='0';
     const duration=opening?620:360;
-    path.animate(opening?[{strokeDashoffset:length,opacity:1},{strokeDashoffset:0,opacity:.6,offset:.8},{strokeDashoffset:0,opacity:0}]:[{strokeDashoffset:0,opacity:.8},{strokeDashoffset:length,opacity:0}],{duration,easing:'ease-out',fill:'forwards'});
     return panel.animate(opening?frames:[...frames].reverse(),{duration,easing:'cubic-bezier(.22,.7,.25,1)',fill:'none'});
   }
   function open(){

@@ -1,6 +1,17 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.15",
+    "items": [
+      "Keep the Deep Space speed slider fixed at Warp. Ignore stale lower-speed inputs, clear completed warp transitions, and allow rapid touch activation of Center and Follow immediately after exiting a system. Re-enter systems through the green target travel control.",
+      "Generate object surveys only with the selected object's terminal open. Pause hidden output, save surveys after their visible output finishes, and follow new output down the screen without rewinding completed records.",
+      "Align Clear and Close Terminal to the right of the top border and remove the compact terminal's border label.",
+      "Round all Settings and Log menu corners. Remove the log animation's snaking line while retaining its centered growth from the dashboard button.",
+      "Add All, Stars, Planets, Moons, Items and Status Updates filters above the log's records, preserving categories through save/import/export and recognizing older surveys.",
+      "Place Terminal and System Chart scrollbars at their right borders, with reserved space between their text and the scroll tracks."
+    ]
+  },
+  {
     "version": "1.12.14",
     "items": [
       "Keep Warp selected throughout Deep Space camera actions and layer departure; bound joystick and Follow placement so they cannot overlap the speed slider.",

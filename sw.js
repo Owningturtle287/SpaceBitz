@@ -1,4 +1,4 @@
-const CACHE='spacebitz-field-v1.12.14';
+const CACHE='spacebitz-field-v1.12.15';
 const SHELL=['./','./index.html','./audio.js','./body-cache.js','./body-classification.js','./celestial.js','./changelog.js','./exploration.js','./flight-drive.js','./giants.js','./hud.js','./interface-fonts.js','./log-device.js','./main.js','./model.js','./motion.js','./navigation.js','./presentation.js','./pwa.js','./rarity-ui.js','./rendering.js','./saves.js','./scale.js','./settings.js','./sprites.js','./star-info.js','./stellar.js','./substellar.js','./target-ui.js','./terminal-device.js','./terminal-history.js','./terminal.js','./terrain.js','./universe-v2.js','./universe.js','./voyage-log.js','./voyage-storage.js','./weather.js','./style.css','./styles-base.css','./styles-devices.css','./styles-flight.css','./styles-terminal.css','./assets/spacebitz-pixel.woff','./assets/spacebitz-title.svg','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)));

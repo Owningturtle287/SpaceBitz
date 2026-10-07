@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 
 export async function checkRelease11214(page,engine){
-  const settleLog=async()=>page.evaluate(async()=>{for(const id of ['journalPanel','journalBranchPath'])for(const a of document.getElementById(id).getAnimations({subtree:true}))if(Number.isFinite(a.effect.getComputedTiming().endTime))a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+  const settleLog=async()=>page.evaluate(async()=>{for(const a of document.getElementById('journalPanel').getAnimations({subtree:true}))if(Number.isFinite(a.effect.getComputedTiming().endTime))a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
   const settle=async()=>{await page.waitForTimeout(350);await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','travelControls','mapButton','journalButton'])for(const a of document.getElementById(id).getAnimations({subtree:true}))if(Number.isFinite(a.effect.getComputedTiming().endTime))a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});};
   await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;g.settings.paused=true;g.settings.controls='touch';g.settings.joyX=92;g.settings.centerButton='right';g.enterChart();g.applySettings();});
   const follow=[];
@@ -18,10 +18,10 @@ export async function checkRelease11214(page,engine){
     }
     follow.push({viewport,layout});
   }
-  // Even while departing the chart, camera refreshes must keep its Warp indication.
+  // Lower detents cannot depart Deep Space, including stale range events.
   await page.locator('#flightSpeed').evaluate(e=>{e.value='0';e.dispatchEvent(new Event('input',{bubbles:true}));});
   await page.locator('#followShipButton').click();assert.equal(await page.locator('#flightSpeed').inputValue(),'2');
-  await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(1,0);g.cancelTarget();g.settings.joyX=16;g.settings.reducedMotion=false;g.applySettings();g.clearTerminal();const earth=g.state.system.planets.find(p=>p.name==='Earth');g.select(earth);g.showDetails(earth);g.updateTerminal(g.state.terminal.start+100);g.notify('Survey queued after Earth');});
+  await page.evaluate(()=>{const g=window.__game;g.state.save.chart={x:g.state.selected.x,y:g.state.selected.y};g.primary();g.cancelTarget();g.settings.joyX=16;g.settings.reducedMotion=false;g.applySettings();g.clearTerminal();const earth=g.state.system.planets.find(p=>p.name==='Earth');g.select(earth);g.showDetails(earth);g.updateTerminal(g.state.terminal.start+100);g.notify('Survey queued after Earth');});
   await settle();
   assert.equal(await page.locator('#targetName').innerText(),'TERMINAL');
   await page.locator('#terminalInput').fill('<b>pilot entry</b>');await page.keyboard.press('Enter');
