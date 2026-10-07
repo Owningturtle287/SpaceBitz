@@ -5,7 +5,7 @@ export async function checkRelease11216(page,engine){
   const inspect=()=>page.evaluate(()=>{
     const g=window.__game,s=g.state;
     const controls=Object.fromEntries(['followShipButton','primaryAction','homeButton','flightSpeed'].map(id=>{const e=document.getElementById(id),r=e.getBoundingClientRect();return [id,{disabled:e.disabled,hidden:e.hidden,rect:{x:r.x,y:r.y,width:r.width,height:r.height},hit:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('button,input')?.id,opacity:getComputedStyle(e.parentElement).opacity}];}));
-    return {scene:s.scene,follow:s.followShip,centerAction:s.centerZoom?.centerAction,autopilot:s.autopilot,warpUntil:s.warpUntil,appInert:document.getElementById('app').inert,ready:document.getElementById('travelControls').classList.contains('ready'),activeElement:document.activeElement.id,controls};
+    return {scene:s.scene,follow:s.followShip,centerAction:s.centerZoom?.centerAction,autopilot:s.autopilot,warpUntil:s.warpUntil,distance:s.selected?Math.hypot(s.selected.x-s.save.chart.x,s.selected.y-s.save.chart.y):null,notice:s.terminalNotice,appInert:document.getElementById('app').inert,ready:document.getElementById('travelControls').classList.contains('ready'),activeElement:document.activeElement.id,controls};
   });
   // Keep the real animation loop running: delayed UI refreshes must not undo a
   // press, and automatic star selection must enable the actual touch controls.
@@ -21,8 +21,50 @@ export async function checkRelease11216(page,engine){
   const afterGreen=await inspect();
   console.log('11216 touch diagnostic',JSON.stringify({before,afterFollow,afterGreen}));
   await page.screenshot({path:`.qa/${engine}-11216-deep-space.png`});
-  await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
   assert.equal(afterFollow.follow,true,'Follow did not activate after a native slider exit');
-  assert.ok(afterGreen.autopilot||afterGreen.scene==='system','Green travel lever did not activate after automatic star selection');
-  return {nativeDeepSpaceControls:{before,afterFollow,afterGreen}};
+  assert.ok(afterGreen.autopilot||afterGreen.scene==='system'||afterGreen.distance<before.distance,'Green travel lever did not activate after automatic star selection');
+  await page.waitForFunction(()=>!window.__game.state.autopilot);
+  await tap('primaryAction');
+  assert.equal(await page.evaluate(()=>window.__game.state.scene),'system','Green lever could not enter the reached system');
+  await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+  const layouts=[];
+  for(const viewport of [{width:667,height:375},{width:844,height:390},{width:1024,height:768}]){
+    await page.setViewportSize(viewport);
+    await page.evaluate(()=>{const g=window.__game;g.state.followShip=false;g.state.centerZoom=null;g.settings.reducedMotion=false;g.settings.controls='touch';g.settings.terminalResizeHandles=true;g.applySettings();window.__qaPause=false;g.frame(performance.now());});
+    await page.waitForTimeout(400);
+    const input=await page.locator('#flightSpeed').boundingBox();
+    await page.touchscreen.tap(input.x+input.width-3,input.y+input.height/2);
+    await page.waitForFunction(()=>window.__game.state.scene==='chart');
+    await tap('followShipButton');
+    await page.waitForFunction(()=>window.__game.state.followShip);
+    assert.equal(await page.locator('#flightSpeed').inputValue(),'2');
+    await tap('homeButton');await page.waitForFunction(()=>window.__game.state.centerReady);
+    assert.equal(await page.evaluate(()=>window.__game.state.scene),'chart');
+    await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+    assert.equal(await page.locator('#terminalClear').isVisible(),false);
+    await tap('secondaryAction');await page.waitForTimeout(400);
+    assert.equal(await page.locator('#terminalClear').isVisible(),true);
+    const layout=await page.evaluate(()=>{
+      const rect=id=>document.getElementById(id).getBoundingClientRect(),head=document.querySelector('#targetCard .terminal-head').getBoundingClientRect();
+      const ids=['terminalResizeTop','terminalResizeLeft','terminalClear','secondaryAction'];
+      const buttons=ids.map(id=>{const r=rect(id);return {id,center:(r.top+r.bottom)/2,hit:document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2)?.closest('button')?.id};});
+      const readout=rect('flightReadout');return {buttons,headCenter:(head.top+head.bottom)/2,paddingTop:getComputedStyle(document.querySelector('#targetCard .terminal-head')).paddingTop,arrowFrame:getComputedStyle(document.getElementById('terminalResizeTop'),'::before').width,readout:{width:readout.width,left:readout.left,overflow:document.getElementById('flightReadout').scrollWidth>document.getElementById('flightReadout').clientWidth,clockFont:getComputedStyle(document.getElementById('clock')).fontSize,coordsFont:getComputedStyle(document.getElementById('coordsReadout')).fontSize}};
+    });
+    assert.equal(layout.paddingTop,'0px');assert.equal(layout.arrowFrame,'32px');
+    for(const b of layout.buttons){assert.ok(Math.abs(b.center-layout.headCenter)<=2,JSON.stringify({viewport,layout}));assert.equal(b.hit,b.id);}
+    assert.ok(layout.readout.width<=180&&layout.readout.left<=4&&!layout.readout.overflow,JSON.stringify(layout));assert.equal(layout.readout.clockFont,'10px');assert.equal(layout.readout.coordsFont,'9px');
+    await page.screenshot({path:`.qa/${engine}-11216-terminal-${viewport.width}.png`});
+    const oldWidth=await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().width);
+    const grip=await page.locator('#terminalResizeLeft').boundingBox();await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await page.mouse.down();await page.mouse.move(grip.x+grip.width/2-12,grip.y+grip.height/2,{steps:4});await page.mouse.up();
+    assert.ok(await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().width)>oldWidth,'Smaller arrow could not resize by dragging');
+    await tap('secondaryAction');assert.equal(await page.locator('#terminalClear').isVisible(),false);
+    // The log must release the dashboard before camera and travel inputs resume.
+    await tap('journalButton');await page.waitForTimeout(700);await tap('journalClose');await page.waitForFunction(()=>!window.__game.state.journalOpen);
+    assert.equal(await page.locator('#app').evaluate(e=>e.inert),false);
+    await page.evaluate(()=>{const g=window.__game;g.state.followShip=false;g.state.centerZoom=null;g.updateUI();});await tap('followShipButton');
+    assert.equal(await page.evaluate(()=>window.__game.state.centerZoom?.centerAction),'follow');
+    await page.evaluate(()=>{const g=window.__game;g.state.save.chart={x:g.state.selected.x,y:g.state.selected.y};g.updateUI();});await tap('primaryAction');
+    assert.equal(await page.evaluate(()=>window.__game.state.scene),'system');layouts.push({viewport,layout});
+  }
+  return {nativeDeepSpaceControls:{before,afterFollow,afterGreen},layouts};
 }

@@ -1,6 +1,14 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.16",
+    "items": [
+      "Activate the green travel lever for automatic target selections after launching and entering Deep Space. Exercise Follow, Center, travel, log closing and immediate Warp exits through native touch input with the real game loop running.",
+      "Enlarge the date/time and coordinate text in a narrower, 180px top-left panel, with date, time and coordinate axes on separate lines.",
+      "Center the terminal header controls vertically, reduce the visible white-arrow frames while retaining their touch area, and show Clear Terminal only when the terminal is open."
+    ]
+  },
+  {
     "version": "1.12.15",
     "items": [
       "Keep the Deep Space speed slider fixed at Warp. Ignore stale lower-speed inputs, clear completed warp transitions, and allow rapid touch activation of Center and Follow immediately after exiting a system. Re-enter systems through the green target travel control.",

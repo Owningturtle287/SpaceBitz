@@ -24,9 +24,9 @@
 .topbar{padding:3px 3px 0;gap:12px;align-items:flex-start}
 .flight-instruments{display:flex;align-items:center;gap:10px;min-width:0;pointer-events:none}
 .flight-instruments .utility-stack{pointer-events:auto;flex:none}
-.topbar .flight-readout{flex:none;width:224px;max-width:calc(48vw - 50px);min-height:58px;padding:10px 12px 7px max(20px,env(safe-area-inset-left));margin:0;border:2px solid #81979d;border-top-left-radius:calc(var(--dashboard-corner) - 3px);clip-path:none;box-shadow:inset 1px 1px #bfd0cb,inset -1px -1px #293f4e;background:rgb(16 30 50 / 25%);overflow:hidden}
-.topbar .flight-readout #clock{white-space:nowrap;font-size:8px;line-height:1.6}
-.topbar .flight-readout #telemetry{font-size:7px;line-height:1.7;overflow-wrap:anywhere}
+.topbar .flight-readout{flex:none;width:180px;max-width:calc(48vw - 50px);min-height:58px;padding:10px 8px 7px max(20px,env(safe-area-inset-left));margin:0;justify-items:start;border:2px solid #81979d;border-top-left-radius:calc(var(--dashboard-corner) - 3px);clip-path:none;box-shadow:inset 1px 1px #bfd0cb,inset -1px -1px #293f4e;background:rgb(16 30 50 / 25%);overflow:hidden}
+.topbar .flight-readout #clock{white-space:pre-line;font-size:10px;line-height:1.6;letter-spacing:0;text-align:left}
+.topbar .flight-readout #telemetry{font-size:9px;line-height:1.7;overflow-wrap:anywhere;white-space:pre-line;text-align:left}
 .top-actions{margin-left:auto;gap:0}
 .top-actions .mission-tools{display:flex;align-items:center;gap:10px;width:auto;flex:none}
 .topbar .top-system-chart{width:194px;max-width:32vw;margin:0;border:2px solid #81979d;border-top-right-radius:calc(var(--dashboard-corner) - 3px);clip-path:none;box-shadow:inset 1px 1px #bfd0cb,inset -1px -1px #293f4e;background:rgb(16 30 50 / 25%)}
