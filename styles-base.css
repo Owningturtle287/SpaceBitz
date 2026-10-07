@@ -194,7 +194,7 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .mission-toggle{border:2px solid #6887a1;background:var(--panel);box-shadow:var(--frame)}
 .clock{border:1px solid #48647e;box-shadow:inset 1px 1px #6687a140;padding:5px 8px;font-size:9px}
 .target-distance{margin:0 0 8px;color:#aec6cf;font:10px/1.4 var(--mono);overflow-wrap:anywhere}
-#systemFit{display:block;width:100%;text-align:center;border-top:1px solid var(--line);margin-top:5px;font-size:9px}{transform:rotate(26deg)}{fill:#baf9d1}
+#systemFit{display:block;width:100%;text-align:center;border-top:1px solid var(--line);margin-top:5px;font-size:9px}
 @media(max-width:600px){.top-actions{gap:5px}
 .time-stack{max-width:140px}
 .clock{font-size:8px;max-width:none}

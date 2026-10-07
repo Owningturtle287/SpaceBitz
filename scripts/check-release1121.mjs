@@ -57,11 +57,11 @@ export async function checkRelease1121(page,engine){
   const camera=await page.evaluate(()=>{const g=window.__game;g.update(8000,0);if(g.state.panUntil!==Infinity)throw Error('Pan still times out');return {...g.state.camera};});
   await page.waitForTimeout(2800);assert.deepEqual(await page.evaluate(()=>{window.__game.update(8000,0);return {...window.__game.state.camera};}),camera);
   const manual=await page.evaluate(()=>{const g=window.__game;g.state.joy.x=.5;g.update(100,0);g.state.joy.x=0;return {pan:g.state.panUntil,camera:{...g.state.camera}};});assert.equal(manual.pan,0);assert.deepEqual(manual.camera,camera);
-  // Pick an empty square; its green arrow and red X remain compact and cancellable.
+  // Pick an empty square; its travel lever and overhead red X remain compact and cancellable.
   await page.evaluate(()=>{const g=window.__game;g.state.camera={x:1e7,y:1e7};g.state.panUntil=Infinity;g.state.centerZoom=null;g.state.zoom=.1;});
   await page.mouse.click(420,190);await page.mouse.click(420,190);await page.waitForTimeout(650);await page.evaluate(()=>{window.__game.frame(performance.now());window.__game.positionContext();});
   assert.equal(await page.locator('#travelControls').isVisible(),true);assert.equal(await page.locator('#primaryAction svg').getAttribute('shape-rendering'),'crispEdges');assert.equal(await page.locator('#primaryAction').getAttribute('aria-label'),'Go Here');
-  const controls=await page.locator('#travelControls').boundingBox();assert.ok(controls.width<90&&controls.height<=50);assert.equal(await page.locator('#contextActions').isVisible(),false);
+  const controls=await page.locator('#travelControls').boundingBox();assert.ok(controls.width<90&&controls.height<=84);assert.equal(await page.locator('#contextActions').isVisible(),false);
   await page.screenshot({path:`.qa/${engine}-1121-coordinate.png`});await page.locator('#cancelTravel').click();assert.equal(await page.locator('#contextActions').isVisible(),false);
   const art=await page.evaluate(async()=>{
     const {paintHomeMarker}=await import('/presentation.js'),{paintBrownGlow,paintBrownAtmosphere}=await import('/substellar.js'),{makeStar}=await import('/universe.js');

@@ -61,6 +61,12 @@ try{
   const startupMs=Date.now()-started;assert.ok(startupMs<10000,`Startup stalled: ${startupMs}ms`);
   await page.evaluate(async()=>{await document.fonts.ready;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
   await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+  // Exercise the current device controls before the longer renderer soak, then
+  // restore the exact launch fixture so the simulation checks stay independent.
+  const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
+  const release11213=await checkRelease11213(page,engine);
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
+  await page.waitForTimeout(350);
   const initial=await page.evaluate(()=>{
     const c=document.getElementById('sky'),g=c.getContext('2d'),s=window.__game.state,r=c.getBoundingClientRect(),m=g.getTransform();
     const image=c.toDataURL(),pixels=g.getImageData(c.width/2-20,c.height/2-30,40,60).data;let shipPixels=0;
@@ -507,7 +513,6 @@ try{
   const release1121=await checkRelease1121(page,engine);
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
-  const release11213=await checkRelease11213(page,engine);
   const release11212=await checkRelease11212(page,engine);
   assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}
