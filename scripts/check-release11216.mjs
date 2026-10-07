@@ -73,7 +73,9 @@ export async function checkRelease11216(page,engine){
     assert.equal(await page.evaluate(()=>window.__game.state.centerZoom?.centerAction),'follow');
     await page.evaluate(()=>{const g=window.__game;g.update(1300,0);window.__qaPause=false;g.frame(performance.now());});
     const beforeMove=await page.evaluate(()=>({...window.__game.state.save.chart})),joy=await page.locator('#joystick').boundingBox();
-    await page.mouse.move(joy.x+joy.width/2,joy.y+joy.height/2);await page.mouse.down();await page.mouse.move(joy.x+joy.width-10,joy.y+joy.height/2);await page.waitForTimeout(150);await page.mouse.up();
+    await page.mouse.move(joy.x+joy.width/2,joy.y+joy.height/2);await page.mouse.down();await page.mouse.move(joy.x+joy.width-10,joy.y+joy.height/2);
+    const held=await page.evaluate(()=>({...window.__game.state.joy}));assert.ok(held.x>0,'Joystick did not accept the pointer: '+JSON.stringify(held));
+    await page.waitForFunction(x=>window.__game.state.save.chart.x>x,beforeMove.x,{timeout:5000});await page.mouse.up();
     const moved=await page.evaluate(async()=>{window.__qaPause=true;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));const s=window.__game.state;return {position:s.save.chart,camera:s.camera,follow:s.followShip,joy:s.joy};});
     assert.ok(moved.position.x>beforeMove.x,'Joystick did not move the ship in Deep Space');assert.equal(moved.follow,true);assert.deepEqual(moved.camera,moved.position);assert.deepEqual(moved.joy,{x:0,y:0});
     await page.evaluate(()=>{const g=window.__game;g.state.save.chart={x:g.state.selected.x,y:g.state.selected.y};g.updateUI();});await tap('primaryAction');
