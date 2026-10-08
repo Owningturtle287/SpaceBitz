@@ -26,10 +26,10 @@ button:active:not(:disabled){filter:brightness(.85)}
 .text-button{min-height:38px;padding:6px 4px;border:0;background:none;color:var(--cyan);font:10px/1.5 var(--pixel);text-align:left}
 .text-button:hover{color:var(--gold)}
 .icon-button{min-width:44px;min-height:44px;display:grid;place-items:center;padding:6px;font-size:18px;flex:none}
-.overlay{position:fixed;inset:0;z-index:10;display:none;place-items:center;overflow:auto;overscroll-behavior:contain;padding:calc(24px + env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) calc(24px + env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));background:rgb(3 9 24 / 25%)}
+.overlay{position:fixed;inset:0;z-index:10;display:none;place-items:center;overflow:auto;overscroll-behavior:contain;padding:calc(24px + var(--safe-top,0px)) max(20px,var(--safe-right,0px)) calc(24px + var(--safe-bottom,0px)) max(20px,var(--safe-left,0px));background:rgb(3 9 24 / 25%)}
 .overlay.visible{display:grid}
 #welcome{background:transparent}
-#welcome .welcome-card{width:min(560px,100%);padding:20px 24px;max-height:calc(100dvh - 48px);overflow:auto;background:none;border:0;box-shadow:none}
+#welcome .welcome-card{width:min(560px,100%);padding:20px 24px;max-height:calc(calc(var(--view-height) * 1) - 48px);overflow:auto;background:none;border:0;box-shadow:none}
 .menu-stage{width:100%}
 .main-menu-stage{position:relative;display:grid;gap:28px;text-align:center;padding:24px 0}
 .main-menu-version{justify-self:center;color:#8ca4bb;font-size:10px;order:3;margin-top:0}
@@ -72,7 +72,7 @@ button:active:not(:disabled){filter:brightness(.85)}
 .mission-toggle strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:12px/1.3 var(--pixel)}
 .mission-chevron{font-size:20px;color:var(--gold)}
 .mission-dropdown.open .mission-chevron{transform:rotate(180deg)}
-.mission-content{position:absolute;left:-2px;top:calc(100% + 8px);width:calc(100% + 4px);padding:6px;max-height:min(52dvh,390px);overflow:auto;overscroll-behavior:contain;border:2px solid #6887a1;background:rgb(13 27 46 / 25%);box-shadow:var(--frame)}
+.mission-content{position:absolute;left:-2px;top:calc(100% + 8px);width:calc(100% + 4px);padding:6px;max-height:min(calc(var(--view-height) * 0.52),390px);overflow:auto;overscroll-behavior:contain;border:2px solid #6887a1;background:rgb(13 27 46 / 25%);box-shadow:var(--frame)}
 .mission-content>p,.mission-content .legend{display:none}
 .body-list{display:grid;gap:2px}
 .body-entry{display:flex;align-items:center;gap:8px;width:100%;min-height:30px;padding:5px 6px;border:1px solid transparent;background:none;color:#c3d3df;text-align:left;font:12px var(--mono)}
@@ -98,13 +98,13 @@ button:active:not(:disabled){filter:brightness(.85)}
 .center-button.center-custom{cursor:move;border-style:dashed;border-color:var(--gold)}
 .center-button.center-custom:after{content:'DRAG';position:absolute;top:-16px;font:8px var(--pixel);color:var(--gold)}
 body.center-editing .center-button{outline:2px solid var(--gold);outline-offset:4px}
-#joystick{display:none;position:absolute;left:clamp(12px,calc(var(--joy-x,16%) - 37px),calc(100vw - 86px));bottom:calc(24px + env(safe-area-inset-bottom) + var(--joy-offset,0px));width:74px;height:74px;border:2px solid #59758d;background:rgb(16 30 50 / 25%);box-shadow:var(--frame);touch-action:none}
+#joystick{display:none;position:absolute;left:clamp(12px,calc(var(--joy-x,16%) - 37px),calc(calc(var(--view-width) * 1) - 86px));bottom:calc(24px + var(--safe-bottom,0px) + var(--joy-offset,0px));width:74px;height:74px;border:2px solid #59758d;background:rgb(16 30 50 / 25%);box-shadow:var(--frame);touch-action:none}
 #joystick:before{content:'';position:absolute;border:2px dashed #58758b}
 #joystick #stick{position:absolute;left:50%;top:50%;background:var(--cyan);border:2px solid #dcffdf;box-shadow:inset -4px -4px #4f9ba6,3px 3px #030713;transform:translate(calc(-50% + var(--jx,0px)),calc(-50% + var(--jy,0px)))}
 body[data-controls=touch] #joystick{display:block}
 body[data-controls=desktop] #joystick{display:none}
 @media(pointer:coarse){body[data-controls=auto] #joystick{display:block}}
-.modal-card{width:min(560px,100%);padding:24px;max-height:min(86dvh,800px);overflow:auto}
+.modal-card{width:min(560px,100%);padding:24px;max-height:min(calc(var(--view-height) * 0.86),800px);overflow:auto}
 .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px;padding-bottom:14px;border-bottom:2px solid #45657d}
 .modal-head h2{font:22px/1.5 var(--pixel);color:var(--gold);margin:8px 0 0}
 .modal-card p{font-size:13px;line-height:1.65;color:#b7cad8}
@@ -133,7 +133,7 @@ body[data-controls=desktop] #joystick{display:none}
 .changelog-version li+li{margin-top:5px}
 body[data-reduced-motion=true] *,body[data-reduced-motion=true] *:before,body[data-reduced-motion=true] *:after{scroll-behavior:auto!important;transition:none!important}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
-@media(max-width:600px){#welcome .welcome-card{padding:12px 4px}
+@container game (max-width:600px){#welcome .welcome-card{padding:12px 4px}
 .main-menu-stage{gap:28px}
 .main-menu-actions{width:90%;max-width:330px}
 .menu-choice{font-size:12px;min-height:44px}
@@ -142,13 +142,13 @@ body[data-reduced-motion=true] *,body[data-reduced-motion=true] *:before,body[da
 .generation-back,.generation-top .eyebrow{font-size:8px}
 .welcome-actions{gap:8px}
 .welcome-actions .button{font-size:9px;padding:9px 8px}
-.modal-card{padding:16px;max-height:calc(100dvh - 48px)}
+.modal-card{padding:16px;max-height:calc(calc(var(--view-height) * 1) - 48px)}
 .modal-head h2{font-size:18px}
 .setting-row{gap:8px;font-size:11px}
 .setting-value{max-width:56%;gap:5px}
 .setting-row select{max-width:175px;font-size:10px}
 .setting-row input[type=range]{width:84px}
-.topbar{gap:8px;padding:calc(10px + env(safe-area-inset-top)) 10px 0}
+.topbar{gap:8px;padding:calc(10px + var(--safe-top,0px)) 10px 0}
 .top-system-chart{width:140px}
 .mission-toggle{min-height:48px;padding:8px}
 .mission-toggle strong{font-size:12px}
@@ -158,10 +158,10 @@ body[data-reduced-motion=true] *,body[data-reduced-motion=true] *:before,body[da
 .utility-button{width:36px;height:36px;min-width:36px;min-height:36px}
 .target h2{font-size:12px}
 .center-button{width:46px;height:40px}}
-@media(orientation:landscape) and (max-height:620px){.overlay{padding:12px 20px}
-#welcome .welcome-card{max-height:calc(100dvh - 24px);padding:8px 20px}
+@container game (orientation:landscape) and (max-height:620px){.overlay{padding:12px 20px}
+#welcome .welcome-card{max-height:calc(calc(var(--view-height) * 1) - 24px);padding:8px 20px}
 .main-menu-stage{padding:4px 0;gap:12px}
-.hero-logo{width:min(390px,70vw);margin:0 auto}
+.hero-logo{width:min(390px,calc(var(--view-width) * 0.7));margin:0 auto}
 .main-menu-actions{width:300px;gap:9px}
 .menu-choice{min-height:40px;font-size:11px}
 .main-menu-version{font-size:8px}
@@ -170,8 +170,8 @@ body[data-reduced-motion=true] *,body[data-reduced-motion=true] *:before,body[da
 .create-row{margin-bottom:12px;gap:5px}
 .welcome-actions{margin:16px 0}
 .saved-games{max-height:110px}
-.modal-card{max-height:calc(100dvh - 24px);padding:18px}
-.topbar{padding-top:calc(8px + env(safe-area-inset-top))}
+.modal-card{max-height:calc(calc(var(--view-height) * 1) - 24px);padding:18px}
+.topbar{padding-top:calc(8px + var(--safe-top,0px))}
 .top-system-chart{width:164px}
 .mission-toggle{min-height:42px;padding:6px 10px}
 .mission-toggle strong{font-size:12px}
@@ -179,9 +179,9 @@ body[data-reduced-motion=true] *,body[data-reduced-motion=true] *:before,body[da
 .utility-stack{gap:6px}
 .clock{font-size:9px}
 .target h2{font-size:12px}
-#joystick{width:68px;height:68px;bottom:calc(16px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}
+#joystick{width:68px;height:68px;bottom:calc(16px + var(--safe-bottom,0px) + var(--joy-offset,0px))}
 .center-button{width:46px;height:40px}}
-@media(max-width:360px){.top-system-chart{width:136px}
+@container game (max-width:360px){.top-system-chart{width:136px}
 .clock{max-width:94px;font-size:7px}
 .generation-stage{padding:14px}
 .welcome-actions{flex-direction:column}
@@ -195,14 +195,14 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .clock{border:1px solid #48647e;box-shadow:inset 1px 1px #6687a140;padding:5px 8px;font-size:9px}
 .target-distance{margin:0 0 8px;color:#aec6cf;font:10px/1.4 var(--mono);overflow-wrap:anywhere}
 #systemFit{display:block;width:100%;text-align:center;border-top:1px solid var(--line);margin-top:5px;font-size:9px}
-@media(max-width:600px){.top-actions{gap:5px}
+@container game (max-width:600px){.top-actions{gap:5px}
 .time-stack{max-width:140px}
 .clock{font-size:8px;max-width:none}
 #telemetry.clock{font-size:8px}
 .center-reticle{width:20px;height:20px}}
-@media(orientation:landscape) and (max-height:620px){.time-stack{max-width:235px}
+@container game (orientation:landscape) and (max-height:620px){.time-stack{max-width:235px}
 .utility-button{width:34px;height:34px;min-width:34px;min-height:34px}}
-@media(orientation:landscape){#joystick{left:clamp(max(6px,env(safe-area-inset-left)),calc(var(--joy-x,16%) - 37px - 6vw),calc(100vw - 86px - env(safe-area-inset-right)));bottom:calc(6px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}
+@container game (orientation:landscape){#joystick{left:clamp(max(6px,var(--safe-left,0px)),calc(var(--joy-x,16%) - 37px - calc(var(--view-width) * 0.06)),calc(calc(var(--view-width) * 1) - 86px - var(--safe-right,0px)));bottom:calc(6px + var(--safe-bottom,0px) + var(--joy-offset,0px))}}
 .navigation-controls{position:fixed;z-index:8;display:flex;align-items:center;gap:6px;width:max-content}
 .navigation-controls .center-button,#mapButton{position:relative;inset:auto;transform:none;width:56px;height:52px;min-width:56px;min-height:52px;padding:4px;display:grid;align-content:center;justify-items:center;gap:3px}
 
@@ -234,19 +234,19 @@ button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visi
 .rarity-total.invalid,.generation-error{color:#f69485!important}
 .log-item{background:#0d1a2d;font:11px/1.8 var(--pixel);padding-right:12px}
 .log-item small{font:10px/1.6 var(--mono)}
-@media(max-width:600px){.opaque-panel .modal-head{top:-16px}
+@container game (max-width:600px){.opaque-panel .modal-head{top:-16px}
 .rarity-row{grid-template-columns:minmax(0,1fr) 84px 10px}
 .rarity-total{font-size:9px}}
-body[data-scene=surface] .mission-content{width:260px;max-width:calc(100vw - 32px);max-height:calc(100dvh - 160px)}
-@media(orientation:landscape){#targetCard{top:auto;bottom:calc(6px + env(safe-area-inset-bottom));right:max(6px,env(safe-area-inset-right));width:156px;max-height:calc(100dvh - 112px);overflow:auto;padding:8px}
+body[data-scene=surface] .mission-content{width:260px;max-width:calc(calc(var(--view-width) * 1) - 32px);max-height:calc(calc(var(--view-height) * 1) - 160px)}
+@container game (orientation:landscape){#targetCard{top:auto;bottom:calc(6px + var(--safe-bottom,0px));right:max(6px,var(--safe-right,0px));width:156px;max-height:calc(calc(var(--view-height) * 1) - 112px);overflow:auto;padding:8px}
 #targetCard h2{font-size:10px;margin-bottom:6px}
 #targetCard .target-distance{font-size:9px;margin-bottom:6px}
 #targetCard .button{font-size:7px;padding:5px;min-height:30px}}
-@media(max-width:600px){.flight-readout{max-width:164px;padding:5px 6px;gap:3px}
+@container game (max-width:600px){.flight-readout{max-width:164px;padding:5px 6px;gap:3px}
 #clock,#telemetry{font-size:10px}
 .navigation-controls .center-button,#mapButton{width:52px;height:48px;min-width:52px;min-height:48px}
 #telemetry{gap:3px 6px}}
-@media(max-width:360px){.top-system-chart{width:120px}
+@container game (max-width:360px){.top-system-chart{width:120px}
 .flight-readout{max-width:142px}
 #clock,#telemetry{font-size:9px}}
 #mapButton{overflow:visible}
@@ -254,15 +254,15 @@ body[data-scene=surface] .mission-content{width:260px;max-width:calc(100vw - 32p
 #speedReadout{color:#b8dafa;font-size:9px}
 .mission-tools{display:flex;align-items:flex-start;gap:6px;min-width:0;flex:none}
 #systemFit.system-center{display:grid;place-items:center;width:38px;height:38px;min-width:38px;min-height:38px;padding:4px;margin:0;border:2px solid #6c8da3;background:var(--panel)}
-#targetCard{top:auto;bottom:calc(6px + env(safe-area-inset-bottom));right:max(6px,env(safe-area-inset-right));width:156px;max-height:calc(100dvh - 130px);overflow:auto;padding:8px}
+#targetCard{top:auto;bottom:calc(6px + var(--safe-bottom,0px));right:max(6px,var(--safe-right,0px));width:156px;max-height:calc(calc(var(--view-height) * 1) - 130px);overflow:auto;padding:8px}
 #targetCard h2{font-size:10px;margin-bottom:6px}
 #targetCard .target-distance{margin-bottom:6px}
 #targetCard .button{font-size:7px;padding:5px;min-height:40px}
-@media(max-width:600px){.mission-tools{flex:0 1 162px}
+@container game (max-width:600px){.mission-tools{flex:0 1 162px}
 .mission-tools .top-system-chart{width:116px;min-width:0;flex:1}
 .mission-toggle strong{font-size:10px}
 .mission-toggle .eyebrow{font-size:6px;letter-spacing:0}
 .flight-readout{max-width:145px}}
-@media(max-width:360px){.mission-tools{flex-basis:136px}
+@container game (max-width:360px){.mission-tools{flex-basis:136px}
 .flight-readout{max-width:120px}
 #clock,#telemetry{font-size:8px}}

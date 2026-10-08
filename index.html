@@ -13,6 +13,7 @@
   <title>SpaceBitz — The small universe</title>
 </head>
 <body>
+  <div id="gameViewport">
   <canvas id="sky" aria-label="SpaceBitz space exploration game"></canvas>
   <div class="vignette" aria-hidden="true"></div>
   <div id="app" hidden>
@@ -55,6 +56,7 @@
     <button id="dashboardResize" class="terminal-resize dashboard-resize" type="button" aria-label="Resize dashboard height" hidden><svg viewBox="0 0 14 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M5 0h4v1h2v1h2v1H1V2h2V1h2zM1 4h12v1h-2v1H3V5H1z"/></svg></button>
     <div class="terminal-dock" id="terminalDock">
     <div id="mapButton" class="flight-speed" role="group" aria-label="Flight speed selector" data-stage="0">
+      <span class="flight-speed-title">Speed Control</span>
       <span id="flightSpeedLabel" class="flight-speed-label">ORBIT</span>
       <div class="flight-speed-track">
         <svg class="speed-taper" viewBox="0 0 90 30" shape-rendering="crispEdges" aria-hidden="true">
@@ -119,7 +121,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.12.20</span>
+        <span class="version-chip main-menu-version">v1.12.21</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>
@@ -159,8 +161,8 @@
   <div id="modal" class="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle" hidden>
     <div class="modal-card glass"><div class="modal-head"><div class="modal-heading"><div class="eyebrow" id="modalEyebrow">FIELD NOTES</div><div class="modal-title-row"><h2 id="modalTitle">Details</h2></div></div><button id="modalClose" class="icon-button" aria-label="Close dialog">✕</button></div><div id="modalContent"></div></div>
   </div>
-  <div id="landscapeGate" class="landscape-gate" role="dialog" aria-modal="true" aria-labelledby="landscapeTitle" hidden><svg viewBox="0 0 48 32" shape-rendering="crispEdges" aria-hidden="true"><path fill="#809bad" d="M2 4h44v24H2z"/><path fill="#091d27" d="M6 8h36v16H6z"/><path fill="#8ee9d4" d="M14 12h20v8H14zM0 12h2v8H0zm46 0h2v8h-2z"/></svg><h2 id="landscapeTitle">ROTATE TO LANDSCAPE</h2><p>SpaceBitz is played in landscape.<br>Your voyage waits while you rotate.</p></div>
   <audio id="soundtrackAudio" preload="auto" autoplay playsinline loop src="./audio/nostalgic_melody_soft_synth.mp3"></audio>
+  </div>
   <script type="module" src="./main.js"></script>
 </body>
 </html>

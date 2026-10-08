@@ -29,7 +29,7 @@ export function acknowledgeLogEntries(save,entries){
 export function recordEvent(save,{name,action,kind,category,visual}){
   if(!save)return;save.logSequence||=0;
   const image=normalizeLogVisual(visual);
-  const entry=changed(save,{name,action,days:save.days,...kind&&{kind},...category&&{category},...image&&{visual:image}});
+  const entry=changed(save,{name,action,days:save.days,...kind&&{kind},...category==='item'&&{category},...image&&{visual:image}});
   save.log.unshift(entry);return entry;
 }
 export function recordAction(save,text){
@@ -38,13 +38,7 @@ export function recordAction(save,text){
 }
 export const LOG_FILTERS=Object.freeze([['all','All'],['star','Stars'],['planet','Planets'],['moon','Moons'],['item','Items'],['status','Status Updates']]);
 export function logCategory(entry){
-  if(entry.kind!=='object'){
-    if(['star','planet','moon','item'].includes(entry.category))return entry.category;
-    if(/sample|item/i.test(entry.action))return 'item';
-    if(/first landing|home planet/i.test(entry.action))return 'planet';
-    if(/entered system|stellar survey started/i.test(entry.action))return 'star';
-    return 'status';
-  }
+  if(entry.kind!=='object')return entry.category==='item'||/sample|item/i.test(entry.action)?'item':'status';
   if(['star','planet','moon','item'].includes(entry.category))return entry.category;
   if(entry.category==='dwarf-planet')return 'planet';
   if(entry.category)return 'item';
@@ -68,7 +62,7 @@ export function restoreLogEntry(entry,days){
   if(entry.kind==='object'&&typeof entry.objectKey==='string'&&typeof entry.data==='string')Object.assign(result,{kind:'object',objectKey:entry.objectKey.slice(0,720),type:typeof entry.type==='string'?entry.type.slice(0,180):'Object',data:entry.data.slice(0,32768)});
   else if(entry.kind==='action')result.kind='action';
   if(result.kind==='object')result.category=logCategory(entry);
-  else if(['star','planet','moon','item'].includes(entry.category))result.category=entry.category;
+  else if(entry.category==='item')result.category='item';
   const visual=normalizeLogVisual(entry.visual);if(visual)result.visual=visual;
   if(typeof entry.id==='string'&&entry.id.length<=750)result.id=entry.id;
   if(Number.isSafeInteger(entry.sequence)&&entry.sequence>0)result.sequence=entry.sequence;

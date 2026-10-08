@@ -1,5 +1,5 @@
 /* Generation workstation, terminal and flight dashboard. Cascade order is intentional. */
-#welcome .welcome-card:has(.generation-stage:not([hidden])){overflow:hidden;max-height:calc(100dvh - 20px);padding:4px}
+#welcome .welcome-card:has(.generation-stage:not([hidden])){overflow:hidden;max-height:calc(calc(var(--view-height) * 1) - 20px);padding:4px}
 .generation-stage{width:100%;margin:0;display:flex;flex-direction:column;overflow:hidden}
 .generation-top{flex:none;margin-bottom:10px}
 .generation-columns{display:grid;gap:22px;flex:1;min-height:0}
@@ -40,14 +40,14 @@
 .terminal-head{display:flex;align-items:center}
 .terminal-head .button,#targetCard .focus-object{min-height:28px;font-size:8px;padding:4px 6px}
 .terminal-status,#targetCard .target-distance{font-size:10px;color:#84ba98;margin:3px 0 0}
-.terminal-screen{margin-top:8px;max-height:min(48dvh,360px);overflow:auto;overscroll-behavior:contain;background:repeating-linear-gradient(0deg,#03110d 0px,#03110d 3px,#06180f 4px);padding:7px;border-top:1px solid #29583c;scrollbar-color:#4d8a61 #03110d}
+.terminal-screen{margin-top:8px;max-height:min(calc(var(--view-height) * 0.48),360px);overflow:auto;overscroll-behavior:contain;background:repeating-linear-gradient(0deg,#03110d 0px,#03110d 3px,#06180f 4px);padding:7px;border-top:1px solid #29583c;scrollbar-color:#4d8a61 #03110d}
 .terminal-screen pre{font:10px/1.7 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;margin:0;color:#9af5b1}
 .terminal-cursor{color:#b6ffc7;animation:terminal-blink 1s steps(1) infinite}
 @keyframes terminal-blink{50%{opacity:0}}
 .context-actions{position:absolute;z-index:7;top:0;left:0;will-change:transform}
 .context-actions .button{min-height:34px;padding:6px 9px;font-size:8px;background:#0b2822}
 .context-actions .primary{background:#174638;color:#c4fbd5}
-@media(orientation:landscape) and (max-height:500px){.generation-stage{padding:8px}
+@container game (orientation:landscape) and (max-height:500px){.generation-stage{padding:8px}
 .generation-top{margin-bottom:4px}
 .generation-columns{gap:12px}
 .create-row{margin-bottom:4px}
@@ -57,8 +57,8 @@
 .inline-editor .rarity-row{min-height:18px;margin:0}
 .inline-editor input{height:20px}
 .inline-editor .generation-error{min-height:14px}
-#targetCard.terminal{bottom:60px;width:310px;max-height:calc(100dvh - 125px)}
-.terminal-screen{max-height:calc(100dvh - 210px)}}
+#targetCard.terminal{bottom:60px;width:310px;max-height:calc(calc(var(--view-height) * 1) - 125px)}
+.terminal-screen{max-height:calc(calc(var(--view-height) * 1) - 210px)}}
 body[data-reduced-motion=true] .terminal-cursor{animation:none}
 @media(prefers-reduced-motion:reduce){.terminal-cursor{animation:none}}
 #targetCard .terminal-screen{box-sizing:border-box}
@@ -72,7 +72,7 @@ body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #
 .topbar button,.topbar .flight-readout,.topbar .mission-content{pointer-events:auto}
 .create-row input,.inline-editor input,.scientific-defaults select,.inline-editor select,.setting-row select,input[type=text],textarea{font-size:16px}
 #welcome .welcome-card:has(.generation-stage:not([hidden])){width:min(1280px,100%)}
-.generation-stage{height:min(760px,calc(100dvh - 28px));padding:12px}
+.generation-stage{height:min(760px,calc(calc(var(--view-height) * 1) - 28px));padding:12px}
 .generation-columns{grid-template-columns:minmax(0,1.4fr) minmax(220px,.9fr)}
 #generationFields{height:100%;display:flex;flex-direction:column;min-height:0}
 .generation-inputs,.universe-mode-row,.custom-warning,.generation-stage .welcome-actions{flex:none}
@@ -97,17 +97,17 @@ body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #
 .inline-editor .generation-error{min-height:28px}
 .inline-editor .editor-actions{margin-top:0;flex-wrap:wrap}
 .inline-editor .editor-actions .button{min-height:32px;padding:6px}
-@media(orientation:landscape) and (max-height:500px){.generation-stage{padding:8px}
+@container game (orientation:landscape) and (max-height:500px){.generation-stage{padding:8px}
 .inline-editor{gap:3px}
 .inline-editor .rarity-row{min-height:36px;font-size:12px}
 .scientific-value{min-height:25px;padding:2px 0;font-size:12px}
 .scientific-defaults select,.inline-editor select{height:30px}
 .inline-editor .generation-error{min-height:18px;font-size:11px}}
 .terminal-dock{position:absolute;z-index:6;min-height:0;pointer-events:none;transition:width .24s cubic-bezier(.22,.7,.25,1)}
-.terminal-dock:has(.expanded:not([hidden])){width:min(600px,calc(100vw - 330px))}
+.terminal-dock:has(.expanded:not([hidden])){width:min(600px,calc(calc(var(--view-width) * 1) - 330px))}
 .terminal-pocket{position:relative;height:0;overflow:hidden}
 #targetCard.terminal{position:absolute;inset:auto;right:0;bottom:0;width:100%;height:auto;min-height:64px;max-height:none;box-sizing:border-box;pointer-events:auto;font-size:12px;transition:none}
-#targetCard.terminal.expanded{height:min(70dvh,calc(100dvh - 115px));max-height:none;display:flex;flex-direction:column}
+#targetCard.terminal.expanded{height:min(calc(var(--view-height) * 0.7),calc(calc(var(--view-height) * 1) - 115px));max-height:none;display:flex;flex-direction:column}
 .terminal-head{flex:none;gap:6px}
 #targetCard .terminal-head .button,#targetCard .focus-object{height:24px;min-height:24px;padding:2px 6px}
 .terminal-head .focus-object{width:30px;min-width:30px}
@@ -130,11 +130,11 @@ body[data-reduced-motion=true] .context-actions,body[data-reduced-motion=true] #
 .log-glyph{width:12px;height:12px}
 .log-glyph:after{top:2px;height:1px;box-shadow:0 3px var(--cyan)}
 #journalButton{position:absolute;bottom:calc(100% + var(--log-gap,0px));pointer-events:auto;transition:bottom .24s cubic-bezier(.22,.7,.25,1)}
-@media(max-width:699px){.terminal-dock:has(.expanded:not([hidden])){width:calc(100vw - 32px)}
-#targetCard.terminal.expanded{height:min(70dvh,calc(100dvh - 220px))}
+@container game (max-width:699px){.terminal-dock:has(.expanded:not([hidden])){width:calc(calc(var(--view-width) * 1) - 32px)}
+#targetCard.terminal.expanded{height:min(calc(var(--view-height) * 0.7),calc(calc(var(--view-height) * 1) - 220px))}
 .terminal-data{font-size:11px;column-gap:14px}
-.terminal-visible #joystick{bottom:calc(var(--terminal-height,84px) + 16px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}
-.context-actions{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:min(320px,calc(100vw - 16px));pointer-events:none}
+.terminal-visible #joystick{bottom:calc(var(--terminal-height,84px) + 16px + var(--safe-bottom,0px) + var(--joy-offset,0px))}}
+.context-actions{display:flex;flex-direction:column;align-items:center;gap:4px;max-width:min(320px,calc(calc(var(--view-width) * 1) - 16px));pointer-events:none}
 .context-action-row{display:flex;align-items:center;gap:4px;opacity:0;transform:translateY(14px);transition:opacity .4s ease,transform .55s cubic-bezier(.22,.7,.25,1);pointer-events:none}
 .context-actions.ready .context-action-row{opacity:1;transform:translateY(0);pointer-events:auto}
 .context-name{border:1px solid #6fe1cf80;background:transparent;color:#e8fff9;padding:5px 8px;font:9px/1.4 var(--pixel);overflow-wrap:anywhere;text-align:center;max-width:100%}
@@ -173,9 +173,9 @@ body[data-reduced-motion=true] .terminal-dock,body[data-reduced-motion=true] .te
 .keyboard-row .pixel-key{flex:1}
 .keyboard-row:last-child .pixel-key{max-width:none;font-size:7px;flex:1}
 .keyboard-row:last-child .space-key{flex:2}
-#targetCard.terminal.keyboard-open{height:min(70dvh,calc(100dvh - 115px))}
-@media(max-width:699px){#targetCard.terminal.keyboard-open{height:min(70dvh,calc(100dvh - 220px))}}
-@media(min-width:700px) and (max-height:500px){.terminal-keyboard{gap:2px}
+#targetCard.terminal.keyboard-open{height:min(calc(var(--view-height) * 0.7),calc(calc(var(--view-height) * 1) - 115px))}
+@container game (max-width:699px){#targetCard.terminal.keyboard-open{height:min(calc(var(--view-height) * 0.7),calc(calc(var(--view-height) * 1) - 220px))}}
+@container game (min-width:700px) and (max-height:500px){.terminal-keyboard{gap:2px}
 .keyboard-row .pixel-key{height:20px;min-height:20px}}
 .follow-ship-button{border:1px solid #728c95;background:#14212d;color:#809c9c;box-shadow:inset 1px 0 #9cb5b5,inset -1px -1px #263e4e;clip-path:var(--pixel-corners);touch-action:manipulation}
 .follow-ship-button svg{display:block}
@@ -197,7 +197,7 @@ body[data-reduced-motion=true] #terminalButton{transition:none}
 #mapButton{position:absolute;right:calc(100% + var(--warp-gap));left:auto;top:auto;pointer-events:auto}
 .follow-ship-button{position:relative;top:auto;left:auto!important;transform:none;width:28px;height:26px;min-width:28px;min-height:26px;flex:none;padding:2px;display:grid;place-items:center}
 .follow-ship-button svg{width:24px;height:12px}
-@media(max-width:600px){.follow-ship-button{width:26px;height:24px;min-width:26px;min-height:24px}}
+@container game (max-width:600px){.follow-ship-button{width:26px;height:24px;min-width:26px;min-height:24px}}
 .context-actions{transition:none}
 .terminal-input-wrap{position:relative;flex:1;min-width:0;overflow:hidden}
 #terminalInput{width:100%;caret-color:transparent}
@@ -214,7 +214,7 @@ body[data-reduced-motion=true] #terminalButton{transition:none}
 .resizing.terminal-dock,.resizing .terminal-pocket{transition:none}
 body[data-reduced-motion=true] .terminal-input-caret{animation:none}
 @media(prefers-reduced-motion:reduce){.terminal-input-caret{animation:none}}
-@media(max-width:699px){#targetCard.terminal.expanded,#targetCard.terminal.keyboard-open{height:var(--terminal-user-height,min(70dvh,calc(100dvh - 220px)))}}
+@container game (max-width:699px){#targetCard.terminal.expanded,#targetCard.terminal.keyboard-open{height:var(--terminal-user-height,min(calc(var(--view-height) * 0.7),calc(calc(var(--view-height) * 1) - 220px)))}}
 :root{--mono:var(--pixel)}
 body{font-size:9px;line-height:1.7}
 #targetCard .terminal-status{font-size:8px;line-height:1.6}
@@ -236,18 +236,18 @@ body{font-size:9px;line-height:1.7}
 .inline-editor .rarity-row{grid-template-columns:minmax(0,1fr) 118px 10px;font-size:10px;line-height:1.6;gap:6px}
 .inline-editor .rarity-total{font-size:9px}
 .inline-editor .generation-error{font-size:9px;line-height:1.7}
-@media(max-width:600px){#clock{font-size:8px}
+@container game (max-width:600px){#clock{font-size:8px}
 #telemetry{font-size:7px}
 .terminal-data{column-gap:12px}
 .scientific-value,.scientific-value strong{font-size:9px}
 .inline-editor .rarity-row{font-size:9px}}
-@media(max-width:699px) and (orientation:landscape){#targetCard.terminal.expanded,#targetCard.terminal.keyboard-open{height:var(--terminal-user-height,min(70dvh,calc(100dvh - 115px)))}
-.terminal-visible #joystick{bottom:calc(6px + env(safe-area-inset-bottom) + var(--joy-offset,0px))}}
-@media(orientation:landscape) and (max-height:500px){.terminal-keyboard{gap:2px}
+@container game (max-width:699px) and (orientation:landscape){#targetCard.terminal.expanded,#targetCard.terminal.keyboard-open{height:var(--terminal-user-height,min(calc(var(--view-height) * 0.7),calc(calc(var(--view-height) * 1) - 115px)))}
+.terminal-visible #joystick{bottom:calc(6px + var(--safe-bottom,0px) + var(--joy-offset,0px))}}
+@container game (orientation:landscape) and (max-height:500px){.terminal-keyboard{gap:2px}
 .keyboard-row .pixel-key{height:20px;min-height:20px}}
-@media(orientation:landscape) and (max-height:500px){.terminal-keyboard{margin-top:3px;padding-top:3px}
+@container game (orientation:landscape) and (max-height:500px){.terminal-keyboard{margin-top:3px;padding-top:3px}
 .terminal-input-bar{margin-top:3px;padding-top:3px}}
-.terminal-dock{max-width:var(--terminal-max-width,calc(100vw - 80px))}
+.terminal-dock{max-width:var(--terminal-max-width,calc(calc(var(--view-width) * 1) - 80px))}
 #dashboardBase{box-sizing:border-box;height:calc(var(--dashboard-height,72px) + var(--dashboard-safe-bottom));border:3px solid #738995;background:none;box-shadow:inset 0 1px #bccdc7,inset 0 -1px #263e4b,0 -1px #18303d}
 #dashboardBase::before,#dashboardBase::after{top:4px;width:4px;height:4px;background:#c3d2ce;box-shadow:1px 1px #132833,inset 1px 1px #edf1da}
 #dashboardBase::before{left:5px}
@@ -264,24 +264,24 @@ body{font-size:9px;line-height:1.7}
 .terminal-dock.has-target #journalButton{right:calc(100% + 4px);bottom:calc((var(--deck-warp-height) - 32px)/2);width:32px;height:32px;min-width:32px;min-height:32px;padding:3px}
 .terminal-dock.has-target #journalButton .utility-label{font-size:6px}
 .terminal-dock:has(#mapButton[hidden]).has-target #journalButton{right:calc(100% + 4px)}
-@media(max-width:600px){#joystick,.terminal-visible #joystick{width:52px;height:52px;left:clamp(8px,calc(var(--joy-x,16%) - 26px),var(--deck-joy-max,calc(100vw - 180px)))}
+@container game (max-width:600px){#joystick,.terminal-visible #joystick{width:52px;height:52px;left:clamp(8px,calc(var(--joy-x,16%) - 26px),var(--deck-joy-max,calc(calc(var(--view-width) * 1) - 180px)))}
 .terminal-dock{--deck-warp-width:60px;--deck-warp-height:56px}}
 body[data-reduced-motion=true] #terminalButton,body[data-reduced-motion=true] #journalButton{transition:none}
 @media(prefers-reduced-motion:reduce){#terminalButton,#journalButton{transition:none}}
 .topbar>.flight-readout{margin-right:auto;justify-items:start;flex:0 1 auto}
 .top-actions{flex:none}
-@media(max-width:600px){.top-actions .mission-tools{flex:none;width:162px}}
-@media(max-width:360px){.top-actions .mission-tools{width:136px}}
+@container game (max-width:600px){.top-actions .mission-tools{flex:none;width:162px}}
+@container game (max-width:360px){.top-actions .mission-tools{width:136px}}
 #dashboardBase{clip-path:none}
-.dashboard-resize{position:fixed;z-index:5;left:calc(50% - 14px);bottom:calc(var(--dashboard-height,80px) - 4px + env(safe-area-inset-bottom));width:28px;height:8px;pointer-events:auto;cursor:ns-resize}
+.dashboard-resize{position:fixed;z-index:5;left:calc(50% - 14px);bottom:calc(var(--dashboard-height,80px) - 4px + var(--safe-bottom,0px));width:28px;height:8px;pointer-events:auto;cursor:ns-resize}
 .dashboard-resize svg{width:14px;height:6px}
 #mapButton{width:var(--deck-warp-width);height:var(--deck-warp-height);min-width:var(--deck-warp-width);min-height:var(--deck-warp-height);transition:right .24s cubic-bezier(.22,.7,.25,1)}
 .terminal-dock.has-target #mapButton{right:calc(100% + 40px)}
 .terminal-dock:has(#mapButton[hidden]).has-target #journalButton{bottom:0}
-@media(max-width:600px){#joystick,.terminal-visible #joystick{width:60px;height:60px;left:clamp(8px,calc(var(--joy-x,16%) - 30px),var(--deck-joy-max,calc(100vw - 205px)))}}
+@container game (max-width:600px){#joystick,.terminal-visible #joystick{width:60px;height:60px;left:clamp(8px,calc(var(--joy-x,16%) - 30px),var(--deck-joy-max,calc(calc(var(--view-width) * 1) - 205px)))}}
 body[data-reduced-motion=true] #mapButton{transition:none}
 @media(prefers-reduced-motion:reduce){#mapButton{transition:none}}
-@media(orientation:landscape){.terminal-dock{right:max(1px,min(8px,var(--deck-safe-right,env(safe-area-inset-right))))}}
+@container game (orientation:landscape){.terminal-dock{right:max(1px,min(8px,var(--deck-safe-right,var(--safe-right,0px))))}}
 .travel-controls{position:absolute;right:0;bottom:calc(100% + 6px);z-index:7;pointer-events:none;transition:right .32s cubic-bezier(.22,.7,.25,1),bottom .32s cubic-bezier(.22,.7,.25,1)}
 
 .travel-controls.ready .context-action-row{opacity:1;transform:translateY(0);pointer-events:auto}
@@ -301,10 +301,10 @@ body[data-reduced-motion=true] .travel-controls,body[data-reduced-motion=true] .
 body[data-reduced-motion=true] .travel-lamp{animation:none}
 @media(prefers-reduced-motion:reduce){.travel-controls,.travel-handle{transition:none}
 .travel-lamp{animation:none}}
-:root{--dashboard-row-height:68px;--dashboard-height:68px;--dashboard-corner:clamp(36px,14vmin,58px);--dashboard-safe-bottom:env(safe-area-inset-bottom,0px)}
+:root{--dashboard-row-height:68px;--dashboard-height:68px;--dashboard-corner:clamp(36px,calc(var(--view-min) * 0.14),58px);--dashboard-safe-bottom:var(--safe-bottom,0px)}
 #dashboardBase{border-radius:0 0 var(--dashboard-corner) var(--dashboard-corner)}
-.terminal-dock{--terminal-edge-inset:max(6px,min(12px,var(--deck-safe-right,env(safe-area-inset-right))));right:var(--terminal-edge-inset)}
-#joystick,.terminal-visible #joystick{left:clamp(6px,calc(var(--joy-x,16%) - 16vw),var(--deck-joy-max,6px));width:96px;height:calc(var(--dashboard-row-height) + var(--dashboard-safe-bottom) - 7px);bottom:4px;clip-path:none;border-radius:4px 4px 4px calc(var(--dashboard-corner) - 6px) / 4px 4px 4px calc(var(--dashboard-corner) - 4px);box-shadow:inset 2px 2px #41627a,inset -2px -2px #080f20;overflow:hidden}
+.terminal-dock{--terminal-edge-inset:max(6px,min(12px,var(--deck-safe-right,var(--safe-right,0px))));right:var(--terminal-edge-inset)}
+#joystick,.terminal-visible #joystick{left:clamp(6px,calc(var(--joy-x,16%) - calc(var(--view-width) * 0.16)),var(--deck-joy-max,6px));width:96px;height:calc(var(--dashboard-row-height) + var(--dashboard-safe-bottom) - 7px);bottom:4px;clip-path:none;border-radius:4px 4px 4px calc(var(--dashboard-corner) - 6px) / 4px 4px 4px calc(var(--dashboard-corner) - 4px);box-shadow:inset 2px 2px #41627a,inset -2px -2px #080f20;overflow:hidden}
 #joystick:before{inset:8px 16px;border-radius:3px 3px 3px 28px}
 #joystick #stick{width:32px;height:32px}
 body:has(#homeButton[data-center-position=above]) #joystick{height:calc(min(var(--dashboard-row-height),max(68px,calc(var(--dashboard-height) - 68px))) + var(--dashboard-safe-bottom) - 7px)}

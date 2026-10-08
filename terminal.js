@@ -1,5 +1,5 @@
 import {stellarRows,starFacts,years} from './star-info.js';
-import {habitableZone,orbitalElements} from './model.js';
+import {habitableZone,orbitalElements,bodyPosition} from './model.js';
 import {formatCoordinates,formatDistance,formatSystemKm,formatDiameter} from './scale.js';
 import {bodyKind,bodyLabel} from './body-classification.js';
 const number=(v,d=3)=>Number.isFinite(v)?v.toLocaleString('en-US',{maximumFractionDigits:d}):'Unknown';
@@ -43,7 +43,12 @@ export function terminalLines(object,system,context={}){
     add('ORBIT PERIOD',number(object.period)+' Earth days');add('ROTATION PERIOD',rotationText(object.rotationDays)+(object.rotationDays<0?' / retrograde':''));
     add('SEMIMAJOR AXIS',object.kind==='moon'?formatSystemKm(object.orbitKm):formatDistance(orbit.a,'system'));
     add('ECCENTRICITY',number(orbit.e,5));add('INCLINATION',number(orbit.inclination*180/Math.PI)+' deg');
-    if(object.parent)add('HOST',system.planets.find(p=>p.id===object.parent)?.name||object.parent);
+    const host=object.parent?system.planets.find(p=>p.id===object.parent):(system.stars||[system.star]).find(star=>star.id===object.orbitHost)||system.star;
+    if(host){
+      const location=bodyPosition(object,days,system),center=bodyPosition(host,days,system);
+      add(object.parent?'HOST':'HOST STAR',host.name);
+      add(object.parent?'DISTANCE FROM HOST PLANET':'DISTANCE FROM HOST STAR',formatDistance(Math.hypot(location.x-center.x,location.y-center.y),'system'));
+    }
     if(object.moons)add('MOON COUNT',object.moons.length);
     if(object.atmosphere){add('CLOUDS',object.atmosphere.label);add('WEATHER',object.atmosphere.wind.label);add('FEATURES',object.atmosphere.features.join(' / ')||'None recorded');}
     if(object.rings)add('RING OUTER DIAMETER',formatDiameter(object.rings.outerKm*2));

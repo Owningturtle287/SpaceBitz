@@ -1,0 +1,49 @@
+/* The browser viewport may turn; the game keeps one landscape layout. */
+:root{--view-width:100vw;--view-height:100dvh;--view-min:100vmin;--safe-left:env(safe-area-inset-left,0px);--safe-right:env(safe-area-inset-right,0px);--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+#gameViewport{position:fixed;left:0;top:0;width:var(--view-width);height:var(--view-height);overflow:hidden;transform-origin:0 0;transform:translate(0,0);container:game / size;isolation:isolate}
+#app{position:absolute;inset:0;pointer-events:none}
+#joystick,.navigation-controls{pointer-events:auto}
+.topbar .flight-readout{width:calc(154px + max(0px,var(--safe-left) - 20px));padding-right:6px}
+
+/* Full-screen surfaces cover the game, including their curved corners. */
+#modal:has(.settings-content){padding:0;overflow:hidden;background:#101e32}
+.modal-card:has(.settings-tabs){width:100%;height:100%;max-width:none;max-height:none;margin:0;box-shadow:inset 1px 1px #607e8c;border-radius:var(--dashboard-corner);padding:max(10px,var(--safe-top)) max(16px,var(--safe-right),calc(var(--dashboard-corner)*.65)) max(10px,var(--safe-bottom),calc(var(--dashboard-corner)*.4)) max(16px,var(--safe-left),calc(var(--dashboard-corner)*.65));background:#101e32}
+.modal-card:has(.settings-tabs) .modal-head{padding:0 0 7px}
+.modal-card:has(.settings-tabs) #modalClose{min-width:40px;min-height:40px;width:40px;height:40px}
+.settings-tabs{min-height:40px}
+.settings-footer{gap:8px;padding-top:8px}
+.settings-footer .button{min-height:38px}
+.journal-overlay{background:#03110d}
+.journal-panel{border-radius:var(--dashboard-corner)}
+.journal-head{padding:max(10px,var(--safe-top)) max(16px,var(--safe-right),calc(var(--dashboard-corner)*.65)) 8px max(16px,var(--safe-left),calc(var(--dashboard-corner)*.65))}
+.journal-filters,.journal-content{padding-left:max(16px,var(--safe-left));padding-right:max(16px,var(--safe-right))}
+.journal-pagination{padding:8px max(16px,var(--safe-right),calc(var(--dashboard-corner)*.65)) max(10px,var(--safe-bottom),calc(var(--dashboard-corner)*.4)) max(16px,var(--safe-left),calc(var(--dashboard-corner)*.65))}
+
+/* Equal insets and radii preserve the dashboard corner centers. */
+#joystick,.terminal-visible #joystick{width:108px;left:clamp(6px,calc(var(--joy-x,16%) - var(--view-width)*.16),var(--deck-joy-max,6px));bottom:6px;height:calc(var(--dashboard-row-height) + var(--dashboard-safe-bottom) - 12px);border-radius:4px 4px 4px calc(var(--dashboard-corner) - 6px);background:rgb(16 30 50 / 25%) radial-gradient(ellipse at center,#17354499,#10233366 65%,#07132199);box-shadow:inset 1px 1px #82a1ad,inset -2px -2px #080f20}
+body:has(#homeButton[data-center-position=above]) #joystick{height:calc(var(--dashboard-row-height) + var(--dashboard-safe-bottom) - 12px)}
+#joystick::before{inset:7px 15px;border:1px solid #58758b;border-radius:50%;background:linear-gradient(90deg,transparent calc(50% - .5px),#58758b88 50%,transparent calc(50% + .5px)),linear-gradient(transparent calc(50% - .5px),#58758b88 50%,transparent calc(50% + .5px))}
+#joystick #stick{width:38px;height:38px;border-color:#dcffdf;border-radius:8px;clip-path:var(--pixel-corners);background:#8ee9d4;box-shadow:inset 2px 2px #c4ffe7,inset -4px -4px #4f9ba6,3px 3px #030713}
+#stick::after{content:'';position:absolute;inset:11px;border:2px solid #4f9ba6;background:#baffdf}
+#targetCard.terminal{width:100%;border-bottom-right-radius:calc(var(--dashboard-corner) - 3px)}
+#mapButton.flight-speed{width:106px;min-width:106px;height:calc(var(--dashboard-height) + var(--dashboard-safe-bottom));min-height:68px;bottom:calc(-2px - var(--dashboard-safe-bottom));padding:3px 6px;clip-path:none;border-radius:4px;--speed-track-height:clamp(28px,calc(var(--dashboard-height) - 40px),72px);justify-content:center;gap:1px}
+.flight-speed-title{font:7px/1.3 var(--pixel);color:#c4ffd2;white-space:nowrap;text-align:center}
+.flight-speed-track,.speed-taper,#flightSpeed{height:var(--speed-track-height)}
+.flight-speed-track{margin:2px 0}
+#flightSpeed::-webkit-slider-runnable-track,#flightSpeed::-webkit-slider-thumb{height:var(--speed-track-height)}
+#flightSpeed::-moz-range-track{height:var(--speed-track-height)}
+#flightSpeed::-moz-range-thumb{height:calc(var(--speed-track-height) - 4px)}
+
+.mission-content{transform-origin:top right}
+.mission-dropdown.open .mission-content{animation:chart-unfold .32s cubic-bezier(.22,.7,.25,1)}
+.mission-chevron{transition:transform .32s cubic-bezier(.22,.7,.25,1)}
+@keyframes chart-unfold{from{opacity:0;transform:translateY(-8px) scale(.96,.82)}to{opacity:1;transform:translateY(0) scale(1)}}
+body[data-reduced-motion=true] .mission-dropdown.open .mission-content{animation:none}
+body[data-reduced-motion=true] .mission-chevron{transition:none}
+.delete-voyage-dialog{font:10px/1.9 var(--pixel);color:#c4ffd2;overflow-wrap:anywhere}
+.dialog-actions{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}
+.dialog-actions .button{min-height:44px;font-size:8px}
+.delete-voyage-confirm{background:#581e2b;border-color:#b46868;color:#ffb1a3}
+.dialog-error{color:#ffc29e}
+.modal-card:has(.delete-voyage-dialog){border-radius:18px;clip-path:none;background:#101e32}
+@media(prefers-reduced-motion:reduce){.mission-dropdown.open .mission-content{animation:none}.mission-chevron{transition:none}}

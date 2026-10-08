@@ -262,7 +262,7 @@ export async function checkRelease11213(page,engine){
         return {deck,card,joy,nav,speed,log,term,travel,lever,cancel,clock,chart,contained:controls.every(inside)&&(phase==='closed'||phase==='expanded'||phase==='keyboard'||inside(card)),clear:controls.every((a,i)=>controls.slice(i+1).every(b=>!overlap(a,b)))&&(phase==='closed'||controls.every(a=>!overlap(a,card))),curveClear,barFixed:before===r('terminalInputBar').top,screenHeight:screen.clientHeight,overflow:screen.scrollWidth-screen.clientWidth,scrollbarGap:card.right-(r('terminalScreen').right),keyboardFits:phase!=='keyboard'||keyboard.bottom<=card.bottom,topOrder:clock.right<=settings.left&&system.right<=chart.left,rounded:parseFloat(getComputedStyle(document.getElementById('flightReadout')).borderTopLeftRadius)>0&&parseFloat(getComputedStyle(document.getElementById('systemChart')).borderTopRightRadius)>0,fonts:['terminalOutput','terminalInput','clock','coordsReadout'].every(id=>getComputedStyle(document.getElementById(id)).fontFamily.includes('SpaceBitz Pixel'))};
       },phase);
       assert.ok(fit.contained&&fit.clear&&fit.topOrder&&fit.rounded&&fit.fonts&&fit.keyboardFits&&fit.curveClear,JSON.stringify({viewport,phase,fit}));
-      assert.ok(Math.abs(fit.joy.top-fit.deck.top-3)<.2&&Math.abs(fit.deck.bottom-fit.joy.bottom-4)<.2,'Joystick overlaps dashboard rim');
+      assert.ok(Math.abs(fit.joy.top-fit.deck.top-6)<.2&&Math.abs(fit.deck.bottom-fit.joy.bottom-6)<.2,'Joystick inset must keep the dashboard curve concentric');
       if(phase!=='closed')assert.ok(Math.abs(fit.card.right-viewport.width+3)<.2&&Math.abs(fit.card.bottom-viewport.height+3)<.2,JSON.stringify(fit));
       if(phase==='expanded'||phase==='keyboard')assert.ok(fit.barFixed&&fit.screenHeight>=35&&fit.overflow<=1&&fit.scrollbarGap<=6,JSON.stringify(fit));
       if(phase==='compact'||phase==='expanded')assert.ok(Math.abs((fit.cancel.left+fit.cancel.right-fit.lever.left-fit.lever.right)/2)<.2&&fit.cancel.bottom<=fit.lever.top,JSON.stringify(fit));
@@ -282,11 +282,11 @@ export async function checkRelease11213(page,engine){
   await page.locator('#systemChartToggle').click();assert.equal(await page.locator('#targetCard').isVisible(),false);assert.equal(await page.locator('#systemChartContent').isVisible(),true);
   await page.locator('#terminalButton').click();assert.equal(await page.locator('#systemChartContent').isVisible(),false);
   await page.evaluate(()=>{const g=window.__game;g.state.keys.add('d');g.settings.paused=false;window.__orientationShip={...g.state.save.ship};window.__orientationDays=g.state.save.days;});
-  await page.setViewportSize({width:390,height:844});await page.waitForFunction(()=>window.__game.state.landscapeBlocked);
-  assert.equal(await page.locator('#landscapeGate').isVisible(),true);assert.equal(await page.locator('#app').evaluate(e=>e.inert),true);
-  await page.evaluate(()=>{const g=window.__game;g.update(10000,10000);if(JSON.stringify(g.state.save.ship)!==JSON.stringify(window.__orientationShip)||g.state.save.days!==window.__orientationDays||g.state.keys.size)throw Error('Portrait guard allowed voyage motion or retained steering');});
-  await page.screenshot({path:`.qa/${engine}-11213-rotate-prompt.png`});
-  await page.setViewportSize({width:844,height:390});await page.waitForFunction(()=>!window.__game.state.landscapeBlocked);assert.equal(await page.locator('#landscapeGate').isVisible(),false);
+  await page.setViewportSize({width:390,height:844});await page.waitForFunction(()=>document.getElementById('gameViewport').dataset.rotated==='true');
+  assert.equal(await page.locator('#app').evaluate(e=>e.inert),false);
+  assert.equal(await page.evaluate(()=>window.__game.state.width>window.__game.state.height&&window.__game.state.keys.size===0),true);
+  await page.screenshot({path:`.qa/${engine}-11213-landscape-fallback.png`});
+  await page.setViewportSize({width:844,height:390});await page.waitForFunction(()=>document.getElementById('gameViewport').dataset.rotated==='false');
   await page.evaluate(()=>{const g=window.__game;g.cancelTarget();Object.assign(g.settings,{reducedMotion:true,paused:true,terminalWidthScale:100,terminalHeightScale:100});g.state.terminalSize=null;g.applySettings();document.getElementById('terminalButton').click();g.updateTerminal(performance.now());});
   assert.equal(await page.locator('#mapButton').evaluate(e=>getComputedStyle(e).transitionDuration),'0s');
   assert.equal(await page.evaluate(()=>window.__game.state.terminal.count===window.__game.state.terminal.text.length),true);

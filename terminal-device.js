@@ -1,3 +1,4 @@
+import {viewport,gamePoint,gameRect} from './viewport.js';
 import {bodyPosition,visualRadius,clamp} from './model.js';
 import {terminalLines,typedLength,objectType} from './terminal.js';
 import {contextPosition} from './target-ui.js';
@@ -177,15 +178,15 @@ $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden
 // Resizing is bounded to the viewport and applies only to the expanded device.
 let terminalResize=null;
 function terminalResizeSize(){
-  const r=$('targetCard').getBoundingClientRect(),dock=getComputedStyle($('terminalDock'));
-  const safe=$('dashboardBase').getBoundingClientRect().height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
+  const r=gameRect($('targetCard')),dock=getComputedStyle($('terminalDock'));
+  const safe=gameRect($('dashboardBase')).height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
   return {width:r.width-Math.max(0,parseFloat(dock.right)-3),height:r.height-safe+1};
 }
 function terminalLimits(){
-  const joyRect=$('joystick').getBoundingClientRect();
-  const reserve=Math.max(354,joyRect.width?joyRect.right+258:0);
-  const maxWidth=Math.max(200,innerWidth-reserve);
-  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,innerHeight-88)};
+  const joyRect=gameRect($('joystick'));
+  const reserve=Math.max(370,joyRect.width?joyRect.right+272:0);
+  const maxWidth=Math.max(200,viewport.width-reserve);
+  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,viewport.height-88)};
 }
 function applyTerminalSize(){
   $('targetCard').classList.toggle('terminal-large-data',(settings.terminalFontMode==='master'?settings.terminalFontSize:settings.terminalDataFont)>12);
@@ -196,33 +197,33 @@ function applyTerminalSize(){
   const expanded=clamp(state.terminalSize?.width??264*settings.terminalWidthScale/100,limits.minWidth,limits.maxWidth);
   dock.style.setProperty('--terminal-expanded-width',expanded+'px');
   const terminalWidth=$('targetCard').hidden?94:state.terminalExpanded?expanded:collapsed;
-  document.documentElement.style.setProperty('--deck-joy-max',Math.max(6,innerWidth-terminalWidth-($('targetCard').hidden?338:390))+'px');
-  const height=clamp(state.terminalSize?.height??innerHeight*.7*settings.terminalHeightScale/100,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight);
+  document.documentElement.style.setProperty('--deck-joy-max',Math.max(6,viewport.width-terminalWidth-($('targetCard').hidden?338:390))+'px');
+  const height=clamp(state.terminalSize?.height??viewport.height*.7*settings.terminalHeightScale/100,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight);
   dock.style.setProperty('--terminal-user-height',height+'px');
   for(const id of ['terminalResizeTop','terminalResizeLeft'])$(id).hidden=!state.terminalExpanded||!settings.terminalResizeHandles;
 }
 function resizeTerminal(width,height){
   const limits=terminalLimits();state.terminalSize={width:clamp(width,limits.minWidth,limits.maxWidth),height:clamp(height,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight)};
-  settings.terminalWidthScale=clamp(state.terminalSize.width/264*100,60,240);settings.terminalHeightScale=clamp(state.terminalSize.height/(innerHeight*.7)*100,40,130);
+  settings.terminalWidthScale=clamp(state.terminalSize.width/264*100,60,240);settings.terminalHeightScale=clamp(state.terminalSize.height/(viewport.height*.7)*100,40,130);
   applyTerminalSize();scheduleTerminalLayout();updateInputCaret();
 }
 for(const [id,axis] of [['terminalResizeTop','height'],['terminalResizeLeft','width']]){
   const handle=$(id);
-  handle.onpointerdown=e=>{if(e.button!==0||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();handle.setPointerCapture(e.pointerId);terminalResize={id:e.pointerId,axis,x:e.clientX,y:e.clientY,...terminalResizeSize()};$('terminalDock').classList.add('resizing');};
-  handle.onpointermove=e=>{if(!terminalResize||e.pointerId!==terminalResize.id)return;const r=terminalResize;resizeTerminal(r.width+(axis==='width'?r.x-e.clientX:0),r.height+(axis==='height'?r.y-e.clientY:0));};
+  handle.onpointerdown=e=>{if(e.button!==0||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();handle.setPointerCapture(e.pointerId);terminalResize={id:e.pointerId,axis,x:gamePoint(e).x,y:gamePoint(e).y,...terminalResizeSize()};$('terminalDock').classList.add('resizing');};
+  handle.onpointermove=e=>{if(!terminalResize||e.pointerId!==terminalResize.id)return;const r=terminalResize;resizeTerminal(r.width+(axis==='width'?r.x-gamePoint(e).x:0),r.height+(axis==='height'?r.y-gamePoint(e).y:0));};
   const finish=e=>{if(e.pointerId!==terminalResize?.id)return;terminalResize=null;$('terminalDock').classList.remove('resizing');saveSettings();scheduleTerminalLayout();};
   handle.onpointerup=finish;handle.onpointercancel=finish;handle.onlostpointercapture=finish;
   handle.onkeydown=e=>{const direction={ArrowLeft:1,ArrowUp:1,ArrowRight:-1,ArrowDown:-1}[e.key];if(!direction||!settings.terminalResizeHandles)return;e.preventDefault();e.stopPropagation();const r=terminalResizeSize();resizeTerminal(r.width+(axis==='width'?direction*12:0),r.height+(axis==='height'?direction*12:0));saveSettings();};
 }
 let dashboardResize=null;
 const dashboardHandle=$('dashboardResize');
-dashboardHandle.onpointerdown=e=>{if(e.button!==0||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();dashboardHandle.setPointerCapture(e.pointerId);dashboardResize={id:e.pointerId,y:e.clientY,height:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'))};};
-dashboardHandle.onpointermove=e=>{if(e.pointerId!==dashboardResize?.id)return;settings.dashboardHeight=clamp(dashboardResize.height+dashboardResize.y-e.clientY,68,260);layoutDashboard();applyCenterButtonLayout();};
+dashboardHandle.onpointerdown=e=>{if(e.button!==0||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();dashboardHandle.setPointerCapture(e.pointerId);dashboardResize={id:e.pointerId,y:gamePoint(e).y,height:parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'))};};
+dashboardHandle.onpointermove=e=>{if(e.pointerId!==dashboardResize?.id)return;settings.dashboardHeight=clamp(dashboardResize.height+dashboardResize.y-gamePoint(e).y,68,260);layoutDashboard();applyCenterButtonLayout();};
 const finishDashboardResize=e=>{if(e.pointerId!==dashboardResize?.id)return;dashboardResize=null;saveSettings();};
 dashboardHandle.onpointerup=finishDashboardResize;dashboardHandle.onpointercancel=finishDashboardResize;
 dashboardHandle.onkeydown=e=>{const direction={ArrowUp:1,ArrowDown:-1}[e.key];if(!direction||!settings.dashboardResizeHandle)return;e.preventDefault();e.stopPropagation();settings.dashboardHeight=clamp(settings.dashboardHeight+direction*12,68,260);saveSettings();layoutDashboard();applyCenterButtonLayout();};
 function layoutDashboard(){
-  const row=Math.max(68,Math.min(settings.dashboardHeight+(settings.joyOffset||0),innerHeight*.5));
+  const row=Math.max(68,Math.min(settings.dashboardHeight+(settings.joyOffset||0),viewport.height*.5));
   const height=Math.max(row,settings.centerButton==='above'?136:68);
   document.documentElement.style.setProperty('--dashboard-row-height',row+'px');
   document.documentElement.style.setProperty('--dashboard-height',height+'px');
@@ -231,7 +232,7 @@ function layoutDashboard(){
 }
 function onDashboard(x,y){
   if($('app').hidden)return false;
-  return ['dashboardBase','terminalDock'].some(id=>{const element=$(id);if(element.hidden)return false;const r=element.getBoundingClientRect();return r.width&&r.height&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;});
+  return ['dashboardBase','terminalDock'].some(id=>{const element=$(id);if(element.hidden)return false;const r=gameRect(element);return r.width&&r.height&&x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;});
 }
 function focusSelected(){
   if(!state.save)return;const {object,position}=selectedRecord();state.centerZoom=null;state.centerReady=false;state.followShip=false;
@@ -254,7 +255,7 @@ function positionContext(){
   if($('contextActions').hidden||!state.save)return;const record=selectedRecord(),target=screen(record.position.x,record.position.y),element=$('contextActions');
   const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
   const radius=(state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10)+(homeIcon?16:0);
-  const obstacles=['terminalPocket','travelControls','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls','mapButton','dashboardBase'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
+  const obstacles=['terminalPocket','travelControls','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls','mapButton','dashboardBase'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=gameRect(e);return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
   const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles,state.contextPlacement);state.contextPlacement=place;element.style.transform=`translate(${place.x}px,${place.y}px)`;
 }
 function layoutTerminalDock(){
@@ -262,7 +263,7 @@ function layoutTerminalDock(){
   const visible=state.journalOpen?state.journalDeckTarget:!$('targetCard').hidden;$('terminalDock').classList.toggle('has-target',visible);
   $('terminalDock').classList.toggle('terminal-expanded',Boolean(state.terminalExpanded));
   applyTerminalSize();layoutDashboard();
-  $('terminalPocket').style.height=(visible?$('targetCard').getBoundingClientRect().height:0)+'px';
+  $('terminalPocket').style.height=(visible?gameRect($('targetCard')).height:0)+'px';
 }
 let terminalLayoutFrame=0;
 function scheduleTerminalLayout(){
@@ -270,7 +271,7 @@ function scheduleTerminalLayout(){
   // Defer ancestor sizing until the next frame, outside nested observer delivery.
   terminalLayoutFrame=requestAnimationFrame(()=>{
     terminalLayoutFrame=0;layoutTerminalDock();
-    const height=$('terminalPocket').getBoundingClientRect().height;
+    const height=gameRect($('terminalPocket')).height;
     document.documentElement.style.setProperty('--terminal-height',height+'px');applyCenterButtonLayout();
   });
 }

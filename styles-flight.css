@@ -1,11 +1,7 @@
 /* Landscape flight instruments and the shared terminal message stream. */
-.landscape-gate{position:fixed;inset:0;z-index:30;display:grid;align-content:center;justify-items:center;gap:18px;padding:28px;background:#030b12;color:#b8f6db;text-align:center;font:10px/1.8 var(--pixel)}
-.landscape-gate svg{width:96px;height:64px;image-rendering:pixelated}
-.landscape-gate h2{font:13px/1.8 var(--pixel);margin:0}
-.landscape-gate p{margin:0;color:#8faab1}
 .menu-terminal{margin-top:10px;border:2px solid #728f96;background:#03110d;color:#9af5b1;padding:7px 10px;max-height:96px;overflow:auto;font:8px/1.7 var(--pixel)}
 .menu-terminal h2{font:8px/1.5 var(--pixel);margin:0 0 5px;color:#c4ffd2}
-#welcome .welcome-card:has(#menuTerminal:not([hidden])) .generation-stage{height:calc(100dvh - 126px)}
+#welcome .welcome-card:has(#menuTerminal:not([hidden])) .generation-stage{height:calc(calc(var(--view-height) * 1) - 126px)}
 .terminal-messages{border-top:1px solid #315842;margin-top:10px;padding-top:7px;color:#9af5b1;font:8px/1.8 var(--pixel);overflow-wrap:anywhere}
 .terminal-messages:empty{display:none}
 .terminal-history-entry+.terminal-history-entry{margin-top:7px}
@@ -24,14 +20,14 @@
 .topbar{padding:3px 3px 0;gap:12px;align-items:flex-start}
 .flight-instruments{display:flex;align-items:center;gap:10px;min-width:0;pointer-events:none}
 .flight-instruments .utility-stack{pointer-events:auto;flex:none}
-.topbar .flight-readout{flex:none;width:calc(180px + max(0px,env(safe-area-inset-left) - 20px));max-width:calc(48vw - 50px);min-height:0;gap:1px;padding:10px 8px 4px max(20px,env(safe-area-inset-left));margin:0;justify-items:start;border:2px solid #81979d;border-top-left-radius:calc(var(--dashboard-corner) - 3px);clip-path:none;box-shadow:inset 1px 1px #bfd0cb,inset -1px -1px #293f4e;background:rgb(16 30 50 / 25%);overflow:hidden}
+.topbar .flight-readout{flex:none;width:calc(180px + max(0px,var(--safe-left,0px) - 20px));max-width:calc(calc(var(--view-width) * 0.48) - 50px);min-height:0;gap:1px;padding:10px 8px 4px max(20px,var(--safe-left,0px));margin:0;justify-items:start;border:2px solid #81979d;border-top-left-radius:calc(var(--dashboard-corner) - 3px);clip-path:none;box-shadow:inset 1px 1px #bfd0cb,inset -1px -1px #293f4e;background:rgb(16 30 50 / 25%);overflow:hidden}
 .topbar .flight-readout #clock{display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:10px;line-height:1.6;letter-spacing:0;text-align:left}
 .topbar .flight-readout #clockDate{font-size:8px}
 .topbar .flight-readout #telemetry{flex-direction:column;align-items:flex-start;gap:1px;font-size:9px;line-height:1.4;overflow-wrap:anywhere;white-space:pre-line;text-align:left}
 .top-actions{margin-left:auto;gap:0}
 .top-actions .mission-tools{display:flex;align-items:center;gap:10px;width:auto;flex:none}
-.topbar .top-system-chart{width:194px;max-width:32vw;margin:0;border:2px solid #81979d;border-top-right-radius:calc(var(--dashboard-corner) - 3px);clip-path:none;box-shadow:inset 1px 1px #bfd0cb,inset -1px -1px #293f4e;background:rgb(16 30 50 / 25%)}
-.top-system-chart .mission-toggle{min-height:58px;border:0;box-shadow:none;clip-path:none;background:none;padding:10px max(18px,env(safe-area-inset-right)) 7px 10px;border-top-right-radius:inherit}
+.topbar .top-system-chart{width:194px;max-width:calc(var(--view-width) * 0.32);margin:0;border:2px solid #81979d;border-top-right-radius:calc(var(--dashboard-corner) - 3px);clip-path:none;box-shadow:inset 1px 1px #bfd0cb,inset -1px -1px #293f4e;background:rgb(16 30 50 / 25%)}
+.top-system-chart .mission-toggle{min-height:58px;border:0;box-shadow:none;clip-path:none;background:none;padding:10px max(18px,var(--safe-right,0px)) 7px 10px;border-top-right-radius:inherit}
 .top-system-chart .mission-toggle strong{font-size:10px}
 .top-system-chart .mission-toggle .eyebrow{font-size:7px;white-space:normal}
 .top-system-chart .mission-chevron{font-size:16px}
@@ -58,4 +54,3 @@
 .flight-speed-stops span:last-child{color:#b48cf2}
 body[data-reduced-motion=true] #mapButton.flight-speed{transition:none}
 @media(prefers-reduced-motion:reduce){#mapButton.flight-speed{transition:none}}
-@media(orientation:portrait){#app,#welcome,#modal{visibility:hidden;pointer-events:none}}
