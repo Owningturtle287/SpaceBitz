@@ -282,11 +282,11 @@ export async function checkRelease11213(page,engine){
   await page.locator('#systemChartToggle').click();assert.equal(await page.locator('#targetCard').isVisible(),false);assert.equal(await page.locator('#systemChartContent').isVisible(),true);
   await page.locator('#terminalButton').click();assert.equal(await page.locator('#systemChartContent').isVisible(),false);
   await page.evaluate(()=>{const g=window.__game;g.state.keys.add('d');g.settings.paused=false;window.__orientationShip={...g.state.save.ship};window.__orientationDays=g.state.save.days;});
-  await page.setViewportSize({width:390,height:844});await page.waitForFunction(()=>window.__game.state.landscapeBlocked);
-  assert.equal(await page.locator('#landscapeGate').isVisible(),true);assert.equal(await page.locator('#app').evaluate(e=>e.inert),true);
-  await page.evaluate(()=>{const g=window.__game;g.update(10000,10000);if(JSON.stringify(g.state.save.ship)!==JSON.stringify(window.__orientationShip)||g.state.save.days!==window.__orientationDays||g.state.keys.size)throw Error('Portrait guard allowed voyage motion or retained steering');});
-  await page.screenshot({path:`.qa/${engine}-11213-rotate-prompt.png`});
-  await page.setViewportSize({width:844,height:390});await page.waitForFunction(()=>!window.__game.state.landscapeBlocked);assert.equal(await page.locator('#landscapeGate').isVisible(),false);
+  await page.setViewportSize({width:390,height:844});await page.waitForFunction(()=>document.getElementById('gameViewport').dataset.rotated==='true');
+  assert.equal(await page.locator('#app').evaluate(e=>e.inert),false);
+  assert.equal(await page.evaluate(()=>window.__game.state.width>window.__game.state.height&&window.__game.state.keys.size===0),true);
+  await page.screenshot({path:`.qa/${engine}-11213-landscape-fallback.png`});
+  await page.setViewportSize({width:844,height:390});await page.waitForFunction(()=>document.getElementById('gameViewport').dataset.rotated==='false');
   await page.evaluate(()=>{const g=window.__game;g.cancelTarget();Object.assign(g.settings,{reducedMotion:true,paused:true,terminalWidthScale:100,terminalHeightScale:100});g.state.terminalSize=null;g.applySettings();document.getElementById('terminalButton').click();g.updateTerminal(performance.now());});
   assert.equal(await page.locator('#mapButton').evaluate(e=>getComputedStyle(e).transitionDuration),'0s');
   assert.equal(await page.evaluate(()=>window.__game.state.terminal.count===window.__game.state.terminal.text.length),true);

@@ -1,3 +1,4 @@
+import {viewport,refreshViewport,watchViewport,gamePoint,gameRect} from './viewport.js';
 import {createMusicController} from './audio.js';
 import {CHANGELOG} from './changelog.js';
 import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
@@ -18,7 +19,7 @@ import {paintGiantAtmosphere} from './weather.js';
 import {paintStellarSurface,chartBrightness} from './stellar.js';
 import {canvasContextOptions,clearFrame,backgroundPosition,strokeEllipse,circleGeometry,fillAnnulus,fillDisk,drawImageInView,lineInView} from './rendering.js';
 import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,formatDistance,formatCoordinates,formatDiameter,SYSTEM_VISUAL_SCALE,SYSTEM_SHIP_SIZE,SYSTEM_MAX_ZOOM,SHIP_FOCUS_ZOOM} from './scale.js';
-import {migrateLayout,systemFitZoom,systemMinZoom,travelSpeed,centerZoomAt,cameraViewAt,starApproachPoint,manualSpeed,outermostPlanet,systemDrive,advanceToArrival} from './navigation.js';
+import {migrateLayout,systemFitZoom,systemMinZoom,travelSpeed,centerZoomAt,cameraViewAt,recordTravel,starApproachPoint,manualSpeed,outermostPlanet,systemDrive,advanceToArrival} from './navigation.js';
 
 import {importVoyage,restoreVoyage} from './saves.js';
 import {saveBeforeExit} from './voyage-storage.js';
@@ -27,7 +28,7 @@ import {resetFlightContext,stationAnchor,applyStationAnchor} from './flight-stat
 import {bodyLabel,bodyCounts} from './body-classification.js';
 import {collectSample} from './exploration.js';
 import {registerAppWorker} from './pwa.js';
-import {FLIGHT_STAGES,flightStage,isLandscape} from './flight-drive.js';
+import {FLIGHT_STAGES,flightStage} from './flight-drive.js';
 import {applyInterfaceFonts} from './interface-fonts.js';
 import {recordAction,recordObject,recordEvent} from './voyage-log.js';
 import {createLogDevice} from './log-device.js';
@@ -39,6 +40,7 @@ import {createLogPreview} from './log-preview.js';
 const $ = id => document.getElementById(id);
 const canvas = $('sky');
 const ctx = canvas.getContext('2d', canvasContextOptions(navigator.userAgent));
+refreshViewport();
 const SETTINGS_KEY = 'spacebitz:field:settings';
 const GENERATION_KEY='spacebitz:universe:v3';
 const voyages=createVoyageStore();
@@ -83,19 +85,19 @@ function applyCenterButtonLayout(){
   requestAnimationFrame(()=>{
     layoutDashboard();
     const bw=btn.hidden?0:btn.offsetWidth,bh=group.offsetHeight||52,width=group.offsetWidth||118;
-    const joyRect=$('joystick').getBoundingClientRect(),deck=$('dashboardBase').getBoundingClientRect();
+    const joyRect=gameRect($('joystick')),deck=gameRect($('dashboardBase'));
     const row=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-row-height'));
     const safe=deck.height-parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-height'));
     let left=joyRect.width?joyRect.right+8:12;
-    let top=innerHeight-safe-row/2-bh/2;
-    const speed=$('mapButton').getBoundingClientRect(),log=$('journalButton').getBoundingClientRect();
-    const rightEdge=Math.min(...[speed,log].filter(r=>r.width&&r.height).map(r=>r.left),innerWidth-6);
+    let top=viewport.height-safe-row/2-bh/2;
+    const speed=gameRect($('mapButton')),log=gameRect($('journalButton'));
+    const rightEdge=Math.min(...[speed,log].filter(r=>r.width&&r.height).map(r=>r.left),viewport.width-6);
     if(mode==='right')left=Math.min(left,rightEdge-width-8);
     if(mode==='above'){left=Math.max(6,joyRect.left+(joyRect.width-width)/2);top=joyRect.top-bh-8;}
     if(mode==='custom'){
-      const desired={x:innerWidth*settings.centerX/100-bw/2,y:innerHeight*settings.centerY/100-bh/2};
-      const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','mapButton'].map($).filter(el=>el&&!el.hidden).map(el=>{const r=el.getBoundingClientRect();return {x:r.left,y:r.top,width:r.width,height:r.height};});
-      const placed=placeControls(desired,{width,height:bh},{width:innerWidth,height:innerHeight},[...obstacles,{x:0,y:0,width:innerWidth,height:deck.top-4}]);left=placed.x;top=clamp(placed.y,deck.top+4,innerHeight-safe-bh-4);
+      const desired={x:viewport.width*settings.centerX/100-bw/2,y:viewport.height*settings.centerY/100-bh/2};
+      const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','mapButton'].map($).filter(el=>el&&!el.hidden).map(el=>{const r=gameRect(el);return {x:r.left,y:r.top,width:r.width,height:r.height};});
+      const placed=placeControls(desired,{width,height:bh},{width:viewport.width,height:viewport.height},[...obstacles,{x:0,y:0,width:viewport.width,height:deck.top-4}]);left=placed.x;top=clamp(placed.y,deck.top+4,viewport.height-safe-bh-4);
     }
     group.style.left=left+'px';group.style.top=top+'px';
   });
@@ -197,25 +199,26 @@ function requestLandscape(){
     return Promise.resolve(orientation.lock('landscape')).then(()=>true).catch(()=>false);
   }catch{return Promise.resolve(false);}
 }
-function fit() {
-  const rect = canvas.getBoundingClientRect();
-  if(rect.width!==state.width||rect.height!==state.height)state.terminalSize=null;
-  state.width=rect.width; state.height=rect.height;
-  const blocked=!isLandscape(rect.width,rect.height);
-  if(blocked&&!state.landscapeBlocked){pauseTerminalOutput();queueMicrotask(resetInput);}
-  state.landscapeBlocked=blocked;$('landscapeGate').hidden=!blocked;
-  for(const id of ['app','welcome','modal'])$(id).inert=blocked||(id==='app'&&Boolean(state.journalOpen||state.saveConflict));
+function fit(force=false) {
+  refreshViewport();
+  const width=canvas.clientWidth,height=canvas.clientHeight;
+  if(width<1||height<1)return;
+  const changed=width!==state.width||height!==state.height;
+  if(changed){state.terminalSize=null;terrain.clear();}
+  state.width=width;state.height=height;state.landscapeBlocked=false;
   state.dpr=settings.resolution==='auto'?Math.min(window.devicePixelRatio||1,2):Number(settings.resolution);
-  canvas.width=Math.round(rect.width*state.dpr); canvas.height=Math.round(rect.height*state.dpr);
+  const pixelsWide=Math.round(width*state.dpr),pixelsHigh=Math.round(height*state.dpr);
+  if(force||canvas.width!==pixelsWide||canvas.height!==pixelsHigh){canvas.width=pixelsWide;canvas.height=pixelsHigh;}
   ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
-  const targetStarCount=Math.max(110,Math.min(400,Math.round(rect.width*rect.height/2600)));
+  const targetStarCount=Math.max(110,Math.min(400,Math.round(width*height/2600)));
   if(!state.stars.length)state.stars=Array.from({length:targetStarCount},makeBackgroundStar);
   else if(state.stars.length<targetStarCount)state.stars.push(...Array.from({length:targetStarCount-state.stars.length},makeBackgroundStar));
   else if(state.stars.length>targetStarCount)state.stars.length=targetStarCount;
 }
-window.addEventListener('resize',()=>{fit();applyTerminalSize();scheduleTerminalLayout();applyCenterButtonLayout();});
-window.addEventListener('orientationchange',()=>setTimeout(()=>{fit();updateUI();applyCenterButtonLayout();},120),{passive:true});
-globalThis.screen?.orientation?.addEventListener?.('change',()=>setTimeout(()=>{fit();updateUI();applyCenterButtonLayout();},80));
+watchViewport(()=>{resetInput();fit();journal.applySize();applyTerminalSize();scheduleTerminalLayout();updateUI();applyCenterButtonLayout();});
+canvas.addEventListener('contextlost',e=>{e.preventDefault();resetInput();});
+canvas.addEventListener('contextrestored',()=>{fit(true);terrain.clear();updateUI();});
+document.addEventListener('fullscreenchange',requestLandscape);
 applySettings();
 function start(save) {
   try{save=restoreVoyage(save);}catch(error){notify(error.message+' The stored voyage has not been changed.');return;}
@@ -262,16 +265,31 @@ async function renderSaves() {
   const serial=++saveListSerial,list=$('savedGames'),saves=await loadSaves();if(serial!==saveListSerial)return;list.replaceChildren();
   if(!saves.length){const el=document.createElement('div');el.className='empty-saves';el.textContent='No voyages saved yet.';list.append(el);return;}
   for(const save of saves){
-    const row=document.createElement('div');row.className='save-row';
+    const row=document.createElement('div');row.className='save-row';row.dataset.voyageId=save.id;
     const play=document.createElement('button');play.className='load-save';
     play.textContent=save.name || 'Unnamed Universe';play.title='Continue '+play.textContent+(save.generation?' · '+(save.generation.scientific?'Scientific':'Custom')+' stellar universe':' · Legacy generation preserved; create a new voyage for v1.12 stars');
     play.onclick=async()=>{play.disabled=true;try{start(await voyages.load(save.id));}catch(error){notify(error.message);}finally{play.disabled=false;}};
     const date=document.createElement('small');date.textContent=new Date(save.updated||Date.now()).toLocaleDateString();
     const del=document.createElement('button');del.className='delete-save';del.textContent='✕';del.setAttribute('aria-label','Delete '+play.textContent);
-    del.onclick=async()=>{if(!confirm(`Delete “${save.name}” from this device?`))return;
-      try{await voyages.remove(save.id,save.revision);await renderSaves();}catch(error){notify(error.message+' Your stored data is unchanged.');}};
+    del.onclick=()=>showDeleteVoyage(save);
     row.append(play,date,del);list.append(row);
   }
+}
+function showDeleteVoyage(save){
+  const box=document.createElement('div');box.className='delete-voyage-dialog';
+  const message=document.createElement('p');message.textContent=`Delete “${save.name||'Unnamed Universe'}” and its discoveries from this device?`;
+  const actions=document.createElement('div');actions.className='dialog-actions';
+  const cancel=document.createElement('button'),remove=document.createElement('button'),error=document.createElement('p');
+  cancel.className='button';cancel.textContent='KEEP VOYAGE';cancel.onclick=closeModal;
+  remove.className='button delete-voyage-confirm';remove.textContent='DELETE VOYAGE';
+  error.className='dialog-error';error.setAttribute('role','alert');error.hidden=true;
+  remove.onclick=async()=>{
+    remove.disabled=true;cancel.disabled=true;$('modalClose').disabled=true;state.deletingVoyage=true;
+    try{await voyages.remove(save.id,save.revision);state.deletingVoyage=false;closeModal();await renderSaves();}
+    catch(reason){error.hidden=false;error.textContent=reason.message;}
+    finally{state.deletingVoyage=false;remove.disabled=false;cancel.disabled=false;$('modalClose').disabled=false;}
+  };
+  actions.append(cancel,remove);box.append(message,actions,error);setModal('SAVED GAME','Delete voyage?',box,true);$('modal').setAttribute('role','alertdialog');cancel.focus();
 }
 function showMenuStage(stage='main'){
   const mainStage=$('mainMenuStage'),generationStage=$('universeMenuStage');
@@ -298,7 +316,7 @@ $('generationOptions').onclick=showGenerationOptions;
 updateUniverseMode();
 function fitRarities(container,page){
   const rows=[...container.children];for(const row of rows)row.hidden=false;
-  const pages=rarityPages(rows.map(row=>row.getBoundingClientRect().height),container.clientHeight||Infinity,parseFloat(getComputedStyle(container).rowGap)||0);
+  const pages=rarityPages(rows.map(row=>gameRect(row).height),container.clientHeight||Infinity,parseFloat(getComputedStyle(container).rowGap)||0);
   const active=rows.findIndex(row=>row.contains(document.activeElement));
   page=active<0?Math.min(page,pages.length-1):pages.findIndex(([start,end])=>active>=start&&active<end);
   page=Math.max(0,page);const [start,end]=pages[page]||[0,0];rows.forEach((row,index)=>row.hidden=index<start||index>=end);container.scrollTop=0;
@@ -393,7 +411,7 @@ function keepStationNearShip(){
 function markDiscovery(body) {
   if(state.save.discoveries.includes(body.id)) return;
   state.save.discoveries.push(body.id);
-  recordEvent(state.save,{name:body.name,action:'First landing',category:body.kind==='moon'?'moon':'planet',visual:{system:state.system.seed,id:body.id,kind:body.kind}});
+  recordEvent(state.save,{name:body.name,action:'First landing',visual:{system:state.system.seed,id:body.id,kind:body.kind}});
   notify(`First landing on ${body.name} · added to logbook`,{log:false});persist();
 }
 function changeLayer(scene){releaseTerminalQueue();pauseTerminalOutput();resetFlightContext(state,scene);resetInput();}
@@ -402,7 +420,7 @@ function enterChart() {changeLayer('chart');
   state.save.chart={x:star.x+38,y:star.y+30};
   state.camera={...state.save.chart};state.zoom=1;state.autopilot=null;persist();updateUI();
 }
-function enterSystem(star) {changeLayer('system');
+function enterSystem(star) {recordTravel(state.save,state.save.currentSystem||state.save.homeSeed,star.seed);changeLayer('system');
   state.system=makeSystem(star.seed,state.save.generation);state.save.currentSystem=star.seed;
   state.selected=null;
   const outer=outermostPlanet(state.system,state.save.days)||state.system.star,pos=bodyPosition(outer,state.save.days,state.system);
@@ -410,9 +428,7 @@ function enterSystem(star) {changeLayer('system');
   state.save.ship={x:pos.x+offset,y:pos.y};state.camera={...state.save.ship};
   state.selected=outer;state.followBody={id:outer.id,x:offset,y:0};
   state.zoom=.85;state.autopilot=null;state.save.chart={x:star.x,y:star.y};
-  recordEvent(state.save,{name:state.system.name,action:'Entered system',category:'star',visual:{system:state.system.seed,id:state.system.star.id,kind:'star'}});
-  if(state.save.route.at(-1)!==star.seed)state.save.route.push(star.seed);
-  state.save.route=state.save.route.slice(-40);
+  recordEvent(state.save,{name:state.system.name,action:'Entered system',visual:{system:state.system.seed,id:state.system.star.id,kind:'star'}});
   notify(`${state.system.name} · arriving at ${outer.name}`,{log:false});persist();updateUI();
 }
 function enterSurface(body) {
@@ -557,16 +573,16 @@ $('followShipButton').onclick=()=>{
 $('homeButton').addEventListener('pointerdown',e=>{
   centerSuppressClick=false;
   if(settings.centerButton!=='custom')return;
-  centerDrag={id:e.pointerId,startX:e.clientX,startY:e.clientY,moved:false};
+  centerDrag={id:e.pointerId,startX:gamePoint(e).x,startY:gamePoint(e).y,moved:false};
   $('homeButton').setPointerCapture?.(e.pointerId);
   document.body.classList.add('center-editing');
   e.preventDefault();
 });
 $('homeButton').addEventListener('pointermove',e=>{
   if(!centerDrag||e.pointerId!==centerDrag.id)return;
-  if(Math.hypot(e.clientX-centerDrag.startX,e.clientY-centerDrag.startY)>4)centerDrag.moved=true;
-  settings.centerX=clamp(e.clientX/window.innerWidth*100,2,98);
-  settings.centerY=clamp(e.clientY/window.innerHeight*100,2,98);
+  if(Math.hypot(gamePoint(e).x-centerDrag.startX,gamePoint(e).y-centerDrag.startY)>4)centerDrag.moved=true;
+  settings.centerX=clamp(gamePoint(e).x/viewport.width*100,2,98);
+  settings.centerY=clamp(gamePoint(e).y/viewport.height*100,2,98);
   applyCenterButtonLayout();
 });
 const finishCenterDrag=e=>{
@@ -712,6 +728,7 @@ function updateUI() {
 }
 function setModal(eyebrow,title,content,opaque=false) {
   closeJournal();
+  $('modal').setAttribute('role','dialog');
   $('modal').querySelector('.modal-card').classList.toggle('opaque-panel',opaque);
   state.previousFocus=document.activeElement;resetInput();
   $('modalEyebrow').textContent=eyebrow;$('modalTitle').textContent=title;
@@ -719,7 +736,7 @@ function setModal(eyebrow,title,content,opaque=false) {
   $('modalContent').replaceChildren(content);$('modal').hidden=false;$('modal').classList.add('visible');
   $('modalClose').focus();
 }
-function closeModal(){if(state.saveConflict)return;$('modalClose').hidden=false;$('modal').hidden=true;$('modal').classList.remove('visible');state.previousFocus?.focus();applyPendingUpdate();}
+function closeModal(){if(state.saveConflict||state.deletingVoyage)return;$('modalClose').hidden=false;$('modal').hidden=true;$('modal').classList.remove('visible');state.previousFocus?.focus();applyPendingUpdate();}
 $('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 function posSurface(){return state.save.surface;}
 function showJournal() {
@@ -1239,6 +1256,7 @@ function drawGround(now) {
 function frame(now) {
   const realDt=Math.max(0,now-state.last),dt=Math.min(100,realDt);state.last=now;
   if(realDt>0)state.fps+=(1000/realDt-state.fps)*.06;
+  if(settings.resolution==='auto'&&state.dpr!==Math.min(window.devicePixelRatio||1,2))fit();
   if(!document.hidden&&!state.landscapeBlocked){
     if(state.save){update(dt,realDt);if(!$('modal').classList.contains('visible')&&!settings.reducedMotion)state.stellarSeconds+=dt/1000;}
     backdrop(now);ctx.save();
@@ -1262,21 +1280,21 @@ window.addEventListener('pagehide',()=>{stopMusic();persist();});
 
 // Objects use one tap, empty space uses two; a drag pans and two fingers pinch.
 document.addEventListener('pointerdown',e=>{if(e.target!==canvas)state.coordinateTap=null;},{capture:true});
-canvas.addEventListener('pointerdown',e=>{if(onDashboard(e.clientX,e.clientY)||!state.save||$('modal').classList.contains('visible'))return;
-  canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(pointers.size===1)gesture={x:e.clientX,y:e.clientY,moved:false};
+canvas.addEventListener('pointerdown',e=>{if(onDashboard(gamePoint(e).x,gamePoint(e).y)||!state.save||$('modal').classList.contains('visible'))return;
+  canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:gamePoint(e).x,y:gamePoint(e).y});
+  if(pointers.size===1)gesture={x:gamePoint(e).x,y:gamePoint(e).y,moved:false};
   if(pointers.size===2){state.coordinateTap=null;gesture=null;const [a,b]=[...pointers.values()];state.pinch=Math.hypot(a.x-b.x,a.y-b.y);}
 });
 canvas.addEventListener('pointermove',e=>{
   if(!pointers.has(e.pointerId))return;
-  const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const old=pointers.get(e.pointerId);pointers.set(e.pointerId,{x:gamePoint(e).x,y:gamePoint(e).y});
   if(pointers.size===2){const [a,b]=[...pointers.values()],dist=Math.hypot(a.x-b.x,a.y-b.y);
     if(state.pinch)zoom(dist/state.pinch);state.pinch=dist;return;}
-  if(gesture){if(Math.hypot(e.clientX-gesture.x,e.clientY-gesture.y)>7)gesture.moved=true;
-    if(gesture.moved){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(following)state.followPanRemaining=2000;state.camera.x-=(e.clientX-old.x)/state.zoom;state.camera.y-=(e.clientY-old.y)/state.zoom;
+  if(gesture){if(Math.hypot(gamePoint(e).x-gesture.x,gamePoint(e).y-gesture.y)>7)gesture.moved=true;
+    if(gesture.moved){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;if(following)state.followPanRemaining=2000;state.camera.x-=(gamePoint(e).x-old.x)/state.zoom;state.camera.y-=(gamePoint(e).y-old.y)/state.zoom;
       state.panUntil=Infinity;state.focusBody=null;}}
 });
-function pick(e){if(onDashboard(e.clientX,e.clientY))return;const rect=canvas.getBoundingClientRect(),x=e.clientX-rect.left,y=e.clientY-rect.top;
+function pick(e){if(onDashboard(gamePoint(e).x,gamePoint(e).y))return;const rect=gameRect(canvas),x=gamePoint(e).x-rect.left,y=gamePoint(e).y-rect.top;
   if(state.scene==='system'){
     const matches=allBodies().map(body=>{const pos=bodyPosition(body,state.save.days,state.system),p=screen(pos.x,pos.y);
       return {body,d:Math.hypot(x-p.x,y-p.y),radius:visualRadius(body.diameter,body.kind)*state.zoom};})
@@ -1328,7 +1346,7 @@ function resetInput(){
   for(const id of pointers.keys())if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
   pointers.clear();gesture=null;state.pinch=null;state.coordinateTap=null;
 }
-function moveJoy(e){const r=joy.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;
+function moveJoy(e){const r=gameRect(joy),x=gamePoint(e).x-r.left-r.width/2,y=gamePoint(e).y-r.top-r.height/2;
   const rx=Math.max(1,(r.width-stick.offsetWidth)/2-5),ry=Math.max(1,(r.height-stick.offsetHeight)/2-5);
   const nx=x/rx,ny=y/ry,d=Math.hypot(nx,ny),scale=d>1?1/d:1;
   state.joy={x:nx*scale,y:ny*scale};stick.style.setProperty('--jx',nx*scale*rx+'px');stick.style.setProperty('--jy',ny*scale*ry+'px');}

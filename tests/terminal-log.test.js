@@ -57,7 +57,7 @@ test('object and item visual identities survive backups without retaining unvali
   recordObject(save,{key:'star',name:'Test star',type:'Yellow dwarf',category:'star',text:'MASS : 1',visual});
   assert.deepEqual(restoreLogEntry(save.log[0],1).visual,visual);
   recordEvent(save,{name:'Moon',action:'First landing',category:'moon',visual:{system:'sol',id:'sol:Earth:Moon',kind:'moon'}});
-  assert.equal(logCategory(save.log[0]),'moon');assert.deepEqual(restoreLogEntry(save.log[0],1),save.log[0]);
+  assert.equal(logCategory(save.log[0]),'status');assert.deepEqual(restoreLogEntry(save.log[0],1),save.log[0]);
   assert.equal(normalizeLogVisual({system:'sol',id:'moon',kind:'script'}),undefined);
   assert.deepEqual(normalizeLogVisual({...visual,url:'untrusted'}),visual);
 });
@@ -66,7 +66,7 @@ test('older survey references recover complete seeds containing colons, and stat
   assert.deepEqual(logObjectReference({objectKey:seed+':'+seed+':star'},save),{system:seed,id:seed+':star'});
   assert.deepEqual(logObjectReference({objectKey:'sol:sol:Earth'},save),{system:'sol',id:'sol:Earth'});
   assert.deepEqual(logObjectReference({objectKey:'sol:Earth'},save),{system:'sol',id:'sol:Earth'});
-  assert.equal(logCategory({name:'Earth',action:'Home planet · voyage started'}),'planet');
-  assert.equal(logCategory({name:'Sol',action:'Entered system'}),'star');
+  assert.equal(logCategory({name:'Earth',action:'Home planet · voyage started'}),'status');
+  assert.equal(logCategory({name:'Sol',action:'Entered system'}),'status');
   assert.equal(logCategory({kind:'action',action:'Warp Drive engaged'}),'status');
 });

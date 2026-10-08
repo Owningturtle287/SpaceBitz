@@ -1,6 +1,18 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.21",
+    "items": [
+      "Narrowed the clock/date panel from its right edge and added current distances from each planet to its host star and each moon to its host planet.",
+      "Fixed the missing first travel-trail leg by retaining the departure system before entering a new system.",
+      "Kept star, planet and moon log filters exclusive to object surveys; safely reindexed older status events without changing saved voyages or survey data.",
+      "Replaced native saved-game deletion prompts with themed, keyboard- and touch-accessible confirmation dialogs.",
+      "Made Settings and the Log cover the full viewport with opaque backgrounds, rounded screen-fitting corners and safe-area padding.",
+      "Kept rendering, responsive layout and pointer input in one landscape coordinate space, with a rotated fallback when native orientation locking is unavailable. Coalesced viewport changes, handled visual viewport changes, avoided unnecessary canvas resets and restored lost rendering contexts.",
+      "Added a fluid system chart opening animation, a dashboard-height Speed Control panel and a larger cyan joystick with concentric dashboard corner geometry."
+    ]
+  },
+  {
     "version": "1.12.20",
     "items": [
       "Place Terminal and System Chart scrollbars on explicit right-edge rails, reserve text space beside them, and support dragging, touch and keyboard scrolling.",

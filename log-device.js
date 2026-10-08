@@ -1,3 +1,4 @@
+import {viewport,gamePoint,gameRect} from './viewport.js';
 import {LOG_FILTERS,logCategory,LOG_PAGE_SIZE} from './voyage-log.js';
 
 export function createLogDevice({state,settings,$,formatDate,resetInput,updateUI,closeSystemChart,setTerminalKeyboard,pauseTerminalOutput,readPage,createPreview}){
@@ -19,7 +20,7 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,updateUI
   }
   const reduced=()=>settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
   function applySize(){
-    panel.style.width=innerWidth+'px';panel.style.height=innerHeight+'px';
+    panel.style.width=viewport.width+'px';panel.style.height=viewport.height+'px';
   }
   async function render(){
     const token=++renderSerial,save=state.save,reading=view(),content=$('journalContent');
@@ -71,7 +72,7 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,updateUI
     }return record;
   }
   function origin(){
-    const button=$('journalButton').getBoundingClientRect(),r=panel.getBoundingClientRect();
+    const button=gameRect($('journalButton')),r=gameRect(panel);
     const x=button.left+button.width/2,y=button.top+button.height/2,cx=r.left+r.width/2,cy=r.top+r.height/2;
     return {dx:x-cx,dy:y-cy};
   }
@@ -86,7 +87,7 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,updateUI
     if(!state.save)return;if(state.journalOpen){close();return;}
     serial++;closing=false;previousFocus=document.activeElement;resetInput();closeSystemChart();
     const dock=$('terminalDock');state.journalDeckTarget=dock.classList.contains('has-target');
-    document.documentElement.style.setProperty('--journal-dock-width',dock.getBoundingClientRect().width+'px');
+    document.documentElement.style.setProperty('--journal-dock-width',gameRect(dock).width+'px');
     pauseTerminalOutput();state.journalOpen=true;state.terminalExpanded=false;setTerminalKeyboard(false);$('terminalInput').blur();
     document.body.classList.add('journal-open');$('app').inert=true;$('targetCard').inert=true;
     $('journalButton').setAttribute('aria-expanded','true');overlay.hidden=false;applySize();render();updateUI();

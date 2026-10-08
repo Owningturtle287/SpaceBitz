@@ -106,3 +106,11 @@ export function advanceToArrival(point,goal,arrival,speed,seconds){
   if(d>0){point.x+=dx/d*step;point.y+=dy/d*step;}
   return remaining<=step+.2;
 }
+
+// Seed the first leg with its departure system, including older empty routes.
+export function recordTravel(save,departure,arrival){
+  save.route||=[];
+  if(!save.route.length&&departure)save.route.push(departure);
+  if(arrival&&save.route.at(-1)!==arrival)save.route.push(arrival);
+  save.route=save.route.slice(-40);
+}

@@ -39,6 +39,7 @@ jobs:
         timeout-minutes: 5
         env:
           BROWSER: ${{ matrix.browser }}
+          QA_LAYOUT_PREVIEW: true
         run: node scripts/check-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
