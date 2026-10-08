@@ -31,7 +31,8 @@ export async function checkRelease11219(page,engine){
   assert.equal(await page.locator('#landscapeGate').isVisible(),true);
   assert.equal(await page.evaluate(()=>Number.isFinite(window.__game.state.terminal.pausedAt)),true);
   await page.setViewportSize({width:844,height:390});
-  await page.evaluate(()=>{const g=window.__game;g.updateTerminal(g.state.terminal.start+20000);});
+  await page.waitForFunction(()=>!window.__game.state.landscapeBlocked);
+  await page.evaluate(()=>{const g=window.__game;g.updateTerminal(performance.now());g.updateTerminal(g.state.terminal.start+20000);});
   assert.equal(await page.evaluate(()=>window.__game.state.terminalEntries.slice(-2).every(e=>!e.node.hidden)),true);
   await page.evaluate(async()=>{
     const g=window.__game,{recordAction}=await import('/voyage-log.js');for(let i=0;i<250;i++)recordAction(g.state.save,'History '+i);
@@ -118,7 +119,8 @@ async function checkDatabase(page){
     });
     await test.locator('#settingsOpen').click();await test.getByRole('button',{name:'SAVE & MAIN MENU',exact:true}).click();
     await test.locator('#settingsSaveStatus').waitFor();assert.match(await test.locator('#settingsSaveStatus').innerText(),/Storage is full/);
-    assert.equal(await test.locator('#app').isVisible(),true);
+    assert.equal(await test.locator('#app').evaluate(e=>!e.hidden),true);
+    assert.equal(await test.locator('#settingsOpen').isVisible(),true);
     const quotaSafe=await test.evaluate(async()=>{
       IDBObjectStore.prototype.put=window.__quotaPut;delete window.__quotaPut;
       const {createVoyageStore}=await import('/voyage-database.js'),store=createVoyageStore();try{return window.__beforeQuota===JSON.stringify(await store.load('legacy-other'));}finally{store.close();}
