@@ -1,4 +1,4 @@
-import {viewport,gamePoint,gameRect} from './viewport.js';
+import {gamePoint,gameRect} from './viewport.js';
 // Native iOS overlay indicators can sit inside flex-panel text. Keep the rail
 // outside the scrolling content and position it against that panel's right rim.
 export function createEdgeScrollbar(scroller,{container=scroller.parentElement,id,label,onScrollIntent=()=>{}}={}){
@@ -10,10 +10,10 @@ export function createEdgeScrollbar(scroller,{container=scroller.parentElement,i
   scroller.classList.add('edge-scroll-content');
   let frame=0,drag=null;
   function update(){
-    frame=0;const r=gameRect(scroller),p=gameRect(container),max=scroller.scrollHeight-scroller.clientHeight;
-    rail.hidden=scroller.hidden||container.hidden||r.height===0||max<=1;if(rail.hidden)return;
-    rail.style.left=(r.left+scroller.clientLeft+scroller.clientWidth-p.left-container.clientLeft-14)+'px';
-    rail.style.top=(r.top+scroller.clientTop-p.top-container.clientTop+3)+'px';
+    frame=0;const max=scroller.scrollHeight-scroller.clientHeight;
+    rail.hidden=scroller.hidden||container.hidden||scroller.clientHeight===0||max<=1;if(rail.hidden)return;
+    rail.style.left=(scroller.offsetLeft+scroller.clientLeft+scroller.clientWidth-14)+'px';
+    rail.style.top=(scroller.offsetTop+scroller.clientTop+3)+'px';
     const height=Math.max(0,scroller.clientHeight-6),size=Math.min(height,Math.max(24,height*scroller.clientHeight/scroller.scrollHeight));
     rail.style.height=height+'px';thumb.style.height=size+'px';thumb.style.top=(height-size)*Math.min(1,Math.max(0,scroller.scrollTop/max))+'px';
     rail.setAttribute('aria-valuemax',String(Math.round(max)));rail.setAttribute('aria-valuenow',String(Math.round(scroller.scrollTop)));

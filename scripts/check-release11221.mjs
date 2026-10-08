@@ -25,6 +25,7 @@ export async function checkRelease11221(page,engine){
     await page.setViewportSize(physical);
     await page.waitForFunction(v=>{const g=window.__game;return g.state.width===Math.max(v.width,v.height)&&g.state.height===Math.min(v.width,v.height)&&document.getElementById('gameViewport').dataset.rotated===String(v.height>v.width);},physical);
     await page.evaluate(async()=>{const g=window.__game;g.frame(performance.now());await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
+    await page.waitForFunction(()=>['homeButton','followShipButton','flightSpeed','secondaryAction'].every(id=>{const e=document.getElementById(id),r=e.getBoundingClientRect();return document.elementFromPoint((r.left+r.right)/2,(r.top+r.bottom)/2)?.closest('button,input')?.id===id;}));
     const layout=await page.evaluate(async()=>{
       const {gameRect}=await import('/viewport.js'),g=window.__game,el=id=>document.getElementById(id),r=id=>gameRect(el(id)),deck=r('dashboardBase'),joy=r('joystick'),terminal=r('targetCard'),speed=r('mapButton');
       const radius=id=>parseFloat(getComputedStyle(el(id)).borderBottomLeftRadius),rightRadius=id=>parseFloat(getComputedStyle(el(id)).borderBottomRightRadius),d=radius('dashboardBase');
@@ -47,8 +48,8 @@ export async function checkRelease11221(page,engine){
     await tap(page.locator('#journalButton'));await page.waitForFunction(()=>!document.getElementById('journalContent').hasAttribute('aria-busy'));
     const log=await page.locator('#journalPanel').evaluate(e=>{const r=e.getBoundingClientRect(),b=document.getElementById('journalClose').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,background:getComputedStyle(document.getElementById('journal')).backgroundColor,hit:document.elementFromPoint((b.left+b.right)/2,(b.top+b.bottom)/2)?.closest('button')?.id};});
     assert.ok(Math.abs(log.x)<1&&Math.abs(log.y)<1&&Math.abs(log.width-physical.width)<1&&Math.abs(log.height-physical.height)<1,JSON.stringify(log));assert.equal(log.background,'rgb(3, 17, 13)');assert.equal(log.hit,'journalClose');
-    for(const filter of ['star','planet','moon']){await tap(page.locator(`[data-filter="${filter}"]`));await page.waitForFunction(()=>!document.getElementById('journalContent').hasAttribute('aria-busy'));assert.equal(await page.locator('.journal-entry.action').count(),0);assert.equal(await page.locator('.object-survey').count(),1);}
-    await tap(page.locator('[data-filter="all"]'));await page.waitForFunction(()=>!document.getElementById('journalContent').hasAttribute('aria-busy'));
+    for(const filter of ['star','planet','moon']){await tap(page.locator(`[data-filter="${filter}"]`));await page.waitForFunction(value=>document.querySelector(`[data-filter="${value}"]`).getAttribute('aria-pressed')==='true',filter);await page.waitForFunction(()=>!document.getElementById('journalContent').hasAttribute('aria-busy'));assert.equal(await page.locator('.journal-entry.action').count(),0);assert.equal(await page.locator('.object-survey').count(),1);}
+    await tap(page.locator('[data-filter="all"]'));await page.waitForFunction(()=>document.querySelector('[data-filter="all"]').getAttribute('aria-pressed')==='true');await page.waitForFunction(()=>!document.getElementById('journalContent').hasAttribute('aria-busy'));
     if(physical.width===844&&layouts.length===0)await capture('log');await tap(page.locator('#journalClose'));layouts.push({physical,...layout});
   }
   await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;g.applySettings();});await tap(page.locator('#systemChartToggle'));

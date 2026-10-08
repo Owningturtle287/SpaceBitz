@@ -1,4 +1,4 @@
-import {viewport,gamePoint,gameRect} from './viewport.js';
+import {viewport,gameRect} from './viewport.js';
 import {LOG_FILTERS,logCategory,LOG_PAGE_SIZE} from './voyage-log.js';
 
 export function createLogDevice({state,settings,$,formatDate,resetInput,updateUI,closeSystemChart,setTerminalKeyboard,pauseTerminalOutput,readPage,createPreview}){

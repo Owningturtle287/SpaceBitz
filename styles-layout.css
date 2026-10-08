@@ -19,7 +19,7 @@
 .journal-pagination{padding:8px max(16px,var(--safe-right),calc(var(--dashboard-corner)*.65)) max(10px,var(--safe-bottom),calc(var(--dashboard-corner)*.4)) max(16px,var(--safe-left),calc(var(--dashboard-corner)*.65))}
 
 /* Equal insets and radii preserve the dashboard corner centers. */
-#joystick,.terminal-visible #joystick{width:108px;left:clamp(6px,calc(var(--joy-x,16%) - var(--view-width)*.16),var(--deck-joy-max,6px));bottom:6px;height:calc(var(--dashboard-row-height) + var(--dashboard-safe-bottom) - 12px);border-radius:6px 6px 6px calc(var(--dashboard-corner) - 6px);background:radial-gradient(ellipse at center,#17354499,#10233366 65%,#07132199);box-shadow:inset 1px 1px #82a1ad,inset -2px -2px #080f20}
+#joystick,.terminal-visible #joystick{width:108px;left:clamp(6px,calc(var(--joy-x,16%) - var(--view-width)*.16),var(--deck-joy-max,6px));bottom:6px;height:calc(var(--dashboard-row-height) + var(--dashboard-safe-bottom) - 12px);border-radius:4px 4px 4px calc(var(--dashboard-corner) - 6px);background:radial-gradient(ellipse at center,#17354499,#10233366 65%,#07132199);box-shadow:inset 1px 1px #82a1ad,inset -2px -2px #080f20}
 body:has(#homeButton[data-center-position=above]) #joystick{height:calc(var(--dashboard-row-height) + var(--dashboard-safe-bottom) - 12px)}
 #joystick::before{inset:7px 15px;border:1px solid #58758b;border-radius:50%;background:linear-gradient(90deg,transparent calc(50% - .5px),#58758b88 50%,transparent calc(50% + .5px)),linear-gradient(transparent calc(50% - .5px),#58758b88 50%,transparent calc(50% + .5px))}
 #joystick #stick{width:38px;height:38px;border-color:#dcffdf;border-radius:8px;clip-path:var(--pixel-corners);background:#8ee9d4;box-shadow:inset 2px 2px #c4ffe7,inset -4px -4px #4f9ba6,3px 3px #030713}
@@ -37,7 +37,7 @@ body:has(#homeButton[data-center-position=above]) #joystick{height:calc(var(--da
 .mission-dropdown.open .mission-content{animation:chart-unfold .32s cubic-bezier(.22,.7,.25,1)}
 .mission-chevron{transition:transform .32s cubic-bezier(.22,.7,.25,1)}
 @keyframes chart-unfold{from{opacity:0;transform:translateY(-8px) scale(.96,.82)}to{opacity:1;transform:translateY(0) scale(1)}}
-body[data-reduced-motion=true] .mission-content{animation:none}
+body[data-reduced-motion=true] .mission-dropdown.open .mission-content{animation:none}
 body[data-reduced-motion=true] .mission-chevron{transition:none}
 .delete-voyage-dialog{font:10px/1.9 var(--pixel);color:#c4ffd2;overflow-wrap:anywhere}
 .dialog-actions{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}
@@ -45,4 +45,4 @@ body[data-reduced-motion=true] .mission-chevron{transition:none}
 .delete-voyage-confirm{background:#581e2b;border-color:#b46868;color:#ffb1a3}
 .dialog-error{color:#ffc29e}
 .modal-card:has(.delete-voyage-dialog){border-radius:18px;clip-path:none;background:#101e32}
-@media(prefers-reduced-motion:reduce){.mission-content{animation:none}.mission-chevron{transition:none}}
+@media(prefers-reduced-motion:reduce){.mission-dropdown.open .mission-content{animation:none}.mission-chevron{transition:none}}
