@@ -75,6 +75,12 @@ HUD and menu backgrounds are 25% opaque; labels, icons and the joystick thumb re
 
 ## Saves and installation
 
+Version 1.12.19 migrates existing voyages into an atomic IndexedDB database. Each voyage and archived log entry is stored separately; autosaves write only changed history. The active voyage keeps its latest 200 entries in memory, while the Log reads 80 entries per page and expands survey text on demand. Older history remains available in the log and in complete exports. Log filters and reopening retain reading position and expanded surveys. Status messages wait behind unfinished terminal surveys, and interrupted output resumes after returning to the app, landscape or terminal.
+
+If two windows edit the same voyage, the stale window pauses before it can replace newer progress. It offers Reload Saved Voyage, Keep As Separate Voyage and Export This Copy. Modern exports include all archived history and have no arbitrary 2 MB import cutoff. Station keeping is saved with its target and offset, so real-time reloads preserve the ship's position relative to its moving planet, moon or star. Older saves infer that relationship using their saved date.
+
+Instant Travel completes automatic routes immediately and shortens Warp engagement; it leaves manual flight speeds unchanged. Travel Trail applies to both previous routes and active Deep Space courses. Settings → Voyage includes Check for Update; update installation failures appear in the terminal. Shell installations fetch fresh assets and updates remain deferred until the voyage is safely saved and the menu is clear of dialogs.
+
 Progress autosaves locally. New voyages and imports never evict older voyages. If storage is full, Save & Main Menu keeps the voyage open so it can be exported. Invalid stored data is preserved and rejected on restoration; damaged storage is never overwritten with an empty list. **Save & Main Menu** and **Export Save** are in Settings; import is on the startup screen. Existing saves retain discoveries, logbooks, local surface locations and chart progress. Modern exported saves import as a separate voyage with their scene, current system, all positions, home planet and exploration history intact. Invalid modern locations are rejected rather than silently resetting the voyage. Ships saved in the old compressed system are safely repositioned beside their nearest legacy planet on first load; this migration runs once. Version 1.7 also scales existing system ship positions tenfold once, retaining the same numerical coordinates and leaving surface/chart positions and exploration history intact. Older `spacebitz:saves` exports can be imported as new universes; old terrain and exact positions do not carry over. Storage is device specific; clearing site data deletes local saves, so export important voyages.
 
 On Android Chrome, use **Install app** from the browser menu or the in-game installation prompt. On iPhone Safari, choose **Share → Add to Home Screen**. The installed progressive web app caches the playable app shell after its first complete online load; the checked-in soundtrack is cached with the app shell; this repository does not ship a native APK or IPA.
@@ -97,7 +103,8 @@ The full 68-second MP3 and pixel artwork are checked in; local play needs no gen
 - `body-classification.js`: shared planet/dwarf-planet/moon labels and counts.
 - `target-ui.js` / `presentation.js`: double-tap confirmation, projected labels and home/chart markers.
 - `rendering.js`: bounded screen-space geometry, clipped textures, frame clearing and independent star drift.
-- `saves.js` / `voyage-storage.js`: validated restoration and atomic, non-evicting voyage storage.
+- `saves.js` / `voyage-storage.js` / `voyage-database.js`: validated restoration, migration, revision checks and atomic voyage/history storage.
+- `flight-state.js`: shared layer resets and persistent station keeping.
 - `body-cache.js` / `exploration.js`: cache identity and idempotent sample collection.
 - `hud.js`: control placement and ship locators.
 - `settings.js` / `audio.js`: validated preferences and native soundtrack lifecycle.

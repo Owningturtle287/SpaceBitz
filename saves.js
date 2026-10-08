@@ -34,7 +34,12 @@ export function importVoyage(raw,id,now=Date.now()){
     if(!['system','surface','chart'].includes(raw.scene))throw Error('Invalid saved scene.');
     const bodies=system.planets.flatMap(p=>[p,...p.moons]);
     if(raw.scene==='surface'&&!bodies.find(b=>b.id===raw.landed)?.solid)throw Error('The saved landing world is not available.');
-    return {...common,currentSystem,scene:raw.scene,ship:point(raw.ship,'ship'),surface:point(raw.surface,'surface'),chart:point(raw.chart,'chart'),
+    let station;
+    if(raw.station){
+      if(raw.station.system!==currentSystem||![...bodies,...(system.stars||[system.star])].some(b=>b.id===raw.station.id))throw Error('Invalid saved station keeping target.');
+      station={system:currentSystem,id:raw.station.id,...point(raw.station,'station keeping')};
+    }
+    return {...common,currentSystem,scene:raw.scene,ship:point(raw.ship,'ship'),surface:point(raw.surface,'surface'),chart:point(raw.chart,'chart'),...station&&{station},
       landed:raw.landed??null,layoutVersion:raw.layoutVersion,
       homePlanet:typeof raw.homePlanet==='string'?raw.homePlanet:null,
       route:Array.isArray(raw.route)?raw.route.map(s=>seedValue(s,'route system')):[]};

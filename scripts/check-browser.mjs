@@ -10,6 +10,7 @@ import {checkRelease11215} from './check-release11215.mjs';
 import {checkRelease11216} from './check-release11216.mjs';
 import {checkRelease11217} from './check-release11217.mjs';
 import {checkRelease11218} from './check-release11218.mjs';
+import {checkRelease11219} from './check-release11219.mjs';
 import {checkRelease11212} from './check-release11212.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -38,7 +39,7 @@ try{
     const response=await route.fetch();let source=await response.text();
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
-    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,nearbyStars,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected,applySettings,setFlightStage,notify,appendTerminalEntry,clearTerminal,showJournal,closeJournal,openSettings};';
+    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,nearbyStars,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected,applySettings,setFlightStage,notify,appendTerminalEntry,clearTerminal,showJournal,closeJournal,openSettings,persist,inputPointerCount:()=>pointers.size};';
     await route.fulfill({response,body:source});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
@@ -70,17 +71,17 @@ try{
   // restore the exact launch fixture so the simulation checks stay independent.
   const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
   const release11218=await checkRelease11218(page,engine);
-  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11217=await checkRelease11217(page,engine);
-  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11216=await checkRelease11216(page,engine);
-  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11215=await checkRelease11215(page,engine);
-  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11214=await checkRelease11214(page,engine);
-  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11213=await checkRelease11213(page,engine);
-  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start(fixture.save);g.applySettings();g.frame(performance.now());},launchFixture);
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   await page.waitForTimeout(350);
   const initial=await page.evaluate(()=>{
     const c=document.getElementById('sky'),g=c.getContext('2d'),s=window.__game.state,r=c.getBoundingClientRect(),m=g.getTransform();
@@ -528,12 +529,13 @@ try{
   const barren=await page.evaluate(async()=>{
     const g=window.__game,{defaults}=await import('/universe.js'),{makeSystem}=await import('/model.js'),generation=defaults(false);for(const k of Object.keys(generation.pools.family))generation.pools.family[k]=k==='wd'?100:0;for(const k of Object.keys(generation.pools.multiplicity))generation.pools.multiplicity[k]=k==='single'?100:0;
     let seed,system;for(let i=0;i<50;i++){seed='barren-'+i;system=makeSystem(seed,generation);if(!system.planets.length)break;}if(system.planets.length)throw Error('No barren fixture');
-    const save={...g.state.save,generation,currentSystem:seed,scene:'system',landed:null,homePlanet:null};g.start(save);g.enterSystem({seed,x:0,y:0});g.drawSystem(0);g.showDetails(system.star);g.closeModal();if(g.state.save.ship.x!==g.state.camera.x)throw Error('Barren entry not centered');return {seed,scene:g.state.scene};
+    const save={...g.state.save,id:crypto.randomUUID(),revision:0,station:null,generation,currentSystem:seed,scene:'system',landed:null,homePlanet:null};g.start(save);g.enterSystem({seed,x:0,y:0});g.drawSystem(0);g.showDetails(system.star);g.closeModal();if(g.state.save.ship.x!==g.state.camera.x)throw Error('Barren entry not centered');return {seed,scene:g.state.scene};
   });
   const release112=await checkRelease112(page,engine);
   const release1121=await checkRelease1121(page,engine);
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
   const release11212=await checkRelease11212(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,release11216,release11217,release11218,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  const release11219=await checkRelease11219(page,engine);
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,release11216,release11217,release11218,release11219,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

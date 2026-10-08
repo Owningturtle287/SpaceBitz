@@ -83,6 +83,12 @@ body[data-scene=chart] #flightSpeed{opacity:1;cursor:default}
 .object-survey summary::before{content:'+';flex:none;color:#8ee9d4}
 .object-survey[open] summary::before{content:'−'}
 .journal-object-data{margin:0;padding:12px;border-top:1px solid #315842;font:var(--log-data-font)/1.8 var(--pixel);white-space:pre-wrap;overflow-wrap:anywhere;color:#9af5b1;animation:record-unfold .24s ease-out}
+.journal-data-key{font-size:var(--log-label-font)}
+.journal-data-title,.journal-data-title .journal-data-key{font-size:var(--log-header-font);color:#c4ffd2}
+.journal-pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;padding:6px 12px;border-top:1px solid #315842;font:7px/1.6 var(--pixel)}
+.journal-pagination button{min-height:32px;padding:4px 8px;border:1px solid #4c7960;border-radius:4px;background:#112b20;color:#b6e4c1;font:7px/1.5 var(--pixel);touch-action:manipulation}
+.journal-pagination button:disabled{opacity:.4}
+.journal-pagination button:focus-visible{outline:2px solid #c4ffd2;outline-offset:-3px}
 @keyframes record-unfold{from{opacity:.75;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 .journal-panel .terminal-resize{width:44px;height:44px;min-width:44px;min-height:44px;top:2px;background:#304d5b;color:#fff;border:2px solid #879fa5;clip-path:var(--pixel-corners)}
 .journal-resize-height{left:4px;cursor:ns-resize}

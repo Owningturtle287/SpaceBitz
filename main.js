@@ -21,13 +21,15 @@ import {SURFACE_UNIT,CHART_UNIT,LANDER_SIZE,sceneUnit,gridCell,gridStride,format
 import {migrateLayout,systemFitZoom,systemMinZoom,travelSpeed,centerZoomAt,cameraViewAt,starApproachPoint,manualSpeed,outermostPlanet,systemDrive,advanceToArrival} from './navigation.js';
 
 import {importVoyage,restoreVoyage} from './saves.js';
-import {readVoyages,writeVoyages,persistVoyage,deleteVoyage,saveBeforeExit} from './voyage-storage.js';
+import {saveBeforeExit} from './voyage-storage.js';
+import {createVoyageStore} from './voyage-database.js';
+import {resetFlightContext,stationAnchor,applyStationAnchor} from './flight-state.js';
 import {bodyLabel,bodyCounts} from './body-classification.js';
 import {collectSample} from './exploration.js';
 import {registerAppWorker} from './pwa.js';
 import {FLIGHT_STAGES,flightStage,isLandscape} from './flight-drive.js';
 import {applyInterfaceFonts} from './interface-fonts.js';
-import {recordAction,recordObject} from './voyage-log.js';
+import {recordAction,recordObject,recordEvent} from './voyage-log.js';
 import {createLogDevice} from './log-device.js';
 import {placeControls,paintLocator} from './hud.js';
 import {enableTouchButtons} from './touch-buttons.js';
@@ -37,6 +39,9 @@ const canvas = $('sky');
 const ctx = canvas.getContext('2d', canvasContextOptions(navigator.userAgent));
 const SETTINGS_KEY = 'spacebitz:field:settings';
 const GENERATION_KEY='spacebitz:universe:v3';
+const voyages=createVoyageStore();
+let persistQueue=Promise.resolve(),saveListSerial=0;
+const pointers=new Map();let gesture=null;
 let universePreset=defaults(true),customPreset=defaults(false);
 try{const stored=readJSON(GENERATION_KEY,null);if(stored){customPreset=checkedGeneration({...stored,scientific:false});universePreset=stored.scientific?defaults(true):customPreset;}}catch{}
 const settings = normalizeSettings({
@@ -53,11 +58,12 @@ const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,
   panUntil:0, centerZoom:null, centerReady:false, followShip:false, followPanRemaining:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, fps:60,
   waypoint:null,coordinateTap:null,warpUntil:0,flightContext:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
-const {showDetails,toggleTerminal,buildTerminal,clearTerminal,finishTerminalRecord,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog:entry=>{if(state.save){if(entry.kind==='object')recordObject(state.save,entry);else recordAction(state.save,entry.text);}},resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
-const journal=createLogDevice({state,settings,$,formatDate:days=>formatGameDate(new Date(EPOCH+days*DAY_MS),true),resetInput,saveSettings,updateUI,closeSystemChart,setTerminalKeyboard});
+const {showDetails,toggleTerminal,buildTerminal,clearTerminal,pauseTerminalOutput,releaseTerminalQueue,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog:entry=>{if(state.save){if(entry.kind==='object')recordObject(state.save,entry);else recordAction(state.save,entry.text);}},resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
+const journal=createLogDevice({state,settings,$,formatDate:days=>formatGameDate(new Date(EPOCH+days*DAY_MS),true),resetInput,saveSettings,updateUI,closeSystemChart,setTerminalKeyboard,pauseTerminalOutput,
+  readPage:async(save,filter,offset,limit)=>{await persist();return voyages.page(save.id,filter,offset,limit);}});
 function closeJournal(immediate=true){journal.close(immediate);}
-const loadSaves = () => {
-  try{return readVoyages(localStorage).filter(s=>s&&typeof s.id==='string'&&typeof s.seed==='string');}
+const loadSaves = async() => {
+  try{return (await voyages.list()).filter(s=>s&&typeof s.id==='string'&&typeof s.seed==='string');}
   catch(error){notify(error.message);return [];}
 };
 function readJSON(key, fallback) { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } }
@@ -102,14 +108,36 @@ function applySettings(){
 enableTouchButtons(document);
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 function persist() {
-  if (!state.save) return true;
-  try {persistVoyage(localStorage,state.save);persist.failedAt=0;return true;}
-  catch(error) {
-    if(!persist.failedAt||Date.now()-persist.failedAt>15000){notify(error.name==='QuotaExceededError'?'Storage is full. Voyage kept open; export it or free storage before leaving.':error.message);persist.failedAt=Date.now();}
-    return false;
-  }
+  const save=state.save;if(!save)return Promise.resolve(true);
+  save.station=state.scene==='system'&&state.followBody?{system:state.system.seed,...state.followBody}:null;
+  const task=persistQueue.then(async()=>{
+    if(save!==state.save)return true;
+    if(state.saveConflict===save)return false;
+    try{await voyages.save(save);persist.failedAt=0;return true;}
+    catch(error){
+      if(error.name==='VoyageConflictError'){state.saveConflict=save;resetInput();showSaveConflict(save);}
+      else if(!persist.failedAt||Date.now()-persist.failedAt>15000){notify(error.name==='QuotaExceededError'?'Storage is full. Voyage kept open; export it or free storage before leaving.':error.message);persist.failedAt=Date.now();}
+      return false;
+    }
+  });
+  persistQueue=task;return task;
 }
-function notify(message){appendTerminalEntry(message);}
+function notify(message,options){appendTerminalEntry(message,'message',options);}
+async function exportSave(save=state.save){
+  const copy=await voyages.exportSave(save),blob=new Blob([JSON.stringify(copy,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function showSaveConflict(save){
+  const box=document.createElement('div'),message=document.createElement('p');message.textContent='Another window updated this voyage. This copy is paused so neither window loses progress. Reload the saved voyage, or keep this copy as a separate voyage.';box.append(message);
+  const action=(label,run)=>{const button=document.createElement('button');button.className='button';button.textContent=label;button.onclick=async()=>{button.disabled=true;try{await run();}catch(error){notify(error.message);}finally{button.disabled=false;}};box.append(button);};
+  action('RELOAD SAVED VOYAGE',async()=>{const latest=await voyages.load(save.id);state.saveConflict=null;closeModal();start(latest);});
+  action('KEEP AS SEPARATE VOYAGE',async()=>{
+    const copy=await voyages.exportSave(save);copy.id=crypto.randomUUID();copy.name=(copy.name+' · copy').slice(0,40);delete copy.revision;
+    await voyages.importSaves([copy]);const loaded=await voyages.load(copy.id);state.saveConflict=null;closeModal();start(loaded);
+  });
+  action('EXPORT THIS COPY',()=>exportSave(save));
+  setModal('VOYAGE PAUSED','Voyage updated elsewhere',box,true);$('modalClose').hidden=true;$('app').inert=true;box.querySelector('button').focus();
+}
 function allBodies() { return state.system?.planets.flatMap(p=>[p,...p.moons]) || []; }
 function systemStars(){return state.system?.stars||(state.system?[state.system.star]:[]);}
 function findBody(id) { return [...allBodies(),...systemStars()].find(p=>p.id===id); }
@@ -168,9 +196,9 @@ function fit() {
   if(rect.width!==state.width||rect.height!==state.height)state.terminalSize=null;
   state.width=rect.width; state.height=rect.height;
   const blocked=!isLandscape(rect.width,rect.height);
-  if(blocked&&!state.landscapeBlocked)queueMicrotask(resetInput);
+  if(blocked&&!state.landscapeBlocked){pauseTerminalOutput();queueMicrotask(resetInput);}
   state.landscapeBlocked=blocked;$('landscapeGate').hidden=!blocked;
-  for(const id of ['app','welcome','modal'])$(id).inert=blocked||(id==='app'&&Boolean(state.journalOpen));
+  for(const id of ['app','welcome','modal'])$(id).inert=blocked||(id==='app'&&Boolean(state.journalOpen||state.saveConflict));
   state.dpr=settings.resolution==='auto'?Math.min(window.devicePixelRatio||1,2):Number(settings.resolution);
   canvas.width=Math.round(rect.width*state.dpr); canvas.height=Math.round(rect.height*state.dpr);
   ctx.setTransform(state.dpr,0,0,state.dpr,0,0);
@@ -185,7 +213,7 @@ globalThis.screen?.orientation?.addEventListener?.('change',()=>setTimeout(()=>{
 applySettings();
 function start(save) {
   try{save=restoreVoyage(save);}catch(error){notify(error.message+' The stored voyage has not been changed.');return;}
-  state.flightContext++;
+  releaseTerminalQueue();resetFlightContext(state);resetInput();state.saveConflict=null;$('modalClose').hidden=false;
   closeJournal();state.save=save; state.scene=save.scene || 'system';state.terminalNotice=null;state.terminalEntries.length=0;state.terminalRecordKey=null;state.terminalCleared=false;$('terminalMessages').replaceChildren();
   if(save.generation)save.generation=checkedGeneration(save.generation);
   state.system=makeSystem(save.currentSystem || save.homeSeed,save.generation);
@@ -194,11 +222,14 @@ function start(save) {
   save.chart ||= {x:0,y:0}; save.ship ||= {x:0,y:0};
   save.surface ||= {x:0,y:0}; save.discoveries ||= []; save.log ||= [];
   save.days=Number.isFinite(save.days)?save.days:currentDays();
-  if(settings.timeMode==='realtime')save.days=currentDays();
   migrateLayout(save,state.system);save.route||=[];
+  const anchor=stationAnchor(save,state.system);
+  if(settings.timeMode==='realtime')save.days=currentDays();
+  applyStationAnchor(save,state.system,anchor);
   if(state.scene==='surface' && !findBody(save.landed)?.solid){state.scene='system';save.scene='system';save.landed=null;}
-  state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.selected=null;state.waypoint=null;state.warpUntil=0;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false;state.followPanRemaining=0; state.autopilot=null;state.followBody=null;state.panUntil=0;
+  state.selected=null;state.followShip=false;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.actorMotion={direction:'down',steps:0};
+  state.followBody=anchor;
   state.zoom=state.scene==='chart'?1:state.scene==='surface'?1.3:.85;
   if(state.scene==='chart') state.camera={...save.chart};
   else if(state.scene==='surface') state.camera={...save.surface};
@@ -206,7 +237,7 @@ function start(save) {
   $('welcome').classList.remove('visible'); $('app').hidden=false;
   requestLandscape();
   applyCenterButtonLayout();
-  keepStationNearShip();persist(); updateUI();
+  $('app').inert=Boolean(state.landscapeBlocked);keepStationNearShip();persist(); updateUI();
 }
 function create(sol=false) {
   const name=$('universeName').value.trim().slice(0,40) || 'My Universe';
@@ -221,18 +252,18 @@ function create(sol=false) {
     surface:{x:50,y:35},landed:home?.id||null,homePlanet:home?.id||null,days:startDays,discoveries:home?[home.id]:[],log:[{name:home?.name||system.name,action:home?'Home planet · voyage started':'Stellar survey started',days:startDays}],layoutVersion:4,updated:Date.now()};
   start(save);notify(home?`${home.name} · your home planet`:`${system.name} · no landable home world; stellar survey started`);
 }
-function renderSaves() {
-  const list=$('savedGames'); list.replaceChildren(); const saves=loadSaves();
+async function renderSaves() {
+  const serial=++saveListSerial,list=$('savedGames'),saves=await loadSaves();if(serial!==saveListSerial)return;list.replaceChildren();
   if(!saves.length){const el=document.createElement('div');el.className='empty-saves';el.textContent='No voyages saved yet.';list.append(el);return;}
   for(const save of saves){
     const row=document.createElement('div');row.className='save-row';
     const play=document.createElement('button');play.className='load-save';
     play.textContent=save.name || 'Unnamed Universe';play.title='Continue '+play.textContent+(save.generation?' · '+(save.generation.scientific?'Scientific':'Custom')+' stellar universe':' · Legacy generation preserved; create a new voyage for v1.12 stars');
-    play.onclick=()=>start(save);
+    play.onclick=async()=>{play.disabled=true;try{start(await voyages.load(save.id));}catch(error){notify(error.message);}finally{play.disabled=false;}};
     const date=document.createElement('small');date.textContent=new Date(save.updated||Date.now()).toLocaleDateString();
     const del=document.createElement('button');del.className='delete-save';del.textContent='✕';del.setAttribute('aria-label','Delete '+play.textContent);
-    del.onclick=()=>{if(!confirm(`Delete “${save.name}” from this device?`))return;
-      try{deleteVoyage(localStorage,save.id);renderSaves();}catch{notify('The voyage could not be deleted. Your stored data is unchanged.');}};
+    del.onclick=async()=>{if(!confirm(`Delete “${save.name}” from this device?`))return;
+      try{await voyages.remove(save.id,save.revision);await renderSaves();}catch(error){notify(error.message+' Your stored data is unchanged.');}};
     row.append(play,date,del);list.append(row);
   }
 }
@@ -318,13 +349,12 @@ $('importButton').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{
   const file=e.target.files?.[0];if(!file)return;
   try{
-    if(file.size>2_000_000)throw Error('Save file is too large.');
     const value=JSON.parse(await file.text());
     const source=Array.isArray(value)?value:(Array.isArray(value.saves)?value.saves:[value]);
     const converted=source.map(raw=>importVoyage(raw,crypto.randomUUID?.()||String(Date.now()+Math.random())));
     if(!converted.length)throw Error('No voyages found.');
-    writeVoyages(localStorage,converted);
-    renderSaves();notify(`Imported ${converted.length} voyage${converted.length===1?'':'s'}.`);
+    await voyages.importSaves(converted);
+    await renderSaves();notify(`Imported ${converted.length} voyage${converted.length===1?'':'s'}.`);
   }catch(error){notify(error.message||'Could not import this save.');}
   e.target.value='';
 };
@@ -333,7 +363,7 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installProm
 $('installButton').onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installButton').hidden=true;}};
 let applyPendingUpdate=()=>{};
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))window.addEventListener('load',()=>{
-  applyPendingUpdate=registerAppWorker({serviceWorker:navigator.serviceWorker,isSafe:()=>!state.save,reload:()=>location.reload(),onReady:()=>notify('Update ready. It will apply after Save & Main Menu.')});
+  applyPendingUpdate=registerAppWorker({serviceWorker:navigator.serviceWorker,isSafe:()=>!state.save&&!$('modal').classList.contains('visible'),reload:()=>location.reload(),onReady:()=>notify('Update ready. It will apply after Save & Main Menu.'),onError:error=>notify('App update check failed: '+error.message+' Your voyage is unchanged.')});
 });
 
 function beginSelection(){
@@ -346,7 +376,7 @@ function beginSelection(){
   void row.offsetHeight;row.style.transition='';
   $('contextActions').classList.add('ready');$('travelControls').classList.add('ready');
 }
-function select(object) { beginSelection();state.terminalNotice=null;state.terminal=null;state.terminalExpanded=false;state.waypoint=null;state.selected=object; state.autopilot=null;updateUI(); }
+function select(object) { releaseTerminalQueue();pauseTerminalOutput();beginSelection();state.terminalNotice=null;state.terminal=null;state.terminalExpanded=false;state.waypoint=null;state.selected=object; state.autopilot=null;updateUI(); }
 function keepStationNearShip(){
   if(state.scene!=='system')return;
   const ship=state.save.ship;
@@ -357,47 +387,42 @@ function keepStationNearShip(){
 function markDiscovery(body) {
   if(state.save.discoveries.includes(body.id)) return;
   state.save.discoveries.push(body.id);
-  state.save.log.unshift({name:body.name,action:'First landing',days:state.save.days});
-  notify(`First landing on ${body.name} · added to logbook`);persist();
+  recordEvent(state.save,{name:body.name,action:'First landing'});
+  notify(`First landing on ${body.name} · added to logbook`,{log:false});persist();
 }
-function enterChart() {state.flightContext++;state.warpUntil=0;state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
-  state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
-  state.followBody=null;state.shipMotion.thrust=0;
-  const star=currentStar();state.scene='chart';state.selected=star;
-  state.save.scene='chart';state.save.chart={x:star.x+38,y:star.y+30};
+function changeLayer(scene){releaseTerminalQueue();pauseTerminalOutput();resetFlightContext(state,scene);resetInput();}
+function enterChart() {changeLayer('chart');
+  const star=currentStar();state.selected=star;
+  state.save.chart={x:star.x+38,y:star.y+30};
   state.camera={...state.save.chart};state.zoom=1;state.autopilot=null;persist();updateUI();
 }
-function enterSystem(star) {state.flightContext++;state.warpUntil=0;state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
-  state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
-  state.followBody=null;state.shipMotion.thrust=0;
+function enterSystem(star) {changeLayer('system');
   state.system=makeSystem(star.seed,state.save.generation);state.save.currentSystem=star.seed;
-  state.scene='system';state.save.scene='system';state.selected=null;
+  state.selected=null;
   const outer=outermostPlanet(state.system,state.save.days)||state.system.star,pos=bodyPosition(outer,state.save.days,state.system);
   const offset=visualRadius(outer.diameter)+60;
   state.save.ship={x:pos.x+offset,y:pos.y};state.camera={...state.save.ship};
   state.selected=outer;state.followBody={id:outer.id,x:offset,y:0};
   state.zoom=.85;state.autopilot=null;state.save.chart={x:star.x,y:star.y};
-  state.save.log.unshift({name:state.system.name,action:'Entered system',days:state.save.days});
+  recordEvent(state.save,{name:state.system.name,action:'Entered system'});
   if(state.save.route.at(-1)!==star.seed)state.save.route.push(star.seed);
   state.save.route=state.save.route.slice(-40);
-  notify(`${state.system.name} · arriving at ${outer.name}`);persist();updateUI();
+  notify(`${state.system.name} · arriving at ${outer.name}`,{log:false});persist();updateUI();
 }
-function enterSurface(body) {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
-  state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
+function enterSurface(body) {
   if(!body.solid){notify('No solid surface here. Explore one of its moons.');return;}
-  state.flightContext++;
+  changeLayer('surface');
   state.followBody=null;state.actorMotion={direction:'down',steps:0};
-  state.selected=null;state.scene='surface';state.save.scene='surface';state.save.landed=body.id;
+  state.selected=null;state.save.landed=body.id;
   state.save.surface={x:50,y:35};state.camera={...state.save.surface};state.zoom=1.3;
   state.autopilot=null;markDiscovery(body);persist();updateUI();
 }
-function launch() {state.flightContext++;state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
-  state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
+function launch() {changeLayer('system');
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.followBody=null;
   const body=findBody(state.save.landed);
   if(body){const p=bodyPosition(body,state.save.days,state.system);
     state.save.ship={x:p.x+visualRadius(body.diameter,body.kind)+44,y:p.y+12};}
-  state.scene='system';state.save.scene='system';state.save.landed=null;
+  state.save.landed=null;
   state.camera={...state.save.ship};state.selected=body||null;state.zoom=.95;
   keepStationNearShip();notify('Launch complete. The stars are yours.');persist();updateUI();
 }
@@ -429,7 +454,7 @@ function primary() {
     const sample=state.selected?.kind==='sample'?state.selected:nearestSample();const d=sample?Math.hypot(sample.x-state.save.surface.x,sample.y-state.save.surface.y):Infinity;
     if(state.selected?.kind==='sample'&&d<SURFACE_UNIT){
       const collected=collectSample(state.save,sample,findBody(state.save.landed)?.name||'World');
-      cancelTarget();if(collected){notify('Sample secured · added to logbook');persist();}updateUI();return;}
+      cancelTarget();if(collected){notify('Sample secured · added to logbook',{log:false});persist();}updateUI();return;}
     if(state.selected?.kind!=='sample'&&Math.hypot(state.save.surface.x,state.save.surface.y)<62){launch();return;}
     state.autopilot={type:'surface',x:state.selected?.kind==='sample'?state.selected.x:0,y:state.selected?.kind==='sample'?state.selected.y:0};notify(state.selected?.kind==='sample'?'Course set to sample':'Returning to lander');updateUI();return;
   }
@@ -470,7 +495,7 @@ function setFlightStage(value){
   if(stage<2){settings.flightMode=FLIGHT_STAGES[stage];saveSettings();}
   if(state.scene==='system'&&stage<2){notify((stage===0?'Orbit':'Hyperspace')+' free-flight speed selected');updateUI();return;}
   resetInput();state.autopilot=null;state.centerZoom=null;
-  state.warpUntil=performance.now()+(settings.reducedMotion?120:650);
+  state.warpUntil=performance.now()+(settings.cheats?1:settings.reducedMotion?120:650);
   notify('Warp Drive engaged · entering Deep Space');
   updateUI();
 }
@@ -555,7 +580,7 @@ $('systemChartToggle').onclick=()=>{
   closeJournal();
   if(state.scene==='surface'){select(findBody(state.save.landed));showDetails(state.selected);return;}
   const panel=$('systemChart'),content=$('systemChartContent'),open=!panel.classList.contains('open');
-  if(open){state.terminalExpanded=false;state.terminal=null;$('terminalInput').blur();setTerminalKeyboard(false);}
+  if(open){pauseTerminalOutput();state.terminalExpanded=false;state.terminal=null;$('terminalInput').blur();setTerminalKeyboard(false);}
   panel.classList.toggle('open',open);content.hidden=!open;
   $('systemChartToggle').setAttribute('aria-expanded',String(open));
   updateUI();
@@ -687,7 +712,7 @@ function setModal(eyebrow,title,content,opaque=false) {
   $('modalContent').replaceChildren(content);$('modal').hidden=false;$('modal').classList.add('visible');
   $('modalClose').focus();
 }
-function closeModal(){$('modal').hidden=true;$('modal').classList.remove('visible');state.previousFocus?.focus();}
+function closeModal(){if(state.saveConflict)return;$('modalClose').hidden=false;$('modal').hidden=true;$('modal').classList.remove('visible');state.previousFocus?.focus();applyPendingUpdate();}
 $('modalClose').onclick=closeModal;$('modal').onclick=e=>{if(e.target===$('modal'))closeModal();};
 function posSurface(){return state.save.surface;}
 function showJournal() {
@@ -785,6 +810,10 @@ function openSettings(){
   control('logResizeHandles','Show log resize arrows','checkbox');
   fontOptions('log');
   heading('Voyage');
+  if('serviceWorker' in navigator){
+    const updateButton=document.createElement('button');updateButton.className='button subtle';updateButton.textContent='CHECK FOR UPDATE';
+    updateButton.onclick=async()=>{updateButton.disabled=true;try{const waiting=await applyPendingUpdate.check?.();if(waiting!==undefined)notify(waiting?'Update ready. Save & Main Menu to apply it.':'App update check complete.');}finally{updateButton.disabled=false;}};activePanel.append(updateButton);
+  }
 
   const details=document.createElement('details');details.className='changelog-details';
   const summary=document.createElement('summary');summary.textContent='Change log';details.append(summary);
@@ -800,10 +829,9 @@ function openSettings(){
   const footer=document.createElement('div');footer.className='settings-footer';box.append(footer);
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-    save.onclick=()=>saveBeforeExit(persist,()=>{closeModal();state.scene='menu';state.save=null;state.keys.clear();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();applyPendingUpdate();});footer.append(save);
+    save.onclick=async()=>{save.disabled=true;try{await saveBeforeExit(persist,()=>{closeModal();state.scene='menu';state.save=null;resetInput();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();applyPendingUpdate();});}finally{save.disabled=false;}};footer.append(save);
     const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
-    exportButton.onclick=()=>{persist();const blob=new Blob([JSON.stringify(state.save,null,2)],{type:'application/json'});
-      const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='spacebitz-save.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};footer.append(exportButton);
+    exportButton.onclick=async()=>{exportButton.disabled=true;try{await persist();await exportSave();}catch(error){notify(error.message);}finally{exportButton.disabled=false;}};footer.append(exportButton);
   }
   selectTab(Math.min(state.settingsTab||0,panels.length-1));syncFonts();
   setModal('FLIGHT OPTIONS','Settings',box,Boolean(state.save));
@@ -820,7 +848,7 @@ function targetPoint() {
   return null;
 }
 function update(dt,clockDt=dt) {
-  if(!state.save || state.landscapeBlocked || state.journalOpen || $('modal').classList.contains('visible'))return;
+  if(!state.save || state.saveConflict || state.landscapeBlocked || state.journalOpen || $('modal').classList.contains('visible'))return;
   if(state.warpUntil){
     if(performance.now()>=state.warpUntil){state.warpUntil=0;state.scene==='chart'?enterSystem(currentStar()):enterChart();}
     return;
@@ -847,7 +875,7 @@ function update(dt,clockDt=dt) {
       const isWaypoint=state.autopilot.type==='waypoint',isStellar=state.autopilot.type==='stellar';
       const arrival=isWaypoint||isStellar?0:state.scene==='system'?visualRadius(findBody(state.autopilot.id)?.diameter||10000,findBody(state.autopilot.id)?.kind)+38:state.scene==='chart'?22:state.selected?.kind==='sample'?SURFACE_UNIT*.5:32;
       const speed=travelSpeed(state.scene,remaining,state.autopilot.drive)*(state.scene==='surface'&&terrain.sampler(findBody(state.save.landed))(p.x,p.y).water?.45:1);
-      const arrived=remaining<=arrival+.2 || (advanceToArrival(p,goal,goal===destination?arrival:0,speed,dt/1000)&&goal===destination);
+      const arrived=settings.cheats?advanceToArrival(p,destination,arrival,Infinity,1):remaining<=arrival+.2 || (advanceToArrival(p,goal,goal===destination?arrival:0,speed,dt/1000)&&goal===destination);
       if(arrived){
         if(isWaypoint){p.x=destination.x;p.y=destination.y;state.waypoint=null;}
         if(state.scene==='system'&&!isWaypoint){const b=findBody(state.autopilot.id);if(b){const center=bodyPosition(b,state.save.days,state.system);state.followBody={id:b.id,x:p.x-center.x,y:p.y-center.y};}}
@@ -1146,7 +1174,7 @@ function drawChart(now) {
     if(state.selected?.seed===star.seed)drawSelection(p.x,p.y,9,now);
     if(star.seed===state.save.homeSeed)paintHomeMarker(ctx,p.x,p.y,radius*1.18,state.width,state.height);
   }
-  if(state.autopilot?.type==='star'){const s=starAt(state.autopilot.id);const a=screen(state.save.chart.x,state.save.chart.y),b=screen(s.x,s.y);
+  if(settings.travelLines&&state.autopilot?.type==='star'){const s=starAt(state.autopilot.id);const a=screen(state.save.chart.x,state.save.chart.y),b=screen(s.x,s.y);
     ctx.strokeStyle='#76dac680';ctx.lineWidth=1;ctx.setLineDash([5,7]);ctx.beginPath();lineInView(ctx,a,b,state.width,state.height);ctx.stroke();ctx.setLineDash([]);}
   const ship=screen(state.save.chart.x,state.save.chart.y);paintShip(ctx,ship.x,ship.y,state.shipMotion,now,36,false,state.zoom);paintLocator(ctx,ship.x,ship.y,36*state.zoom,state.width,state.height);
 }
@@ -1221,13 +1249,12 @@ requestAnimationFrame(frame);
 document.addEventListener('visibilitychange',()=>{
   state.last=performance.now();
   music.setVisibility(document.hidden);
-  if(document.hidden){resetInput();persist();}
+  if(document.hidden){pauseTerminalOutput();resetInput();persist();}
 });
 window.addEventListener('pagehide',()=>{stopMusic();persist();});
 
 // Objects use one tap, empty space uses two; a drag pans and two fingers pinch.
 document.addEventListener('pointerdown',e=>{if(e.target!==canvas)state.coordinateTap=null;},{capture:true});
-const pointers=new Map();let gesture=null;
 canvas.addEventListener('pointerdown',e=>{if(onDashboard(e.clientX,e.clientY)||!state.save||$('modal').classList.contains('visible'))return;
   canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(pointers.size===1)gesture={x:e.clientX,y:e.clientY,moved:false};
@@ -1263,6 +1290,7 @@ function pick(e){if(onDashboard(e.clientX,e.clientY))return;const rect=canvas.ge
 canvas.addEventListener('pointerup',e=>{if(!pointers.has(e.pointerId))return;pointers.delete(e.pointerId);
   if(gesture&&!gesture.moved&&pointers.size===0)pick(e);gesture=null;state.pinch=null;});
 canvas.addEventListener('pointercancel',e=>{state.coordinateTap=null;pointers.delete(e.pointerId);gesture=null;state.pinch=null;});
+canvas.addEventListener('lostpointercapture',e=>{if(!pointers.has(e.pointerId))return;state.coordinateTap=null;pointers.delete(e.pointerId);gesture=null;state.pinch=null;});
 canvas.addEventListener('wheel',e=>{if(!state.save)return;e.preventDefault();zoom(e.deltaY<0?1.12:1/1.12);},{passive:false});
 window.addEventListener('keydown',e=>{
   if(state.landscapeBlocked)return;
@@ -1288,7 +1316,11 @@ window.addEventListener('keyup',e=>state.keys.delete(e.key.length===1?e.key.toLo
 window.addEventListener('blur',resetInput);
 document.addEventListener('focusin',e=>{if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)||e.target.isContentEditable)resetInput();});
 const joy=$('joystick'),stick=$('stick');let joyPointer=null;
-function resetInput(){state.keys.clear();state.joy={x:0,y:0};joyPointer=null;stick.style.setProperty('--jx','0px');stick.style.setProperty('--jy','0px');}
+function resetInput(){
+  state.keys.clear();state.joy={x:0,y:0};joyPointer=null;stick.style.setProperty('--jx','0px');stick.style.setProperty('--jy','0px');
+  for(const id of pointers.keys())if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
+  pointers.clear();gesture=null;state.pinch=null;state.coordinateTap=null;
+}
 function moveJoy(e){const r=joy.getBoundingClientRect(),x=e.clientX-r.left-r.width/2,y=e.clientY-r.top-r.height/2;
   const rx=Math.max(1,(r.width-stick.offsetWidth)/2-5),ry=Math.max(1,(r.height-stick.offsetHeight)/2-5);
   const nx=x/rx,ny=y/ry,d=Math.hypot(nx,ny),scale=d>1?1/d:1;
