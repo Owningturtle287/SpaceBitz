@@ -1,5 +1,5 @@
 import {SAVE_KEY,readVoyages,writeVoyages,persistVoyage,deleteVoyage,checkRevision} from './voyage-storage.js';
-import {initializeLog,pendingLogEntries,acknowledgeLogEntries,logCategory,LOG_PAGE_SIZE} from './voyage-log.js';
+import {initializeLog,pendingLogEntries,acknowledgeLogEntries,logCategory,LOG_PAGE_SIZE,RECENT_LOG_LIMIT} from './voyage-log.js';
 
 export const VOYAGE_DATABASE='spacebitz-voyages';
 const requestResult=request=>new Promise((resolve,reject)=>{request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
@@ -54,17 +54,17 @@ export function createVoyageStore({indexedDB=globalThis.indexedDB,legacyStorage=
   function range(id,filter){return filter==='all'?keyRange.bound([id,0],[id,Number.MAX_SAFE_INTEGER]):keyRange.bound([id,filter,0],[id,filter,Number.MAX_SAFE_INTEGER]);}
   async function list(){const db=await ready,tx=db.transaction('voyages');return (await requestResult(tx.objectStore('voyages').getAll())).sort((a,b)=>(b.updated||0)-(a.updated||0));}
   async function load(id){
-    const db=await ready,tx=db.transaction('voyages');
-    const core=await requestResult(tx.objectStore('voyages').get(id));if(!core)throw Error('This voyage is no longer saved on this device.');
-    return {...core,log:await recentEntries(db,id)};
+    const db=await ready,tx=db.transaction(['voyages','history']);
+    const [core,history]=await Promise.all([requestResult(tx.objectStore('voyages').get(id)),historyPage(tx,id,'all',0,RECENT_LOG_LIMIT)]);
+    if(!core)throw Error('This voyage is no longer saved on this device.');
+    return {...core,log:history.entries};
   }
-  async function recentEntries(db,id){return (await pageFrom(db,id,'all',0,200)).entries;}
   async function save(voyage,now=Date.now()){
     const db=await ready,entries=pendingLogEntries(voyage,!voyage.revision),snapshot=coreSave(structuredClone({...voyage,log:[]}));
     const tx=db.transaction(['voyages','history'],'readwrite'),done=completed(tx);
     let revision,logCount;
     try{
-      const voyages=tx.objectStore('voyages'),stored=await requestResult(voyages.get(voyage.id));checkRevision(stored,voyage);
+      const voyages=tx.objectStore('voyages'),stored=await requestResult(voyages.get(voyage.id));checkRevision(stored,snapshot);
       revision=(stored?.revision||0)+1;
       for(const entry of entries)putLog(tx,voyage.id,structuredClone(entry));
       logCount=await requestResult(tx.objectStore('history').index('voyage').count(voyage.id));
@@ -91,8 +91,8 @@ export function createVoyageStore({indexedDB=globalThis.indexedDB,legacyStorage=
       await done;
     }catch(error){try{tx.abort();}catch{}await done.catch(()=>{});throw error;}
   }
-  async function pageFrom(db,id,filter,offset,limit){
-    const tx=db.transaction('history'),index=tx.objectStore('history').index(filter==='all'?'order':'category'),bounds=range(id,filter);
+  async function historyPage(tx,id,filter,offset,limit){
+    const index=tx.objectStore('history').index(filter==='all'?'order':'category'),bounds=range(id,filter);
     const count=requestResult(index.count(bounds));
     const entries=await new Promise((resolve,reject)=>{
       const result=[],request=index.openCursor(bounds,'prev');let skipped=false;
@@ -104,7 +104,7 @@ export function createVoyageStore({indexedDB=globalThis.indexedDB,legacyStorage=
       };
     });return {entries,total:await count};
   }
-  async function page(id,filter='all',offset=0,limit=LOG_PAGE_SIZE){return pageFrom(await ready,id,filter,offset,limit);}
+  async function page(id,filter='all',offset=0,limit=LOG_PAGE_SIZE){return historyPage((await ready).transaction('history'),id,filter,offset,limit);}
   async function exportSave(voyage){
     const db=await ready,tx=db.transaction('history');
     const records=await requestResult(tx.objectStore('history').index('voyage').getAll(voyage.id));

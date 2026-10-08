@@ -37,6 +37,9 @@ try{
   await page.addInitScript(()=>localStorage.setItem('spacebitz:field:settings',JSON.stringify({music:false,paused:true,controls:'touch',resolution:'2',showCoords:true})));
   await page.route('**/main.js',async route=>{
     const response=await route.fetch();let source=await response.text();
+    // This suite blocks workers so the intercepted game hooks remain stable.
+    // Production worker/update behavior is exercised separately by check-pwa.
+    source=source.replace("if('serviceWorker' in navigator && location.protocol.startsWith('http'))","if(false)");
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
     source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,nearbyStars,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,focusSelected,applySettings,setFlightStage,notify,appendTerminalEntry,clearTerminal,showJournal,closeJournal,openSettings,persist,inputPointerCount:()=>pointers.size};';

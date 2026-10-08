@@ -5,12 +5,12 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
   const overlay=$('journal'),panel=$('journalPanel');
   let previousFocus=null,serial=0,resize=null,closing=false;
   let filter='all';
-  let renderSerial=0;
+  let renderSerial=0,displayedView=null;
   const views=new Map(),pager=document.createElement('div');pager.className='journal-pagination';
   const newer=document.createElement('button'),older=document.createElement('button'),pageLabel=document.createElement('span');
   newer.type=older.type='button';newer.textContent='NEWER';older.textContent='OLDER';pager.append(newer,pageLabel,older);$('journalContent').after(pager);
   function view(){const key=state.save.id+':'+filter;if(!views.has(key))views.set(key,{page:0,scroll:0,expanded:new Set()});return views.get(key);}
-  function remember(){if(state.save)view().scroll=$('journalContent').scrollTop;}
+  function remember(){if(displayedView)displayedView.scroll=$('journalContent').scrollTop;}
   newer.onclick=()=>{remember();view().page=Math.max(0,view().page-1);view().scroll=0;render();};
   older.onclick=()=>{remember();view().page++;view().scroll=0;render();};
   const filters=$('journalFilters');
@@ -35,7 +35,7 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
     catch(error){if(token!==renderSerial)return;content.textContent=error.message;content.removeAttribute('aria-busy');pageLabel.textContent='';return;}
     if(token!==renderSerial||save!==state.save||!state.journalOpen)return;
     if(reading.page&&reading.page*LOG_PAGE_SIZE>=total){reading.page=Math.max(0,Math.ceil(total/LOG_PAGE_SIZE)-1);render();return;}
-    content.replaceChildren();
+    content.replaceChildren();displayedView=reading;
     for(const [index,entry]of entries.entries()){
       const item=document.createElement(entry.kind==='object'?'details':'article');item.className='journal-entry '+(entry.kind==='object'?'object-survey':'action');
       const id=entry.id||entry.objectKey||String(reading.page*LOG_PAGE_SIZE+index);item.dataset.entryId=id;

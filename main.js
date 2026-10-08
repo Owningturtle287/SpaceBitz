@@ -272,7 +272,7 @@ function showMenuStage(stage='main'){
   const generation=stage==='generation';
   mainStage.hidden=generation;generationStage.hidden=!generation;
   if(generation){renderSaves();setTimeout(()=>$('universeName')?.focus(),0);}
-  else setTimeout(()=>$('startGame')?.focus(),0);
+  else {setTimeout(()=>$('startGame')?.focus(),0);applyPendingUpdate();}
 }
 renderSaves();
 $('startGame').onclick=()=>showMenuStage('generation');
@@ -363,7 +363,7 @@ window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installProm
 $('installButton').onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;$('installButton').hidden=true;}};
 let applyPendingUpdate=()=>{};
 if('serviceWorker' in navigator && location.protocol.startsWith('http'))window.addEventListener('load',()=>{
-  applyPendingUpdate=registerAppWorker({serviceWorker:navigator.serviceWorker,isSafe:()=>!state.save&&!$('modal').classList.contains('visible'),reload:()=>location.reload(),onReady:()=>notify('Update ready. It will apply after Save & Main Menu.'),onError:error=>notify('App update check failed: '+error.message+' Your voyage is unchanged.')});
+  applyPendingUpdate=registerAppWorker({serviceWorker:navigator.serviceWorker,isSafe:()=>!state.save&&$('universeMenuStage').hidden&&!$('modal').classList.contains('visible'),reload:()=>location.reload(),onReady:()=>notify(state.save?'Update ready. It will apply after Save & Main Menu.':'Update ready. Return to Main Menu and close Settings to apply it.'),onError:error=>notify('App update check failed: '+error.message+' Your voyage is unchanged.')});
 });
 
 function beginSelection(){
@@ -829,7 +829,7 @@ function openSettings(){
   const footer=document.createElement('div');footer.className='settings-footer';box.append(footer);
   if(state.save){
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-    save.onclick=async()=>{save.disabled=true;try{await saveBeforeExit(persist,()=>{closeModal();state.scene='menu';state.save=null;resetInput();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();applyPendingUpdate();});}finally{save.disabled=false;}};footer.append(save);
+    save.onclick=async()=>{save.disabled=true;try{await saveBeforeExit(persist,()=>{closeModal();releaseTerminalQueue();resetFlightContext(state);state.scene='menu';state.save=null;resetInput();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();applyPendingUpdate();});}finally{save.disabled=false;}};footer.append(save);
     const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
     exportButton.onclick=async()=>{exportButton.disabled=true;try{await persist();await exportSave();}catch(error){notify(error.message);}finally{exportButton.disabled=false;}};footer.append(exportButton);
   }
