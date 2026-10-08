@@ -26,6 +26,7 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,updateUI
     const token=++renderSerial,save=state.save,reading=view(),content=$('journalContent');
     $('journalSummary').textContent=save.discoveries.length+' discoveries · '+save.name;
     content.setAttribute('aria-busy','true');newer.disabled=older.disabled=true;
+    if(displayedView!==reading){const loading=document.createElement('p');loading.className='journal-empty';loading.textContent='Loading log…';content.replaceChildren(loading);displayedView=null;}
     for(const button of filters.children)button.setAttribute('aria-pressed',String(button.dataset.filter===filter));
     let entries,total;
     try{({entries,total}=await readPage(save,filter,reading.page*LOG_PAGE_SIZE,LOG_PAGE_SIZE));}

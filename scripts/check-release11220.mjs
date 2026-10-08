@@ -40,7 +40,7 @@ export async function checkRelease11220(page,engine){
   assert.equal(brief.text.split('\n').filter(Boolean).length,2);assert.match(brief.text,/^Object Data: Sol\n\nTYPE : Yellow dwarf$/);assert.equal(brief.survey,false);assert.equal(brief.preserved,true);
   // Emulate Safari delivering pointer events without a compatibility click.
   await page.evaluate(()=>{window.__qaBlockLogClick=true;document.addEventListener('click',e=>{if(window.__qaBlockLogClick&&e.isTrusted){e.preventDefault();e.stopImmediatePropagation();}},{capture:true});});
-  await tap(page.locator('#journalButton'));await page.waitForFunction(()=>document.querySelectorAll('.object-survey').length===3);
+  await tap(page.locator('#journalButton'));await page.waitForFunction(()=>window.__game.state.journalOpen&&!document.getElementById('journalContent').hasAttribute('aria-busy')&&document.querySelectorAll('.object-survey').length===3);
   for(const name of ['Sol','Earth','Moon']){
     const survey=page.locator('.object-survey').filter({has:page.locator('.journal-survey-toggle').filter({hasText:name+' ·'})});
     await survey.scrollIntoViewIfNeeded();await tap(survey.locator('button'));
