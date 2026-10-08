@@ -33,6 +33,8 @@ import {recordAction,recordObject,recordEvent} from './voyage-log.js';
 import {createLogDevice} from './log-device.js';
 import {placeControls,paintLocator} from './hud.js';
 import {enableTouchButtons} from './touch-buttons.js';
+import {createEdgeScrollbar} from './edge-scrollbar.js';
+import {createLogPreview} from './log-preview.js';
 
 const $ = id => document.getElementById(id);
 const canvas = $('sky');
@@ -60,7 +62,10 @@ const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,
   waypoint:null,coordinateTap:null,warpUntil:0,flightContext:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
 const {showDetails,toggleTerminal,buildTerminal,clearTerminal,pauseTerminalOutput,releaseTerminalQueue,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog:entry=>{if(state.save){if(entry.kind==='object')recordObject(state.save,entry);else recordAction(state.save,entry.text);}},resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
 const journal=createLogDevice({state,settings,$,formatDate:days=>formatGameDate(new Date(EPOCH+days*DAY_MS),true),resetInput,saveSettings,updateUI,closeSystemChart,setTerminalKeyboard,pauseTerminalOutput,
+  createPreview:(entry,save)=>createLogPreview(entry,save,chartSystem),
   readPage:async(save,filter,offset,limit)=>{await persist();return voyages.page(save.id,filter,offset,limit);}});
+createEdgeScrollbar($('terminalScreen'),{id:'terminalScrollbar',label:'Scroll terminal output',onScrollIntent:()=>{if(state.terminal)state.terminal.followOutput=false;}});
+createEdgeScrollbar($('systemChartContent'),{id:'systemChartScrollbar',label:'Scroll system chart'});
 function closeJournal(immediate=true){journal.close(immediate);}
 const loadSaves = async() => {
   try{return (await voyages.list()).filter(s=>s&&typeof s.id==='string'&&typeof s.seed==='string');}
@@ -388,7 +393,7 @@ function keepStationNearShip(){
 function markDiscovery(body) {
   if(state.save.discoveries.includes(body.id)) return;
   state.save.discoveries.push(body.id);
-  recordEvent(state.save,{name:body.name,action:'First landing'});
+  recordEvent(state.save,{name:body.name,action:'First landing',category:body.kind==='moon'?'moon':'planet',visual:{system:state.system.seed,id:body.id,kind:body.kind}});
   notify(`First landing on ${body.name} · added to logbook`,{log:false});persist();
 }
 function changeLayer(scene){releaseTerminalQueue();pauseTerminalOutput();resetFlightContext(state,scene);resetInput();}
@@ -405,7 +410,7 @@ function enterSystem(star) {changeLayer('system');
   state.save.ship={x:pos.x+offset,y:pos.y};state.camera={...state.save.ship};
   state.selected=outer;state.followBody={id:outer.id,x:offset,y:0};
   state.zoom=.85;state.autopilot=null;state.save.chart={x:star.x,y:star.y};
-  recordEvent(state.save,{name:state.system.name,action:'Entered system'});
+  recordEvent(state.save,{name:state.system.name,action:'Entered system',category:'star',visual:{system:state.system.seed,id:state.system.star.id,kind:'star'}});
   if(state.save.route.at(-1)!==star.seed)state.save.route.push(star.seed);
   state.save.route=state.save.route.slice(-40);
   notify(`${state.system.name} · arriving at ${outer.name}`,{log:false});persist();updateUI();
@@ -692,7 +697,8 @@ function updateUI() {
   $('homeButton').setAttribute('aria-label',centerLabel);$('homeButton').title=centerLabel;
   const following=state.followShip||state.centerZoom?.centerAction==='follow';
   $('followShipButton').setAttribute('aria-pressed',String(Boolean(following)));$('followShipButton').title=following?'Stop following ship':'Follow ship';$('followShipButton').setAttribute('aria-label',$('followShipButton').title);
-  $('clock').textContent=formatGameDate().replace(/ (\d{2}:\d{2})$/,'\n$1');
+  const clock=formatGameDate(),time=clock.match(/ (\d{2}:\d{2})$/);
+  $('clockTime').textContent=time?.[1]||'';$('clockDate').textContent=time?clock.slice(0,-time[0].length):clock;
   $('clock').title=(settings.timeMode==='realtime'?'Real-time 1:1':'Accelerated · 1 real minute = 1 game hour')+' · '+preferredTimeZone()+(settings.paused&&settings.timeMode!=='realtime'?' · paused':'');
   $('telemetry').hidden=!settings.showCoords&&!settings.showFPS;
   $('clock').hidden=!settings.showClock;
@@ -806,9 +812,7 @@ function openSettings(){
   const sizingNote=document.createElement('p');sizingNote.className='settings-intro';sizingNote.textContent='Panel size and character sizes are independent. Drag the optional arrow grips or use their arrow keys to resize. Clearing the terminal keeps saved log records.';activePanel.append(sizingNote);
   fontOptions('terminal');
   heading('Log');
-  control('logWidthScale','Log width (%)','range',[50,140,5]);
-  control('logHeightScale','Log height (%)','range',[40,140,5]);
-  control('logResizeHandles','Show log resize arrows','checkbox');
+  const logNote=document.createElement('p');logNote.className='settings-intro';logNote.textContent='The log fills the screen. Object records expand beside their visual; filters and character sizes remain independent.';activePanel.append(logNote);
   fontOptions('log');
   heading('Voyage');
   if('serviceWorker' in navigator){

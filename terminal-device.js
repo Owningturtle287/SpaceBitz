@@ -75,7 +75,7 @@ function buildTerminal(){
     key.className='terminal-key';value.className='terminal-value';node.append(key,value);node.hidden=true;output.append(node);
     const row={text,offset,node,key,value,colon};offset+=text.length+1;return row;
   });renderTerminalHistory();
-  if(state.selected||state.waypoint)entry.survey={kind:'object',key:record.system.seed+':'+(record.object.id||state.selected?.seed||key),name:record.object.name,type:objectType(record.object),category:record.object.kind,text:entry.text};
+  if(state.scene!=='chart'&&(state.selected||state.waypoint))entry.survey={kind:'object',key:record.system.seed+':'+(record.object.id||key),name:record.object.name,type:objectType(record.object),category:record.object.kind,text:entry.text,visual:{system:record.system.seed,id:record.object.id||'coordinate',kind:record.object.kind}};
   $('terminalScreen').scrollTop=$('terminalScreen').scrollHeight;
 }
 function clearTerminal(){

@@ -80,7 +80,7 @@ export async function checkRelease11215(page,engine){
     const rounded=await page.locator('.modal-card').evaluate(e=>({radius:getComputedStyle(e).borderTopLeftRadius,clip:getComputedStyle(e).clipPath}));assert.ok(parseFloat(rounded.radius)>=12&&rounded.clip==='none');
     await page.screenshot({path:`.qa/${engine}-11215-settings-${viewport.width}.png`});await page.locator('#modalClose').click();
     await page.locator('#systemChartToggle').click();await settle();
-    const chart=await page.locator('#systemChartContent').evaluate(e=>({gutter:getComputedStyle(e).scrollbarGutter,padding:getComputedStyle(e).paddingRight,listRight:document.getElementById('bodyList').getBoundingClientRect().right,edge:e.getBoundingClientRect().right}));assert.equal(chart.gutter,'stable');assert.equal(chart.padding,'2px');assert.ok(chart.edge-chart.listRight>=10);
+    const chart=await page.locator('#systemChartContent').evaluate(e=>({gutter:getComputedStyle(e).scrollbarGutter,padding:getComputedStyle(e).paddingRight,listRight:document.getElementById('bodyList').getBoundingClientRect().right,edge:e.getBoundingClientRect().right}));assert.equal(chart.gutter,'auto');assert.equal(chart.padding,'20px');assert.ok(chart.edge-chart.listRight>=20);
     await page.screenshot({path:`.qa/${engine}-11215-chart-${viewport.width}.png`});
     await page.locator('#systemChartToggle').click();await page.evaluate(()=>{const g=window.__game;g.showDetails(g.state.system.star);g.updateTerminal(g.state.terminal.start+15000);});
   }

@@ -1,9 +1,8 @@
-import {clamp} from './model.js';
 import {LOG_FILTERS,logCategory,LOG_PAGE_SIZE} from './voyage-log.js';
 
-export function createLogDevice({state,settings,$,formatDate,resetInput,saveSettings,updateUI,closeSystemChart,setTerminalKeyboard,pauseTerminalOutput,readPage}){
+export function createLogDevice({state,settings,$,formatDate,resetInput,updateUI,closeSystemChart,setTerminalKeyboard,pauseTerminalOutput,readPage,createPreview}){
   const overlay=$('journal'),panel=$('journalPanel');
-  let previousFocus=null,serial=0,resize=null,closing=false;
+  let previousFocus=null,serial=0,closing=false;
   let filter='all';
   let renderSerial=0,displayedView=null;
   const views=new Map(),pager=document.createElement('div');pager.className='journal-pagination';
@@ -20,10 +19,7 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
   }
   const reduced=()=>settings.reducedMotion||matchMedia('(prefers-reduced-motion: reduce)').matches;
   function applySize(){
-    panel.style.width=clamp(Math.min(660,innerWidth*.82)*settings.logWidthScale/100,Math.min(320,innerWidth-24),innerWidth-24)+'px';
-    panel.style.height=clamp(innerHeight*.72*settings.logHeightScale/100,Math.min(180,innerHeight-24),innerHeight-24)+'px';
-    for(const id of ['journalResizeWidth','journalResizeHeight'])$(id).hidden=!settings.logResizeHandles;
-    panel.classList.toggle('has-resize',settings.logResizeHandles);
+    panel.style.width=innerWidth+'px';panel.style.height=innerHeight+'px';
   }
   async function render(){
     const token=++renderSerial,save=state.save,reading=view(),content=$('journalContent');
@@ -37,21 +33,27 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
     if(reading.page&&reading.page*LOG_PAGE_SIZE>=total){reading.page=Math.max(0,Math.ceil(total/LOG_PAGE_SIZE)-1);render();return;}
     content.replaceChildren();displayedView=reading;
     for(const [index,entry]of entries.entries()){
-      const item=document.createElement(entry.kind==='object'?'details':'article');item.className='journal-entry '+(entry.kind==='object'?'object-survey':'action');
-      const id=entry.id||entry.objectKey||String(reading.page*LOG_PAGE_SIZE+index);item.dataset.entryId=id;
-      item.dataset.category=logCategory(entry);
+      const row=document.createElement('article');row.className='journal-entry';
+      const item=entry.kind==='object'?document.createElement('details'):row;
+      if(entry.kind==='object'){item.className='object-survey';row.append(item);}else row.classList.add('action');
+      const id=entry.id||entry.objectKey||String(reading.page*LOG_PAGE_SIZE+index);row.dataset.entryId=id;
+      const category=logCategory(entry);row.dataset.category=category;
+      if(category!=='status'){row.classList.add('visual-entry');row.prepend(createPreview(entry,save));}
       const heading=document.createElement(entry.kind==='object'?'summary':'div');heading.className='journal-entry-heading';
       const title=document.createElement('span');title.textContent=entry.kind==='object'?entry.name+' · '+entry.type:entry.kind==='action'?entry.action:entry.action+' · '+entry.name;
-      const date=document.createElement('time');date.textContent=formatDate(entry.days);heading.append(title,date);item.append(heading);
+      const date=document.createElement('time');date.textContent=formatDate(entry.days);
       if(entry.kind==='object'){
+        const button=document.createElement('button');button.type='button';button.className='journal-survey-toggle';button.setAttribute('aria-label','Toggle '+entry.name+' data');button.append(title,date);heading.append(button);item.append(heading);
         const unfold=()=>{
+          button.setAttribute('aria-expanded',String(item.open));
           if(item.open){reading.expanded.add(id);if(!item.querySelector('.journal-object-data'))item.append(objectData(entry.data));}
           else reading.expanded.delete(id);
         };
-        heading.onclick=e=>{e.preventDefault();item.open=!item.open;unfold();};
-        item.open=reading.expanded.has(id);item.addEventListener('toggle',unfold);if(item.open)unfold();
-      }
-      content.append(item);
+        button.onclick=e=>{e.preventDefault();e.stopPropagation();item.open=!item.open;unfold();};
+        heading.onclick=e=>{e.preventDefault();if(!e.target.closest('button'))button.click();};
+        item.open=reading.expanded.has(id);item.addEventListener('toggle',unfold);unfold();
+      }else{heading.append(title,date);item.append(heading);}
+      content.append(row);
     }
     if(!content.childElementCount){const empty=document.createElement('p');empty.className='journal-empty';empty.textContent=filter==='all'?'Object surveys and voyage actions will appear here.':'No '+LOG_FILTERS.find(([value])=>value===filter)[1].toLowerCase()+' recorded yet.';content.append(empty);}
     content.removeAttribute('aria-busy');newer.disabled=reading.page===0;older.disabled=(reading.page+1)*LOG_PAGE_SIZE>=total;
@@ -113,17 +115,6 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
     if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
     else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
   });
-  for(const [id,axis] of [['journalResizeWidth','width'],['journalResizeHeight','height']]){
-    const handle=$(id);
-    handle.onpointerdown=e=>{if(e.button!==0)return;e.preventDefault();handle.setPointerCapture(e.pointerId);resize={id:e.pointerId,x:e.clientX,y:e.clientY,width:panel.offsetWidth,height:panel.offsetHeight};panel.classList.add('resizing');};
-    function change(width,height){
-      settings.logWidthScale=clamp(width/Math.min(660,innerWidth*.82)*100,50,140);settings.logHeightScale=clamp(height/(innerHeight*.72)*100,40,140);applySize();
-    }
-    handle.onpointermove=e=>{if(e.pointerId!==resize?.id)return;change(resize.width+(axis==='width'?2*(resize.x-e.clientX):0),resize.height+(axis==='height'?2*(resize.y-e.clientY):0));};
-    const finish=e=>{if(e.pointerId!==resize?.id)return;resize=null;panel.classList.remove('resizing');saveSettings();};
-    handle.onpointerup=handle.onpointercancel=handle.onlostpointercapture=finish;
-    handle.onkeydown=e=>{const d={ArrowLeft:1,ArrowUp:1,ArrowRight:-1,ArrowDown:-1}[e.key];if(!d)return;e.preventDefault();e.stopPropagation();change(panel.offsetWidth+(axis==='width'?d*12:0),panel.offsetHeight+(axis==='height'?d*12:0));saveSettings();};
-  }
   window.addEventListener('resize',()=>{if(state.journalOpen){if(closing){close(true);return;}applySize();for(const a of panel.getAnimations())a.cancel();origin();}});
   return {open,close,applySize};
 }

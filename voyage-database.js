@@ -13,13 +13,24 @@ export function createVoyageStore({indexedDB=globalThis.indexedDB,legacyStorage=
   if(!indexedDB)return legacyStore(legacyStorage);
   let database;
   const ready=new Promise((resolve,reject)=>{
-    const request=indexedDB.open(VOYAGE_DATABASE,1);
-    request.onupgradeneeded=()=>{
-      const db=request.result;db.createObjectStore('voyages',{keyPath:'id'});
-      const log=db.createObjectStore('history',{keyPath:['voyageId','id']});
-      log.createIndex('voyage','voyageId');log.createIndex('order',['voyageId','sequence']);
-      log.createIndex('category',['voyageId','categoryIndex','sequence']);
-      db.createObjectStore('migration');
+    const request=indexedDB.open(VOYAGE_DATABASE,2);
+    request.onupgradeneeded=event=>{
+      const db=request.result;
+      if(event.oldVersion===0){
+        db.createObjectStore('voyages',{keyPath:'id'});
+        const log=db.createObjectStore('history',{keyPath:['voyageId','id']});
+        log.createIndex('voyage','voyageId');log.createIndex('order',['voyageId','sequence']);
+        log.createIndex('category',['voyageId','categoryIndex','sequence']);
+        db.createObjectStore('migration');
+      }else if(event.oldVersion<2){
+        // Reindex older object-related events once, without replacing voyages,
+        // survey snapshots or their revision. New writes keep this index current.
+        request.transaction.objectStore('history').openCursor().onsuccess=e=>{
+          const cursor=e.target.result;if(!cursor)return;
+          const categoryIndex=logCategory(cursor.value);
+          if(cursor.value.categoryIndex!==categoryIndex)cursor.update({...cursor.value,categoryIndex});cursor.continue();
+        };
+      }
     };
     request.onerror=()=>reject(request.error);
     request.onblocked=()=>reject(Error('Close the other SpaceBitz window to finish opening saved voyages.'));

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {addTerminalEntry,TERMINAL_HISTORY_LIMIT} from '../terminal-history.js';
 import {flightStage,isLandscape} from '../flight-drive.js';
-import {rotationText,terminalLines} from '../terminal.js';
+import {rotationText,terminalLines,objectType} from '../terminal.js';
 import {makeSystem} from '../model.js';
 import {normalizeSettings,DEFAULT_SETTINGS} from '../settings.js';
 
@@ -44,4 +44,12 @@ test('every celestial record names its object and exposes diameter without body 
     assert.ok(!/RADIUS : /.test(text));assert.match(text,/ROTATION PERIOD : .*Earth (days|minutes)/);
   }
   assert.ok(terminalLines(earth,system).includes('ORBIT PERIOD : 365.256 Earth days'));
+});
+test('Deep Space reveals only a star name and main type; in-system surveys remain complete',()=>{
+  for(const seed of ['sol','distant:g-2,4:0']){
+    const system=makeSystem(seed),star=system.star;
+    assert.equal(terminalLines(star,system,{scene:'chart',homeSystem:true}),'Object Data: '+star.name+'\n\nTYPE : '+objectType(star));
+    assert.match(terminalLines(star,system,{scene:'system'}),/DIAMETER : /);
+    assert.match(terminalLines(star,system,{scene:'system'}),/MASS : /);
+  }
 });
