@@ -372,7 +372,7 @@ try{
   });
   await writeFile(`.qa/${engine}-giant-planets.png`,Buffer.from(giants.image.split(',')[1],'base64'));delete giants.image;
   await page.locator('#mapButton').screenshot({path:`.qa/${engine}-lever-idle.png`});
-  await page.locator('#flightSpeed').evaluate(e=>{e.value=String(e.value==='2'?0:2);e.dispatchEvent(new Event('input',{bubbles:true}));});
+  await page.locator('#flightSpeed').press('End');
   await page.waitForTimeout(350);
   assert.equal(await page.locator('#mapButton').getAttribute('aria-busy'),'true');
   await page.locator('#mapButton').screenshot({path:`.qa/${engine}-lever-engaged.png`});
@@ -382,8 +382,13 @@ try{
   assert.equal(await page.locator('#mapButton').getAttribute('aria-busy'),'false');
   await page.waitForTimeout(350);await page.locator('#mapButton').screenshot({path:`.qa/${engine}-lever-latched.png`});
   await page.locator('#flightSpeed').evaluate(e=>{e.value=String(e.value==='2'?0:2);e.dispatchEvent(new Event('input',{bubbles:true}));});
-  await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(16,0);});
-  assert.equal(await page.locator('#mapButton').evaluate(e=>e.dataset.stage==='2'),false);
+  await page.evaluate(()=>window.__game.update(16,0));
+  assert.equal(await page.evaluate(()=>window.__game.state.scene),'chart','A stale lower-speed event cannot enter a system');
+  assert.equal(await page.locator('#mapButton').evaluate(e=>e.dataset.stage==='2'),true);
+  // Re-entry goes through the green travel control, not a fabricated Warp timer.
+  await page.evaluate(()=>{const g=window.__game;g.state.save.chart={x:g.state.selected.x,y:g.state.selected.y};g.updateUI();});
+  await page.locator('#primaryAction').click();
+  assert.equal(await page.evaluate(()=>window.__game.state.scene),'system');
   assert.equal(await page.evaluate(()=>window.__game.state.selected.name),'Neptune');
   assert.equal(await page.evaluate(()=>window.__game.state.followBody.id),'sol:Neptune');
   // This save/landscape fixture needs a landable home. Random new universes can
