@@ -115,7 +115,8 @@ body[data-reduced-motion=true] .journal-object-data{animation:none}
 .settings-pane:focus{outline:none}
 .settings-pane .setting-row{min-height:40px}
 .settings-pane h3{margin-top:12px}
-.settings-footer{display:flex;gap:8px;flex:none;border-top:1px solid #45657d;padding-top:4px}
+.settings-footer{display:flex;flex-wrap:wrap;gap:8px;flex:none;border-top:1px solid #45657d;padding-top:4px}
+.settings-save-status{flex:1 0 100%;color:#ffc29e;font:9px/1.6 var(--mono);overflow-wrap:anywhere}
 .settings-footer:empty{display:none}
 .settings-footer .button{font-size:7px;min-height:32px}
 .inactive-setting{opacity:.45}

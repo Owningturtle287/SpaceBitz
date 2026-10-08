@@ -48,6 +48,7 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,saveSett
           if(item.open){reading.expanded.add(id);if(!item.querySelector('.journal-object-data'))item.append(objectData(entry.data));}
           else reading.expanded.delete(id);
         };
+        heading.onclick=e=>{e.preventDefault();item.open=!item.open;unfold();};
         item.open=reading.expanded.has(id);item.addEventListener('toggle',unfold);if(item.open)unfold();
       }
       content.append(item);

@@ -110,11 +110,22 @@ async function checkDatabase(page){
     const backup=await test.evaluate(()=>window.__largeBackup);await test.locator('#importFile').setInputFiles({name:'large-save.json',mimeType:'application/json',buffer:Buffer.from(backup)});
     await test.waitForFunction(()=>document.querySelectorAll('.load-save').length===4);
     await test.locator('.load-save').filter({hasText:'Other voyage'}).click();await test.waitForFunction(()=>!document.getElementById('app').hidden);
+    await test.evaluate(async()=>{
+      const {createVoyageStore}=await import('/voyage-database.js'),store=createVoyageStore();try{window.__beforeQuota=JSON.stringify(await store.load('legacy-other'));}finally{store.close();}
+      window.__quotaPut=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(...args){if(this.name==='voyages')throw Object.assign(Error('Test quota failure'),{name:'QuotaExceededError'});return window.__quotaPut.apply(this,args);};
+    });
+    await test.locator('#settingsOpen').click();await test.getByRole('button',{name:'SAVE & MAIN MENU',exact:true}).click();
+    await test.locator('#settingsSaveStatus').waitFor();assert.match(await test.locator('#settingsSaveStatus').innerText(),/Storage is full/);
+    assert.equal(await test.locator('#app').isVisible(),true);
+    const quotaSafe=await test.evaluate(async()=>{
+      IDBObjectStore.prototype.put=window.__quotaPut;delete window.__quotaPut;
+      const {createVoyageStore}=await import('/voyage-database.js'),store=createVoyageStore();try{return window.__beforeQuota===JSON.stringify(await store.load('legacy-other'));}finally{store.close();}
+    });assert.equal(quotaSafe,true);await test.locator('#modalClose').click();
     await test.evaluate(async()=>{const {createVoyageStore}=await import('/voyage-database.js'),store=createVoyageStore();try{const copy=await store.load('legacy-other');copy.ship.x+=123;await store.save(copy);}finally{store.close();}});
     await test.getByRole('heading',{name:'Voyage updated elsewhere'}).waitFor();
     await test.getByRole('button',{name:'KEEP AS SEPARATE VOYAGE',exact:true}).click();
     await test.waitForFunction(()=>document.getElementById('modal').hidden&&!document.getElementById('app').inert);
     const recovery=await test.evaluate(async()=>{const {createVoyageStore}=await import('/voyage-database.js'),store=createVoyageStore();try{const saves=await store.list();return saves.some(s=>s.name==='Other voyage · copy');}finally{store.close();}});
-    assert.equal(recovery,true);return {...result,largeFileInputImport:true,conflictRecovery:true};
+    assert.equal(recovery,true);return {...result,largeFileInputImport:true,quotaRollback:true,visibleSaveFailure:true,conflictRecovery:true};
   }finally{await context.close();}
 }

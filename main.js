@@ -113,8 +113,9 @@ function persist() {
   const task=persistQueue.then(async()=>{
     if(save!==state.save)return true;
     if(state.saveConflict===save)return false;
-    try{await voyages.save(save);persist.failedAt=0;return true;}
+    try{await voyages.save(save);persist.failedAt=0;persist.lastError=null;return true;}
     catch(error){
+      persist.lastError=error.name==='QuotaExceededError'?'Storage is full. Export this voyage or free storage before leaving.':error.message;
       if(error.name==='VoyageConflictError'){state.saveConflict=save;resetInput();showSaveConflict(save);}
       else if(!persist.failedAt||Date.now()-persist.failedAt>15000){notify(error.name==='QuotaExceededError'?'Storage is full. Voyage kept open; export it or free storage before leaving.':error.message);persist.failedAt=Date.now();}
       return false;
@@ -828,10 +829,12 @@ function openSettings(){
   details.append(changelog);activePanel.append(details);
   const footer=document.createElement('div');footer.className='settings-footer';box.append(footer);
   if(state.save){
+    const saveStatus=document.createElement('output');saveStatus.id='settingsSaveStatus';saveStatus.className='settings-save-status';saveStatus.setAttribute('role','alert');saveStatus.hidden=true;
+    const showSaveError=message=>{saveStatus.textContent=message;saveStatus.hidden=false;};
     const save=document.createElement('button');save.className='button subtle';save.textContent='SAVE & MAIN MENU';
-    save.onclick=async()=>{save.disabled=true;try{await saveBeforeExit(persist,()=>{closeModal();releaseTerminalQueue();resetFlightContext(state);state.scene='menu';state.save=null;resetInput();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();applyPendingUpdate();});}finally{save.disabled=false;}};footer.append(save);
+    save.onclick=async()=>{save.disabled=true;try{const exited=await saveBeforeExit(persist,()=>{closeModal();releaseTerminalQueue();resetFlightContext(state);state.scene='menu';state.save=null;resetInput();$('app').hidden=true;$('welcome').classList.add('visible');showMenuStage('main');renderSaves();applyPendingUpdate();});if(!exited)showSaveError(persist.lastError||'Could not save. Export this voyage before leaving.');}finally{save.disabled=false;}};footer.append(save);
     const exportButton=document.createElement('button');exportButton.className='button subtle';exportButton.textContent='EXPORT SAVE';
-    exportButton.onclick=async()=>{exportButton.disabled=true;try{await persist();await exportSave();}catch(error){notify(error.message);}finally{exportButton.disabled=false;}};footer.append(exportButton);
+    exportButton.onclick=async()=>{exportButton.disabled=true;try{await persist();await exportSave();}catch(error){notify(error.message);showSaveError(error.message);}finally{exportButton.disabled=false;}};footer.append(exportButton,saveStatus);
   }
   selectTab(Math.min(state.settingsTab||0,panels.length-1));syncFonts();
   setModal('FLIGHT OPTIONS','Settings',box,Boolean(state.save));
