@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.18 — 2026-10-08
+- Keep newly entered star systems active when a delayed Warp slider event arrives. Speed input now belongs to the layer where its pointer, keyboard or accessibility interaction began, including repeat visits and loaded voyages.
+- Consume the complete compatibility mouse sequence after a handled touch, even if system entry moves the dashboard or enables another control underneath it. Start the interval after the first render; fresh pointer and keyboard actions remain immediately available.
+- Verify first entry into three different systems, automatic star travel, repeat entry, late Warp input, Follow/Center and deliberate keyboard/touch speed changes in Chromium and WebKit.
+
 ## 1.12.17 — 2026-10-07
 - Activate buttons directly on touch release so iPhone/iPad flight actions, terminal, camera controls and menus still work when Safari omits its compatibility click. Consume duplicate clicks, preserve mouse and keyboard input, and keep drags, joystick controls and resize grips separate from taps.
 - Remove the document-wide rapid-touch cancellation. Canvas gestures and UI buttons already prevent double-tap zoom through their touch-action styles.

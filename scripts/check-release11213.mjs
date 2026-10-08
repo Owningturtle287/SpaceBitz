@@ -210,7 +210,7 @@ export async function checkRelease11213(page,engine){
   const tracking=await checkTracking(page),input=await checkInput(page,engine),coordinates=await checkCoordinates(page),surfaces=await checkSurfaces(page,settle);
   await page.setViewportSize({width:844,height:390});await page.waitForFunction(()=>window.__game.state.width===844);
   await page.evaluate(async()=>{const g=window.__game,{makeSystem}=await import('/model.js');g.cancelTarget();g.state.scene='system';g.state.system=makeSystem('sol');g.state.save.currentSystem=g.state.save.homeSeed='sol';g.state.autopilot=g.state.followBody=g.state.centerZoom=null;g.state.followShip=false;g.state.keys.clear();g.state.joy={x:0,y:0};g.state.save.ship={x:1e7,y:1e7};g.state.camera={...g.state.save.ship};g.state.zoom=.1;Object.assign(g.settings,{paused:true,controls:'touch',centerButton:'right',joyOffset:0,joyX:16,reducedMotion:false,dashboardHeight:68,terminalWidthScale:100,terminalHeightScale:100,terminalResizeHandles:false,dashboardResizeHandle:false});g.state.terminalSize=null;g.applySettings();});
-  const setSpeed=async value=>page.locator('#flightSpeed').evaluate((e,value)=>{e.value=String(value);e.dispatchEvent(new Event('input',{bubbles:true}));},value);
+  const setSpeed=async value=>page.evaluate(value=>window.__game.setFlightStage(value),value);
   await setSpeed(0);
   const speeds=[];
   for(const [stage,mode] of [[0,'orbit'],[1,'hyper']]){
