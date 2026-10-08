@@ -30,8 +30,8 @@ export async function checkRelease11214(page,engine){
   assert.deepEqual(stream.map(e=>e.kind),['record','message','input','record']);
   assert.match(stream[0].text,/Object Data: Earth/);assert.match(stream[1].text,/Survey queued/);assert.match(stream[2].text,/<b>pilot entry<\/b>/);assert.match(stream[3].text,/Object Data: Moon/);
   assert.equal(await page.locator('#terminalMessages b').count(),0);
-  const scrolling=await page.evaluate(()=>{const g=window.__game,s=document.getElementById('terminalScreen');s.scrollTop=s.scrollHeight;const tail=s.scrollTop;g.updateTerminal(g.state.terminal.start+20000);const stable=s.scrollTop;s.scrollTop=40;g.updateTerminal(g.state.terminal.start+30000);return {tail,stable,reading:s.scrollTop};});
-  assert.ok(scrolling.tail>0&&scrolling.tail===scrolling.stable&&scrolling.reading===40,JSON.stringify(scrolling));
+  const scrolling=await page.evaluate(()=>{const g=window.__game,s=document.getElementById('terminalScreen');s.scrollTop=s.scrollHeight;const tail=s.scrollTop;g.updateTerminal(g.state.terminal.start+20000);const stable=s.scrollTop,wanted=Math.floor(tail/2);s.scrollTop=wanted;g.updateTerminal(g.state.terminal.start+30000);return {tail,stable,wanted,reading:s.scrollTop};});
+  assert.ok(scrolling.tail>0&&scrolling.tail===scrolling.stable&&scrolling.reading===scrolling.wanted&&scrolling.wanted<scrolling.tail,JSON.stringify(scrolling));
   await page.locator('#secondaryAction').click();await settle();
   assert.match(await page.locator('#targetStatus').innerText(),/Object selected: Moon.*Moon/i);
   await page.locator('#secondaryAction').click();await settle();
