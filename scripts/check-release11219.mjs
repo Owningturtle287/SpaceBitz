@@ -28,6 +28,7 @@ export async function checkRelease11219(page,engine){
     g.updateTerminal(paused+10000);return {before,after:paused+10000-r.start,finished:r.finished};
   });assert.ok(Math.abs(background.before-background.after)<.001,JSON.stringify(background));assert.equal(background.finished,false);
   await page.setViewportSize({width:390,height:844});
+  await page.locator('#landscapeGate').waitFor({state:'visible'});
   assert.equal(await page.locator('#landscapeGate').isVisible(),true);
   assert.equal(await page.evaluate(()=>Number.isFinite(window.__game.state.terminal.pausedAt)),true);
   await page.setViewportSize({width:844,height:390});
