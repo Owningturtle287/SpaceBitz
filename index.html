@@ -19,7 +19,7 @@
     <header class="topbar">
       <div class="flight-instruments">
         <div id="flightReadout" class="flight-readout glass">
-          <span id="clock">01 JAN 2026</span>
+          <span id="clock"><span id="clockTime">00:00</span><span id="clockDate">01 JAN 2026</span></span>
           <div id="telemetry" hidden><span id="coordsReadout" hidden></span><span id="fpsReadout" hidden></span><span id="speedReadout" hidden></span></div>
         </div>
         <div class="utility-stack">
@@ -119,7 +119,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.12.19</span>
+        <span class="version-chip main-menu-version">v1.12.20</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>
@@ -151,8 +151,6 @@
   </div>
   <div id="journal" class="journal-overlay" role="dialog" aria-modal="true" aria-labelledby="journalTitle" hidden>
     <section id="journalPanel" class="journal-panel">
-      <button id="journalResizeHeight" class="terminal-resize journal-resize-height" aria-label="Resize log height" hidden><svg viewBox="0 0 14 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M5 0h4v1h2v1h2v1H1V2h2V1h2zM1 4h12v1h-2v1H3V5H1z"/></svg></button>
-      <button id="journalResizeWidth" class="terminal-resize journal-resize-width" aria-label="Resize log width" hidden><svg viewBox="0 0 6 14" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 5h1V3h1V1h1v12H2v-2H1V9H0zM4 1h1v2h1v8H5v2H4z"/></svg></button>
       <header class="journal-head"><div><h2 id="journalTitle">VOYAGE LOG</h2><p id="journalSummary"></p></div><button id="journalClose" class="icon-button" aria-label="Close voyage log">✕</button></header>
       <div id="journalFilters" class="journal-filters" role="group" aria-label="Filter voyage log"></div>
       <div id="journalContent" class="journal-content" tabindex="0" aria-label="Recorded surveys and voyage actions"></div>

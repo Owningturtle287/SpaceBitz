@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {recordAction,recordObject,logCategory,restoreLogEntry,LOG_FILTERS} from '../voyage-log.js';
+import {recordAction,recordObject,recordEvent,logCategory,restoreLogEntry,LOG_FILTERS} from '../voyage-log.js';
+import {logObjectReference,normalizeLogVisual} from '../log-objects.js';
 import {addTerminalEntry,TERMINAL_HISTORY_LIMIT} from '../terminal-history.js';
 import {normalizeSettings} from '../settings.js';
 import {interfaceFonts} from '../interface-fonts.js';
@@ -50,4 +51,22 @@ test('master text sizes preserve per-style choices and terminal/log settings sta
   settings.terminalFontMode='individual';assert.equal(interfaceFonts(settings).data,12);assert.equal(interfaceFonts(settings).header,14);
   const invalid=normalizeSettings({terminalDataFont:99,logFontSize:NaN,logWidthScale:-20,terminalFontMode:'bad'});
   assert.equal(invalid.terminalDataFont,18);assert.equal(invalid.logFontSize,11);assert.equal(invalid.logWidthScale,50);assert.equal(invalid.terminalFontMode,'individual');
+});
+test('object and item visual identities survive backups without retaining unvalidated fields',()=>{
+  const save={days:1,log:[]},visual={system:'galaxy:g-2,4:0',id:'galaxy:g-2,4:0:star',kind:'star'};
+  recordObject(save,{key:'star',name:'Test star',type:'Yellow dwarf',category:'star',text:'MASS : 1',visual});
+  assert.deepEqual(restoreLogEntry(save.log[0],1).visual,visual);
+  recordEvent(save,{name:'Moon',action:'First landing',category:'moon',visual:{system:'sol',id:'sol:Earth:Moon',kind:'moon'}});
+  assert.equal(logCategory(save.log[0]),'moon');assert.deepEqual(restoreLogEntry(save.log[0],1),save.log[0]);
+  assert.equal(normalizeLogVisual({system:'sol',id:'moon',kind:'script'}),undefined);
+  assert.deepEqual(normalizeLogVisual({...visual,url:'untrusted'}),visual);
+});
+test('older survey references recover complete seeds containing colons, and status entries stay unillustrated',()=>{
+  const save={currentSystem:'sol',homeSeed:'sol'},seed='galaxy:g-2,4:0';
+  assert.deepEqual(logObjectReference({objectKey:seed+':'+seed+':star'},save),{system:seed,id:seed+':star'});
+  assert.deepEqual(logObjectReference({objectKey:'sol:sol:Earth'},save),{system:'sol',id:'sol:Earth'});
+  assert.deepEqual(logObjectReference({objectKey:'sol:Earth'},save),{system:'sol',id:'sol:Earth'});
+  assert.equal(logCategory({name:'Earth',action:'Home planet · voyage started'}),'planet');
+  assert.equal(logCategory({name:'Sol',action:'Entered system'}),'star');
+  assert.equal(logCategory({kind:'action',action:'Warp Drive engaged'}),'status');
 });

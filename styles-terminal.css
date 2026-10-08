@@ -23,15 +23,17 @@
 #targetCard.terminal.expanded{padding-right:0}
 #targetCard.expanded .terminal-head{margin-right:0}
 #targetCard.expanded .terminal-meta,#targetCard.expanded .terminal-input-bar,#targetCard.expanded .terminal-keyboard{margin-right:8px}
-#targetCard .terminal-screen{margin-right:0;padding-right:12px;scrollbar-gutter:stable;scrollbar-width:thin}
-#systemChartContent{padding-right:2px;scrollbar-gutter:stable;scrollbar-width:thin;scrollbar-color:#4d8a61 #0b1b26;clip-path:none}
-#systemChartContent .body-list{margin-right:8px;min-width:0}
+#targetCard .terminal-screen{margin-right:0;padding-right:20px;scrollbar-gutter:auto;scrollbar-width:none}
+#systemChartContent{padding-right:20px;scrollbar-gutter:auto;scrollbar-width:none;clip-path:none}
+#systemChartContent .body-list{margin-right:0;min-width:0}
 #systemChartContent .body-entry>span:not(.body-dot){flex:1;min-width:0;overflow-wrap:anywhere}
 #systemChartContent .body-entry small{flex:none;white-space:nowrap}
 body[data-scene=chart] #mapButton.flight-speed{transition:none}
 body[data-scene=chart] #flightSpeed{opacity:1;cursor:default}
-#terminalScreen::-webkit-scrollbar,#systemChartContent::-webkit-scrollbar{width:6px}
-#terminalScreen::-webkit-scrollbar-thumb,#systemChartContent::-webkit-scrollbar-thumb{background:#4d8a61;border:1px solid #03110d}
+#terminalScreen.edge-scroll-content::-webkit-scrollbar,#systemChartContent.edge-scroll-content::-webkit-scrollbar{display:none;width:0;height:0}
+.edge-scrollbar{position:absolute;z-index:8;width:12px;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;cursor:ns-resize;border-radius:4px}
+.edge-scrollbar:hover,.edge-scrollbar:focus-visible{background:#4d8a6120;outline:1px solid #76b58c}
+.edge-scrollbar-thumb{position:absolute;left:4px;width:6px;min-height:24px;border-radius:3px;background:#4d8a61;box-shadow:inset 1px 0 #78b589}
 .terminal-stream{display:block;color:#9af5b1}
 .terminal-stream>.terminal-history-entry,.terminal-stream>.terminal-record{margin:10px 0 0;padding:8px 0 0;border-top:1px solid #315842}
 .terminal-stream>:first-child{margin-top:0;padding-top:0;border-top:0}
@@ -63,14 +65,14 @@ body[data-scene=chart] #flightSpeed{opacity:1;cursor:default}
 
 /* The log owns an overlay, so its growth does not take room in the deck. */
 .journal-overlay{position:fixed;inset:0;z-index:22;background:rgb(1 10 9 / 35%)}
-.journal-panel{position:absolute;left:50%;top:50%;translate:-50% -50%;display:flex;flex-direction:column;box-sizing:border-box;max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);min-height:0;overflow:hidden;border:3px solid #8baba5;border-radius:18px;background:repeating-linear-gradient(0deg,#03110d 0,#03110d 3px,#06180f 4px);color:#9af5b1;box-shadow:inset 2px 2px #c0d8cc,inset -2px -2px #183629,0 14px 40px #0008;transform-origin:center}
-.journal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;padding:9px 12px;border-bottom:3px solid #6f8b90;background:linear-gradient(#5e7a82 0 3px,#3b535d 3px calc(100% - 3px),#263f4b calc(100% - 3px))}
+.journal-panel{position:absolute;left:0;top:0;display:flex;flex-direction:column;box-sizing:border-box;max-width:none;max-height:none;min-height:0;overflow:hidden;border:3px solid #8baba5;border-radius:18px;background:repeating-linear-gradient(0deg,#03110d 0,#03110d 3px,#06180f 4px);color:#9af5b1;box-shadow:inset 2px 2px #c0d8cc,inset -2px -2px #183629;transform-origin:center}
+.journal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none;padding:9px max(12px,env(safe-area-inset-right)) 9px max(12px,env(safe-area-inset-left));border-bottom:3px solid #6f8b90;background:linear-gradient(#5e7a82 0 3px,#3b535d 3px calc(100% - 3px),#263f4b calc(100% - 3px))}
 .journal-head>div{min-width:0}
 .journal-head h2{font:var(--log-header-font)/1.6 var(--pixel);color:#c4ffd2;margin:0}
 #journalSummary{margin:4px 0 0;font:var(--log-label-font)/1.6 var(--pixel);color:#acc4b4;overflow-wrap:anywhere}
 #journalClose{width:40px;height:40px;min-width:40px;min-height:40px;flex:none;background:#173d32;color:#c4ffd2;border-color:#95b9a3}
-.journal-content{overflow:auto;overscroll-behavior:contain;flex:1;min-height:0;padding:6px 12px 12px;scrollbar-color:#4d8a61 #03110d}
-.journal-filters{display:flex;gap:4px;flex:none;overflow-x:auto;padding:6px 10px;border-bottom:1px solid #315842;scrollbar-width:thin;background:#071b15}
+.journal-content{overflow:auto;overscroll-behavior:contain;flex:1;min-height:0;padding:6px max(12px,env(safe-area-inset-right)) 12px max(12px,env(safe-area-inset-left));scrollbar-color:#4d8a61 #03110d}
+.journal-filters{display:flex;gap:4px;flex:none;overflow-x:auto;padding:6px max(10px,env(safe-area-inset-right)) 6px max(10px,env(safe-area-inset-left));border-bottom:1px solid #315842;scrollbar-width:thin;background:#071b15}
 .journal-filter{flex:1 0 auto;min-height:32px;padding:6px;border:1px solid #4c7960;background:#112b20;color:#a5cdb2;font:7px/1.5 var(--pixel);border-radius:4px;touch-action:manipulation}
 .journal-filter[aria-pressed=true]{background:#295b3f;color:#d0ffda;border-color:#a0eab6}
 .journal-filter:focus-visible{outline:2px solid #c4ffd2;outline-offset:-3px}
@@ -79,23 +81,27 @@ body[data-scene=chart] #flightSpeed{opacity:1;cursor:default}
 .journal-entry-heading{display:flex;align-items:start;justify-content:space-between;gap:12px;padding:10px;font:var(--log-status-font)/1.8 var(--pixel);overflow-wrap:anywhere}
 .journal-entry-heading>span{min-width:0}
 .journal-entry time{flex:none;font:var(--log-label-font)/1.8 var(--pixel);color:#84ba98}
-.object-survey summary{cursor:pointer;font-size:var(--log-header-font);color:#c4ffd2;list-style:none;touch-action:manipulation}
-.object-survey summary::before{content:'+';flex:none;color:#8ee9d4}
-.object-survey[open] summary::before{content:'−'}
+.visual-entry{display:grid;grid-template-columns:80px minmax(0,1fr);align-items:start;gap:10px;padding:8px;border-radius:8px}
+.journal-preview{width:80px;height:80px;margin:0;border:1px solid #315842;border-radius:8px;background:#02100d;overflow:hidden}
+.journal-preview canvas{display:block;width:100%;height:100%;image-rendering:pixelated}
+.object-survey{min-width:0}
+.object-survey summary{padding:0;cursor:pointer;font-size:var(--log-header-font);color:#c4ffd2;list-style:none;touch-action:manipulation}
+.object-survey summary::-webkit-details-marker{display:none}
+.journal-survey-toggle{display:grid;grid-template-columns:14px minmax(0,1fr) max-content;align-items:start;gap:8px;width:100%;min-width:0;min-height:44px;padding:8px 4px;border:0;background:transparent;color:#c4ffd2;text-align:left;font:var(--log-header-font)/1.8 var(--pixel);touch-action:manipulation}
+.journal-survey-toggle>span{min-width:0;overflow-wrap:anywhere}
+.journal-survey-toggle::before{content:'+';color:#8ee9d4}
+.object-survey[open] .journal-survey-toggle::before{content:'−'}
+.journal-survey-toggle:focus-visible{outline:2px solid #c4ffd2;outline-offset:-2px}
+.visual-entry.action .journal-entry-heading{padding:8px 4px}
 .journal-object-data{margin:0;padding:12px;border-top:1px solid #315842;font:var(--log-data-font)/1.8 var(--pixel);white-space:pre-wrap;overflow-wrap:anywhere;color:#9af5b1;animation:record-unfold .24s ease-out}
 .journal-data-key{font-size:var(--log-label-font)}
 .journal-data-title,.journal-data-title .journal-data-key{font-size:var(--log-header-font);color:#c4ffd2}
-.journal-pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;padding:6px 12px;border-top:1px solid #315842;font:7px/1.6 var(--pixel)}
+.journal-pagination{display:flex;align-items:center;justify-content:space-between;gap:8px;flex:none;padding:6px max(12px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));border-top:1px solid #315842;font:7px/1.6 var(--pixel)}
 .journal-pagination button{min-height:32px;padding:4px 8px;border:1px solid #4c7960;border-radius:4px;background:#112b20;color:#b6e4c1;font:7px/1.5 var(--pixel);touch-action:manipulation}
 .journal-pagination button:disabled{opacity:.4}
 .journal-pagination button:focus-visible{outline:2px solid #c4ffd2;outline-offset:-3px}
 @keyframes record-unfold{from{opacity:.75;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-.journal-panel .terminal-resize{width:44px;height:44px;min-width:44px;min-height:44px;top:2px;background:#304d5b;color:#fff;border:2px solid #879fa5;clip-path:var(--pixel-corners)}
-.journal-resize-height{left:4px;cursor:ns-resize}
-.journal-resize-width{left:50px;cursor:ew-resize}
-.journal-resize-height svg{width:24px;height:12px}
-.journal-resize-width svg{width:12px;height:24px}
-.journal-panel.has-resize .journal-head{padding-left:106px;min-height:50px}
+@media(max-height:450px){.visual-entry{grid-template-columns:64px minmax(0,1fr);gap:8px}.journal-preview{width:64px;height:64px}}
 body.journal-open #terminalDock{width:var(--journal-dock-width)!important;transition:none}
 body.journal-open #terminalPocket,body.journal-open #travelControls,body.journal-open #contextActions{visibility:hidden;pointer-events:none}
 body[data-reduced-motion=true] .journal-object-data{animation:none}

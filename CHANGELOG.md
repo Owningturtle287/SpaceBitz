@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.20 — 2026-10-08
+- Place Terminal and System Chart scrollbars on explicit right-edge rails, reserve text space beside them, and support dragging, touch and keyboard scrolling.
+- Show only a selected star's name and main type in Deep Space. Full Object Data is surveyed inside its system; brief lookups preserve existing full log records.
+- Fill the screen with the voyage log, keep filters and character settings, and render object/item visuals beside their records using the game's pixel artwork. Preserve visual identities in backups and recover older survey identities.
+- Make survey expansion a touch-safe button so stars, planets and moons open and close in Deep Space even when Safari omits its compatibility click.
+- Put time to the left of the date on one row and raise coordinates into a shorter top-left panel.
+
 ## 1.12.19 — 2026-10-08
 - Store voyages and archived log entries in an atomic database, migrate existing progress without eviction, save history incrementally and prevent stale windows from overwriting newer voyages. Conflicting copies can be exported, reloaded or kept separately.
 - Accept large valid save exports, retain complete archived history in backups and preserve station keeping across real-time reloads, including older saves.

@@ -1,10 +1,10 @@
-import {stellarRows,years} from './star-info.js';
+import {stellarRows,starFacts,years} from './star-info.js';
 import {habitableZone,orbitalElements} from './model.js';
 import {formatCoordinates,formatDistance,formatSystemKm,formatDiameter} from './scale.js';
 import {bodyKind,bodyLabel} from './body-classification.js';
 const number=(v,d=3)=>Number.isFinite(v)?v.toLocaleString('en-US',{maximumFractionDigits:d}):'Unknown';
 export function objectType(object){
-  if(object.kind==='star')return object.familyLabel||object.type+' star';
+  if(object.kind==='star')return object.familyLabel||starFacts(object).familyLabel||object.type+' star';
   if(['planet','moon','dwarf-planet'].includes(bodyKind(object)))return bodyLabel(object)+(object.type?' / '+object.type:'');
   return object.kind==='lander'?'Landing shuttle':object.kind==='sample'?'Surface sample':'Coordinate square';
 }
@@ -18,6 +18,7 @@ export function rotationText(days){
 }
 export function terminalLines(object,system,context={}){
   const {days=0,scene='system',position={x:0,y:0},ship={x:0,y:0},homeSystem=false,homeWorld=false}=context;
+  if(scene==='chart'&&object.kind==='star')return 'Object Data: '+object.name+'\n\nTYPE : '+objectType(object);
   const rows=[];const add=(key,value)=>rows.push(key+' : '+value);
   if(homeSystem)add('STATUS','Home System');if(homeWorld)add('STATUS','Home World');
   if(object.kind==='star'){

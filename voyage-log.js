@@ -1,3 +1,4 @@
+import {normalizeLogVisual} from './log-objects.js';
 // The recent in-memory log is a working set. Older entries remain in the database.
 export const RECENT_LOG_LIMIT=200;
 export const LOG_PAGE_SIZE=80;
@@ -25,9 +26,10 @@ export function acknowledgeLogEntries(save,entries){
   const pending=changes.get(save);for(const entry of entries)if(pending?.get(entry.id)===entry)pending.delete(entry.id);
   save.log=save.log.slice(0,RECENT_LOG_LIMIT);
 }
-export function recordEvent(save,{name,action,kind,category}){
+export function recordEvent(save,{name,action,kind,category,visual}){
   if(!save)return;save.logSequence||=0;
-  const entry=changed(save,{name,action,days:save.days,...kind&&{kind},...category&&{category}});
+  const image=normalizeLogVisual(visual);
+  const entry=changed(save,{name,action,days:save.days,...kind&&{kind},...category&&{category},...image&&{visual:image}});
   save.log.unshift(entry);return entry;
 }
 export function recordAction(save,text){
@@ -36,7 +38,13 @@ export function recordAction(save,text){
 }
 export const LOG_FILTERS=Object.freeze([['all','All'],['star','Stars'],['planet','Planets'],['moon','Moons'],['item','Items'],['status','Status Updates']]);
 export function logCategory(entry){
-  if(entry.kind!=='object')return /sample|item/i.test(entry.action)?'item':'status';
+  if(entry.kind!=='object'){
+    if(['star','planet','moon','item'].includes(entry.category))return entry.category;
+    if(/sample|item/i.test(entry.action))return 'item';
+    if(/first landing|home planet/i.test(entry.action))return 'planet';
+    if(/entered system|stellar survey started/i.test(entry.action))return 'star';
+    return 'status';
+  }
   if(['star','planet','moon','item'].includes(entry.category))return entry.category;
   if(entry.category==='dwarf-planet')return 'planet';
   if(entry.category)return 'item';
@@ -46,11 +54,12 @@ export function logCategory(entry){
   if(/^(landing shuttle|surface sample|coordinate)/i.test(entry.type))return 'item';
   return 'star';
 }
-export function recordObject(save,{key,name,type,category,text}){
+export function recordObject(save,{key,name,type,category,text,visual}){
   if(!save)return;
   const prior=save.log.findIndex(entry=>entry.kind==='object'&&entry.objectKey===key);
   const entry={kind:'object',objectKey:key,name,type,action:'Object survey',data:text.slice(0,32768),days:save.days};
   entry.category=logCategory({...entry,category});
+  const image=normalizeLogVisual(visual);if(image)entry.visual=image;
   if(prior>=0)save.log.splice(prior,1);
   save.logSequence||=0;changed(save,entry);save.log.unshift(entry);return entry;
 }
@@ -59,6 +68,8 @@ export function restoreLogEntry(entry,days){
   if(entry.kind==='object'&&typeof entry.objectKey==='string'&&typeof entry.data==='string')Object.assign(result,{kind:'object',objectKey:entry.objectKey.slice(0,720),type:typeof entry.type==='string'?entry.type.slice(0,180):'Object',data:entry.data.slice(0,32768)});
   else if(entry.kind==='action')result.kind='action';
   if(result.kind==='object')result.category=logCategory(entry);
+  else if(['star','planet','moon','item'].includes(entry.category))result.category=entry.category;
+  const visual=normalizeLogVisual(entry.visual);if(visual)result.visual=visual;
   if(typeof entry.id==='string'&&entry.id.length<=750)result.id=entry.id;
   if(Number.isSafeInteger(entry.sequence)&&entry.sequence>0)result.sequence=entry.sequence;
   return result;
