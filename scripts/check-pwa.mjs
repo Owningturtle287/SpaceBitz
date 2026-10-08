@@ -14,7 +14,11 @@ const server=createServer(async(req,res)=>{
     const path=resolve(root,'.'+new URL(req.url,'http://localhost').pathname.replace(/\/$/,'/index.html'));
     if(!path.startsWith(root+'/'))throw Error('Invalid path');
     let content=await readFile(path);
-    if(path.endsWith('/sw.js')){res.setHeader('Cache-Control','no-store');if(revision)content=Buffer.from(content.toString().replace(/const CACHE='([^']+)'/,"const CACHE='$1-pwa-update'"));}
+    res.setHeader('Cache-Control',path.endsWith('/sw.js')?'no-store':'public, max-age=3600');
+    if(path.endsWith('/sw.js')&&revision)content=Buffer.from(content.toString().replace(/const CACHE='([^']+)'/,"const CACHE='$1-pwa-update'"));
+    if(path.endsWith('/main.js')&&revision)content=Buffer.from(content.toString()+"\nwindow.__updatedGameAsset='revision-2';\n");
+    if(path.endsWith('/index.html')&&revision)content=Buffer.from(content.toString().replace('</head>','<meta name="spacebitz-qa-revision" content="revision-2"></head>'));
+    if(path.endsWith('/styles-terminal.css')&&revision)content=Buffer.from(content.toString()+"\n:root{--qa-updated-style:revision-2}\n");
     res.setHeader('Content-Type',mime[extname(path)]||'application/octet-stream');res.end(content);
   }catch{res.statusCode=404;res.end();}
 });
@@ -40,7 +44,12 @@ try{
   await page.waitForFunction(()=>window.__pwaBeforeUpdate===undefined&&document.getElementById('app').hidden);
   await page.waitForFunction(async()=> (await caches.keys()).some(k=>k.endsWith('-pwa-update')));
   assert.ok(navigations>=1,'Menu must apply the deferred update');
-  const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('spacebitz:field:v1')));assert.equal(saved.length,1);assert.equal(saved[0].homePlanet,'sol:Earth');
+  const saved=await page.evaluate(async()=>{const {createVoyageStore}=await import('./voyage-database.js'),store=createVoyageStore();try{return await store.list();}finally{store.close();}});assert.equal(saved.length,1);assert.equal(saved[0].homePlanet,'sol:Earth');
+  const assertUpdated=async()=>{
+    assert.equal(await page.evaluate(()=>window.__updatedGameAsset),'revision-2');
+    assert.equal(await page.locator('meta[name="spacebitz-qa-revision"]').getAttribute('content'),'revision-2');
+    assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--qa-updated-style').trim()),'revision-2');
+  };await assertUpdated();
   // WebKit's offline flag rejects even cache-only service-worker responses
   // (https://github.com/microsoft/playwright/issues/42775). Stop the origin in
   // both engines; Chromium additionally exercises the network-offline flag.
@@ -51,8 +60,9 @@ try{
   if(engine==='chromium')await context.setOffline(true);
   const offlineResponse=await page.reload();
   assert.equal(offlineResponse.status(),200);assert.equal(offlineResponse.fromServiceWorker(),true);
+  await assertUpdated();
   await page.locator('#startGame').click();await page.locator('.load-save').click();
   await page.waitForFunction(()=>!document.getElementById('app').hidden);assert.equal(await page.locator('#targetName').count(),1);
   assert.equal(await page.locator('#universeName').count(),1);assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({engine,audio,offlineAssets:cache.length,updateDeferred:true,originUnavailable:true,offlineRestored:true}));await context.close();
+  console.log(JSON.stringify({engine,audio,offlineAssets:cache.length,changedGameAssets:true,updateDeferred:true,originUnavailable:true,offlineRestored:true}));await context.close();
 }finally{await browser.close();server.close();}

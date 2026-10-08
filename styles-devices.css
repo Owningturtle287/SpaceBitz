@@ -36,7 +36,7 @@
 .inline-editor .invalid{color:#ff9797}
 .editor-caption{font-size:9px;color:#92bba0;margin:0}
 #targetCard.terminal{z-index:6;top:auto;background:#03110d;color:#9aefb1;clip-path:var(--pixel-corners);font:10px/1.5 var(--mono)}
-#targetCard.terminal h2{flex:1;min-width:0;margin:0;color:#c4ffd2;font:11px/1.6 var(--pixel);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#targetCard.terminal h2{flex:1;min-width:0;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .terminal-head{display:flex;align-items:center}
 .terminal-head .button,#targetCard .focus-object{min-height:28px;font-size:8px;padding:4px 6px}
 .terminal-status,#targetCard .target-distance{font-size:10px;color:#84ba98;margin:3px 0 0}
@@ -47,8 +47,6 @@
 .context-actions{position:absolute;z-index:7;top:0;left:0;will-change:transform}
 .context-actions .button{min-height:34px;padding:6px 9px;font-size:8px;background:#0b2822}
 .context-actions .primary{background:#174638;color:#c4fbd5}
-.reduced-motion .context-actions{transition:none}
-.reduced-motion .terminal-cursor{animation:none}
 @media(orientation:landscape) and (max-height:500px){.generation-stage{padding:8px}
 .generation-top{margin-bottom:4px}
 .generation-columns{gap:12px}
@@ -154,9 +152,9 @@ body[data-reduced-motion=true] .context-action-row{transition:none;transform:non
 body[data-reduced-motion=true] .terminal-dock,body[data-reduced-motion=true] .terminal-pocket,body[data-reduced-motion=true] #journalButton{transition:none}
 @media(prefers-reduced-motion:reduce){.terminal-dock,.terminal-pocket,#journalButton{transition:none}}
 #targetCard.terminal{border:2px solid #81979d;box-shadow:inset 1px 0 #c3d2cb,inset -1px -1px #324a57,0 0 0 1px #172a36;padding:7px 8px}
-#targetCard .terminal-head{position:relative;margin:-7px -8px 0;padding:4px 7px;gap:5px;border-bottom:2px solid #243f4b;background:linear-gradient(0deg,#526674 0 2px,#293f4b 2px 5px,#405663 5px calc(100% - 3px),#a8b9bd calc(100% - 3px) calc(100% - 1px),#6d8590 calc(100% - 1px));box-shadow:inset 1px 0 #b9c9c7,inset -1px 0 #182c39}
+#targetCard .terminal-head{position:relative;margin:-7px -8px 0;border-bottom:2px solid #243f4b;background:linear-gradient(0deg,#526674 0 2px,#293f4b 2px 5px,#405663 5px calc(100% - 3px),#a8b9bd calc(100% - 3px) calc(100% - 1px),#6d8590 calc(100% - 1px));box-shadow:inset 1px 0 #b9c9c7,inset -1px 0 #182c39}
 #targetCard.terminal h2{font-size:9px;line-height:1.5;text-shadow:1px 1px #122b2b}
-#targetCard .terminal-head .button{font-size:7px;white-space:nowrap;padding:2px 4px;text-transform:uppercase}
+#targetCard .terminal-head .button{font-size:7px;text-transform:uppercase}
 #targetCard .focus-object{width:24px;min-width:24px;padding:2px}
 #terminalButton{position:absolute;bottom:calc(100% + var(--log-gap,0px));pointer-events:auto;transition:bottom .24s cubic-bezier(.22,.7,.25,1)}
 .terminal-glyph{width:16px;height:14px;display:block}
@@ -203,15 +201,15 @@ body[data-reduced-motion=true] #terminalButton{transition:none}
 .context-actions{transition:none}
 .terminal-input-wrap{position:relative;flex:1;min-width:0;overflow:hidden}
 #terminalInput{width:100%;caret-color:transparent}
-.terminal-input-caret{position:absolute;top:7px;height:17px;width:8px;background:#bbffcd;pointer-events:none;animation:terminal-blink 1s steps(1) infinite;opacity:.85}
+.terminal-input-caret{position:absolute;top:7px;background:#bbffcd;pointer-events:none;animation:terminal-blink 1s steps(1) infinite;opacity:.85}
 #terminalDelete{width:27px;height:31px;flex:none}
 #terminalDelete svg{width:18px;height:12px}
 .keyboard-row .pixel-key{max-width:none;font-size:9px;touch-action:none;user-select:none;-webkit-user-select:none}
 .keyboard-row [data-key=CapsLock]{font-size:6px}
 .terminal-resize{position:absolute;z-index:3;padding:0;border:0;background:#304754;color:#fff;display:grid;place-items:center;touch-action:none;box-shadow:inset 1px 1px #72888d}
-.resize-top{top:0;left:calc(50% - 14px);width:28px;height:8px;cursor:ns-resize}
+.resize-top{cursor:ns-resize}
 .resize-top svg{width:14px;height:6px}
-.resize-left{left:0;top:calc(50% - 14px);width:8px;height:28px;cursor:ew-resize}
+.resize-left{cursor:ew-resize}
 .resize-left svg{width:6px;height:14px}
 .resizing.terminal-dock,.resizing .terminal-pocket{transition:none}
 body[data-reduced-motion=true] .terminal-input-caret{animation:none}
@@ -271,7 +269,7 @@ body{font-size:9px;line-height:1.7}
 body[data-reduced-motion=true] #terminalButton,body[data-reduced-motion=true] #journalButton{transition:none}
 @media(prefers-reduced-motion:reduce){#terminalButton,#journalButton{transition:none}}
 .topbar>.flight-readout{margin-right:auto;justify-items:start;flex:0 1 auto}
-.top-actions{margin-left:0;flex:none}
+.top-actions{flex:none}
 @media(max-width:600px){.top-actions .mission-tools{flex:none;width:162px}}
 @media(max-width:360px){.top-actions .mission-tools{width:136px}}
 #dashboardBase{clip-path:none}
@@ -285,7 +283,7 @@ body[data-reduced-motion=true] #mapButton{transition:none}
 @media(prefers-reduced-motion:reduce){#mapButton{transition:none}}
 @media(orientation:landscape){.terminal-dock{right:max(1px,min(8px,var(--deck-safe-right,env(safe-area-inset-right))))}}
 .travel-controls{position:absolute;right:0;bottom:calc(100% + 6px);z-index:7;pointer-events:none;transition:right .32s cubic-bezier(.22,.7,.25,1),bottom .32s cubic-bezier(.22,.7,.25,1)}
-.travel-controls .context-action-row{gap:6px;align-items:center}
+
 .travel-controls.ready .context-action-row{opacity:1;transform:translateY(0);pointer-events:auto}
 .terminal-expanded .travel-controls{right:calc(100% + 6px);bottom:calc(var(--dashboard-height,74px) + 10px)}
 #primaryAction.travel-lever{box-sizing:border-box;width:48px;height:50px;min-width:48px;min-height:50px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:2px;border:2px solid #6ca088;border-radius:0;background:linear-gradient(#90bea1 0 2px,#143a2b 2px calc(100% - 3px),#082619 calc(100% - 3px));box-shadow:inset 1px 0 #aacdb0,inset -1px -1px #071b16;color:#adffbc;clip-path:var(--pixel-corners);touch-action:manipulation;cursor:pointer}

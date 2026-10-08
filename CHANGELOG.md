@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.19 — 2026-10-08
+- Store voyages and archived log entries in an atomic database, migrate existing progress without eviction, save history incrementally and prevent stale windows from overwriting newer voyages. Conflicting copies can be exported, reloaded or kept separately.
+- Accept large valid save exports, retain complete archived history in backups and preserve station keeping across real-time reloads, including older saves.
+- Pause terminal output during app, orientation and panel interruptions; queue status and typed input behind an unfinished survey instead of skipping its animation.
+- Page the log, expand survey data on demand, retain reading positions and expanded surveys, apply independent label fonts and remove duplicate event/status recordings.
+- Enable Instant Travel, honor Travel Trail in Deep Space, clear interrupted canvas gestures and centralize layer transition resets.
+- Report app-update failures, add a manual update check, fetch fresh shell assets on installation and verify changed game assets through an actual offline update.
+- Consolidate obsolete and overridden interface styles and verify the fixes in Chromium and WebKit.
+
 ## 1.12.18 — 2026-10-08
 - Keep newly entered star systems active when a delayed Warp slider event arrives. Speed input now belongs to the layer where its pointer, keyboard or accessibility interaction began, including repeat visits and loaded voyages.
 - Consume the complete compatibility mouse sequence after a handled touch, even if system entry moves the dashboard or enables another control underneath it. Start the interval after the first render; fresh pointer and keyboard actions remain immediately available.

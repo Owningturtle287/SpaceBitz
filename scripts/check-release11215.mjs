@@ -55,10 +55,12 @@ export async function checkRelease11215(page,engine){
   const filters={};
   for(const [name,category] of [['Stars','star'],['Planets','planet'],['Moons','moon'],['Items','item'],['Status Updates','status']]){
     await page.locator('#journalFilters').getByRole('button',{name,exact:true}).click();
+    await page.waitForFunction(()=>!document.getElementById('journalContent').hasAttribute('aria-busy'));
     const categories=await page.locator('.journal-entry').evaluateAll(es=>es.map(e=>e.dataset.category));
     assert.ok(categories.length>0&&categories.every(c=>c===category),JSON.stringify({name,categories}));filters[name]=categories.length;
   }
   await page.locator('#journalFilters').getByRole('button',{name:'All',exact:true}).click();
+  await page.waitForFunction(()=>!document.getElementById('journalContent').hasAttribute('aria-busy'));
   assert.equal(await page.locator('.journal-entry').count(),Object.values(filters).reduce((a,b)=>a+b,0));
   const corners=await page.locator('#journalPanel').evaluate(e=>{const s=getComputedStyle(e);return [s.borderTopLeftRadius,s.borderTopRightRadius,s.borderBottomLeftRadius,s.borderBottomRightRadius];});assert.ok(corners.every(c=>parseFloat(c)>=12));
   await page.evaluate(()=>window.__game.closeJournal());await settle();

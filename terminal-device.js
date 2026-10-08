@@ -7,23 +7,27 @@ import {addTerminalEntry} from './terminal-history.js';
 
 export function createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog,resetInput,saveSettings,applyCenterButtonLayout,screen}){
 state.terminalEntries=[];
-function canViewOutput(){return state.terminalExpanded&&!state.journalOpen&&!state.landscapeBlocked&&!$('targetCard').hidden&&!$('terminalScreen').hidden&&!$('modal').classList.contains('visible');}
+function canViewOutput(){return !document.hidden&&state.terminalExpanded&&!state.journalOpen&&!state.landscapeBlocked&&!$('targetCard').hidden&&!$('terminalScreen').hidden&&!$('modal').classList.contains('visible');}
+function pauseTerminalOutput(now=performance.now()){
+  const record=state.terminal;if(record&&!record.finished&&record.pausedAt==null)record.pausedAt=now;
+}
+function releaseTerminalQueue(){
+  for(const entry of state.terminalEntries)if(entry.afterRecord){delete entry.afterRecord;if(entry.node)entry.node.hidden=false;}
+}
 function atBottom(){const screen=$('terminalScreen');return screen.scrollHeight-screen.scrollTop-screen.clientHeight<24;}
 function renderRecord(record,count){
   record.count=count;
   for(const row of record.lines){const visible=count>row.offset,text=row.text.slice(0,Math.max(0,count-row.offset)),split=row.colon<0?0:Math.min(text.length,row.colon+3);row.node.hidden=!visible;row.key.textContent=text.slice(0,split);row.value.textContent=text.slice(split);}
   record.finished=count===record.text.length;
+  if(record.finished)for(const entry of state.terminalEntries)if(entry.afterRecord===record&&entry.node)entry.node.hidden=false;
   if(record.finished&&record.survey&&!record.logged&&canViewOutput()){recordLog?.(record.survey);record.logged=true;}
 }
-function finishTerminalRecord(){
-  if(!canViewOutput())return;
-  const record=state.terminal;
-  if(record?.lines&&!record.finished)renderRecord(record,record.text.length);
-}
-function appendTerminalEntry(text,kind='message'){
-  const follow=atBottom();finishTerminalRecord();
+function appendTerminalEntry(text,kind='message',{log=true}={}){
+  const follow=atBottom();
   const entry=addTerminalEntry(state.terminalEntries,text,kind);if(!entry)return;
-  if(kind==='message'){state.terminalNotice=entry.text;recordLog?.({kind:'action',text:entry.text});}
+  const record=state.terminal||state.terminalEntries.findLast(e=>e.kind==='record'&&e.key===state.terminalRecordKey);
+  if(record&&!record.finished)entry.afterRecord=record;
+  if(kind==='message'){state.terminalNotice=entry.text;if(log)recordLog?.({kind:'action',text:entry.text});}
   renderTerminalHistory();
   if(state.terminalExpanded&&follow)requestAnimationFrame(()=>{$('terminalScreen').scrollTop=$('terminalScreen').scrollHeight;});
   if(!state.save){
@@ -33,9 +37,9 @@ function appendTerminalEntry(text,kind='message'){
   return entry;
 }
 function terminalEntryNode(entry){
-  if(entry.node)return entry.node;
+  if(entry.node){entry.node.hidden=Boolean(entry.afterRecord&&!entry.afterRecord.finished);return entry.node;}
   const node=document.createElement('div');node.className='terminal-history-entry '+entry.kind;
-  node.textContent=(entry.kind==='input'?'> ':'STATUS : ')+entry.text;entry.node=node;return node;
+  node.textContent=(entry.kind==='input'?'> ':'STATUS : ')+entry.text;node.hidden=Boolean(entry.afterRecord&&!entry.afterRecord.finished);entry.node=node;return node;
 }
 function renderTerminalHistory(){
   $('terminalMessages').replaceChildren(...state.terminalEntries.map(terminalEntryNode));
@@ -88,7 +92,7 @@ function toggleTerminal(){
   state.terminalExpanded=!state.terminalExpanded;
   if(state.terminalExpanded){closeJournal?.();closeSystemChart();buildTerminal();}
   else {
-    if(state.terminal&&!state.terminal.finished)state.terminal.pausedAt=performance.now();
+    pauseTerminalOutput();
     $('terminalInput').blur();setTerminalKeyboard(false);
     if(!state.selected&&!state.waypoint&&!state.autopilot&&!state.warpUntil)state.terminalNotice=null;
   }
@@ -239,7 +243,7 @@ function focusSelected(){
 function updateTerminal(now){
   if(!state.terminal)return;
   const record=state.terminal,screen=$('terminalScreen');
-  if(!canViewOutput()){if(!record.finished&&record.pausedAt==null)record.pausedAt=now;return;}
+  if(!canViewOutput()){pauseTerminalOutput(now);return;}
   if(record.pausedAt!=null){record.start+=now-record.pausedAt;record.pausedAt=null;}
   const count=Math.max(record.count,typedLength(record.text,(now-record.start)/1000,settings.reducedMotion));
   if(count===record.count)return;renderRecord(record,count);
@@ -272,5 +276,5 @@ function scheduleTerminalLayout(){
 }
 const terminalObserver=new ResizeObserver(scheduleTerminalLayout);
 terminalObserver.observe($('targetCard'));terminalObserver.observe($('terminalPocket'));
-return {showDetails,toggleTerminal,buildTerminal,clearTerminal,finishTerminalRecord,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext};
+return {showDetails,toggleTerminal,buildTerminal,clearTerminal,pauseTerminalOutput,releaseTerminalQueue,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext};
 }

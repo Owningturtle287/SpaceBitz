@@ -62,7 +62,7 @@ button:active:not(:disabled){filter:brightness(.85)}
 .empty-saves{padding:10px 0;color:var(--muted);font-size:12px}
 .welcome-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;padding-top:10px;border-top:2px solid var(--line)}
 .welcome-foot .text-button{font-size:9px}
-.topbar{position:absolute;z-index:8;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:calc(14px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left));pointer-events:none}
+.topbar{position:absolute;z-index:8;top:0;left:0;right:0;display:flex;justify-content:space-between;pointer-events:none}
 .topbar>*{pointer-events:auto}
 .top-system-chart{position:relative;width:182px;flex:none;padding:0}
 .mission-toggle{width:100%;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;color:var(--ink);text-align:left}
@@ -82,7 +82,7 @@ button:active:not(:disabled){filter:brightness(.85)}
 .body-entry small{margin-left:auto;color:#9db4c7}
 .body-entry.moon{padding-left:18px}
 .body-entry.moon .body-dot{width:5px;height:5px}
-.top-actions{display:flex;align-items:flex-start;gap:14px;min-width:0}
+.top-actions{display:flex;align-items:flex-start;min-width:0}
 .clock{color:#a8bfd0;font:10px/1.5 var(--mono);letter-spacing:.04em;white-space:nowrap;border-top:2px solid #48647e;border-bottom:2px solid #233950;background:rgb(11 23 42 / 25%);text-align:right}
 .utility-stack{display:grid;gap:8px}
 .utility-button{display:grid;align-content:center;justify-items:center}
