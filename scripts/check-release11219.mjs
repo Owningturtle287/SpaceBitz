@@ -22,11 +22,11 @@ export async function checkRelease11219(page,engine){
   await page.evaluate(()=>{const g=window.__game;g.showDetails(g.state.selected);g.updateTerminal(performance.now());});
   assert.equal(await page.evaluate(()=>window.__game.state.terminal.finished),false);
   const background=await page.evaluate(()=>{
-    const g=window.__game,r=g.state.terminal,before=r.count;
+    const g=window.__game,r=g.state.terminal;
     Object.defineProperty(document,'hidden',{configurable:true,value:true});document.dispatchEvent(new Event('visibilitychange'));
-    const paused=r.pausedAt;delete document.hidden;document.dispatchEvent(new Event('visibilitychange'));
-    g.updateTerminal(paused+10000);return {before,after:r.count,finished:r.finished};
-  });assert.equal(background.before,background.after);assert.equal(background.finished,false);
+    const paused=r.pausedAt,before=paused-r.start;delete document.hidden;document.dispatchEvent(new Event('visibilitychange'));
+    g.updateTerminal(paused+10000);return {before,after:paused+10000-r.start,finished:r.finished};
+  });assert.ok(Math.abs(background.before-background.after)<.001,JSON.stringify(background));assert.equal(background.finished,false);
   await page.setViewportSize({width:390,height:844});
   assert.equal(await page.locator('#landscapeGate').isVisible(),true);
   assert.equal(await page.evaluate(()=>Number.isFinite(window.__game.state.terminal.pausedAt)),true);
