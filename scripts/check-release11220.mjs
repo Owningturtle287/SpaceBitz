@@ -58,7 +58,7 @@ export async function checkRelease11220(page,engine){
     await page.locator('#journalContent').evaluate(e=>e.scrollTop=0);await page.screenshot({path:`.qa/${engine}-11220-log-${viewport.width}.png`});fullScreens.push(viewport);
   }
   await page.locator('#journalClose').click();await page.evaluate(()=>{const g=window.__game;g.state.save.chart={x:g.state.selected.x,y:g.state.selected.y};g.primary();g.clearTerminal();g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(performance.now());});
-  assert.match(await page.locator('.terminal-record:last-of-type').innerText(),/MASS : /);
+  assert.match(await page.locator('.terminal-record:last-of-type').textContent(),/MASS : /);
   return {layouts,migratedFilters,deepSpaceBrief:true,preservedFullSurvey:true,touchExpandCollapse:true,keyboardExpandCollapse:true,paintedObjectAndItemVisuals:true,fullScreens,inSystemFullData:true};
 }
 
