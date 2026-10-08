@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import {writeFile} from 'node:fs/promises';
 export async function checkRelease112(page,engine){
   // Prevent pagehide autosave from replacing the deliberately overflowing fixture.
-  await page.evaluate(()=>{window.__game.state.save=null;localStorage.setItem('spacebitz:field:v1',JSON.stringify(Array.from({length:30},(_,i)=>({id:'layout-'+i,seed:'layout-'+i,name:'Saved voyage '+i,updated:Date.now()}))));});
+  await page.evaluate(async()=>{const g=window.__game;await g.persist();const fixture=structuredClone(g.state.save);g.state.save=null;const {createVoyageStore}=await import('/voyage-database.js'),store=createVoyageStore();try{await store.importSaves(Array.from({length:30},(_,i)=>({...fixture,id:'layout-'+i,seed:'layout-'+i,name:'Saved voyage '+i,updated:Date.now()})));}finally{store.close();}});
   await page.reload();await page.locator('#startGame').click();
+  await page.waitForFunction(()=>document.getElementById('savedGames').children.length>=30);
   for(const viewport of [{width:844,height:390},{width:667,height:375},{width:1024,height:768}]){
     await page.setViewportSize(viewport);await page.waitForTimeout(120);
     const layout=await page.evaluate(()=>{const list=document.getElementById('savedGames'),stage=document.getElementById('universeMenuStage'),card=document.querySelector('.welcome-card');list.scrollTop=list.scrollHeight;return {viewport:[innerWidth,innerHeight],listCount:list.children.length,listHeight:list.clientHeight,listContent:list.scrollHeight,columnsHeight:document.querySelector('.generation-columns').clientHeight,columnRows:getComputedStyle(document.querySelector('.generation-columns')).gridTemplateRows,listScroll:list.scrollTop,stageOverflow:stage.scrollHeight-stage.clientHeight,cardOverflow:card.scrollHeight-card.clientHeight,bodyOverflow:document.scrollingElement.scrollHeight-innerHeight};});
@@ -22,7 +23,7 @@ export async function checkRelease112(page,engine){
   await page.locator('#scientificMode').uncheck();await page.locator('#generationOptions').click();
   const input=page.locator('input[data-pool="family"][data-type="brown"]');await input.fill('21');assert.equal(await page.locator('#applyGeneration').isDisabled(),true);
   await page.getByRole('button',{name:'RESTORE SCIENTIFIC DEFAULTS',exact:true}).click();assert.equal(await page.locator('#applyGeneration').isDisabled(),false);await page.locator('#applyGeneration').click();await page.locator('#scientificMode').check();
-  await page.evaluate(()=>localStorage.removeItem('spacebitz:field:v1'));await page.locator('#solGame').click();await page.waitForFunction(()=>window.__game.state.scene==='surface');
+  await page.evaluate(async()=>{const {createVoyageStore}=await import('/voyage-database.js'),store=createVoyageStore();try{for(const save of await store.list())if(save.id.startsWith('layout-'))await store.remove(save.id,save.revision);}finally{store.close();}});await page.locator('#solGame').click();await page.waitForFunction(()=>window.__game.state.scene==='surface');
   const early=await page.evaluate(()=>{const g=window.__game;globalThis.__qaPause=true;g.settings.reducedMotion=false;g.launch();g.select(g.state.system.star);g.showDetails(g.state.selected);g.updateTerminal(g.state.terminal.start+40);return {text:g.state.terminal.node.textContent,length:g.state.terminal.text.length,count:g.state.terminal.count};});
   assert.ok(early.text.length>0&&early.text.length<early.length,JSON.stringify(early));
   await page.evaluate(()=>{const g=window.__game;g.updateTerminal(performance.now()+9000);g.positionContext();});

@@ -73,6 +73,9 @@ try{
   // Exercise the current device controls before the longer renderer soak, then
   // restore the exact launch fixture so the simulation checks stay independent.
   const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
+  const release11219=await checkRelease11219(page,engine);
+  console.log('11219 audit checks',JSON.stringify(release11219));
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11218=await checkRelease11218(page,engine);
   await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11217=await checkRelease11217(page,engine);
@@ -539,6 +542,5 @@ try{
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
   const release11212=await checkRelease11212(page,engine);
-  const release11219=await checkRelease11219(page,engine);
   assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,release11216,release11217,release11218,release11219,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

@@ -17,6 +17,7 @@ export async function checkRelease11219(page,engine){
   });assert.equal(queued.before,queued.after);assert.equal(queued.queued,true);assert.equal(queued.finished,false);
   await page.locator('#systemChartToggle').click();
   assert.equal(await page.evaluate(()=>Number.isFinite(window.__game.state.terminalEntries[0].pausedAt)),true);
+  assert.equal(await page.evaluate(()=>{const g=window.__game;g.notify('Status while viewing the chart');return g.state.terminalEntries.at(-1).node.hidden;}),true);
   await page.waitForTimeout(450);await page.locator('#systemChartToggle').click();
   await page.evaluate(()=>{const g=window.__game;g.showDetails(g.state.selected);g.updateTerminal(performance.now());});
   assert.equal(await page.evaluate(()=>window.__game.state.terminal.finished),false);
@@ -38,6 +39,7 @@ export async function checkRelease11219(page,engine){
     g.clearTerminal();g.showDetails(g.state.selected);g.updateTerminal(g.state.terminal.start+10000);
     g.settings.logLabelFont=14;g.settings.logDataFont=9;g.settings.reducedMotion=true;g.applySettings();await g.persist();g.showJournal();
   });
+  await page.getByRole('button',{name:'All',exact:true}).click();
   await page.waitForFunction(()=>document.querySelectorAll('.journal-entry').length===80);
   const survey=page.locator('.object-survey').filter({hasText:/Earth ·/});
   assert.equal(await survey.locator('.journal-object-data').count(),0);await survey.locator('summary').click();
@@ -124,7 +126,7 @@ async function checkDatabase(page){
     await test.evaluate(async()=>{const {createVoyageStore}=await import('/voyage-database.js'),store=createVoyageStore();try{const copy=await store.load('legacy-other');copy.ship.x+=123;await store.save(copy);}finally{store.close();}});
     await test.getByRole('heading',{name:'Voyage updated elsewhere'}).waitFor();
     await test.getByRole('button',{name:'KEEP AS SEPARATE VOYAGE',exact:true}).click();
-    await test.waitForFunction(()=>document.getElementById('modal').hidden&&!document.getElementById('app').inert);
+    await test.waitForFunction(()=>!document.getElementById('modal').classList.contains('visible')&&!document.getElementById('app').inert);
     const recovery=await test.evaluate(async()=>{const {createVoyageStore}=await import('/voyage-database.js'),store=createVoyageStore();try{const saves=await store.list();return saves.some(s=>s.name==='Other voyage · copy');}finally{store.close();}});
     assert.equal(recovery,true);return {...result,largeFileInputImport:true,quotaRollback:true,visibleSaveFailure:true,conflictRecovery:true};
   }finally{await context.close();}

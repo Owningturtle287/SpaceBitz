@@ -22,15 +22,11 @@ function renderRecord(record,count){
   if(record.finished)for(const entry of state.terminalEntries)if(entry.afterRecord===record&&entry.node)entry.node.hidden=false;
   if(record.finished&&record.survey&&!record.logged&&canViewOutput()){recordLog?.(record.survey);record.logged=true;}
 }
-function finishTerminalRecord(){
-  if(!canViewOutput())return;
-  const record=state.terminal;
-  if(record?.lines&&!record.finished)renderRecord(record,record.text.length);
-}
 function appendTerminalEntry(text,kind='message',{log=true}={}){
   const follow=atBottom();
   const entry=addTerminalEntry(state.terminalEntries,text,kind);if(!entry)return;
-  if(state.terminal&&!state.terminal.finished)entry.afterRecord=state.terminal;
+  const record=state.terminal||state.terminalEntries.findLast(e=>e.kind==='record'&&e.key===state.terminalRecordKey);
+  if(record&&!record.finished)entry.afterRecord=record;
   if(kind==='message'){state.terminalNotice=entry.text;if(log)recordLog?.({kind:'action',text:entry.text});}
   renderTerminalHistory();
   if(state.terminalExpanded&&follow)requestAnimationFrame(()=>{$('terminalScreen').scrollTop=$('terminalScreen').scrollHeight;});
@@ -280,5 +276,5 @@ function scheduleTerminalLayout(){
 }
 const terminalObserver=new ResizeObserver(scheduleTerminalLayout);
 terminalObserver.observe($('targetCard'));terminalObserver.observe($('terminalPocket'));
-return {showDetails,toggleTerminal,buildTerminal,clearTerminal,finishTerminalRecord,pauseTerminalOutput,releaseTerminalQueue,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext};
+return {showDetails,toggleTerminal,buildTerminal,clearTerminal,pauseTerminalOutput,releaseTerminalQueue,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext};
 }

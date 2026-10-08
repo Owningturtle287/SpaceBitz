@@ -44,9 +44,9 @@ test('station keeping follows Earth across a real-time resume and survives backu
   assert.throws(()=>importVoyage({...save,station:{...save.station,id:'missing'}},'copy'));
 });
 test('layer changes clear stale transitions and advance the input context together',()=>{
-  const state={flightContext:2,save:{scene:'chart'},shipMotion:{thrust:1},warpUntil:123,autopilot:{type:'star'},waypoint:{x:1,y:2},followBody:{id:'earth'},terminal:{},terminalExpanded:true};
+  const state={flightContext:2,save:{scene:'chart'},shipMotion:{thrust:1},warpUntil:123,autopilot:{type:'star'},waypoint:{x:1,y:2},followBody:{id:'earth'},terminal:{},terminalRecordKey:'chart:sol',terminalExpanded:true};
   resetFlightContext(state,'system');assert.equal(state.flightContext,3);assert.equal(state.scene,'system');assert.equal(state.save.scene,'system');
-  for(const field of ['autopilot','waypoint','followBody','terminal','centerZoom'])assert.equal(state[field],null);
+  for(const field of ['autopilot','waypoint','followBody','terminal','terminalRecordKey','centerZoom'])assert.equal(state[field],null);
   assert.equal(state.warpUntil,0);assert.equal(state.terminalExpanded,false);assert.equal(state.shipMotion.thrust,0);
 });
 test('updates already installing at registration completion are observed and errors are reported',async()=>{

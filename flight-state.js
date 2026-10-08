@@ -4,7 +4,7 @@ import {SYSTEM_VISUAL_SCALE} from './scale.js';
 // Layer changes share one reset, including the input context used by the slider.
 export function resetFlightContext(state,scene){
   state.flightContext++;
-  Object.assign(state,{coordinateTap:null,terminal:null,terminalExpanded:false,followPanRemaining:0,
+  Object.assign(state,{coordinateTap:null,terminal:null,terminalRecordKey:null,terminalExpanded:false,followPanRemaining:0,
     waypoint:null,focusBody:null,centerZoom:null,centerReady:false,panUntil:0,followBody:null,
     warpUntil:0,autopilot:null,contextPlacement:null});
   state.shipMotion.thrust=0;

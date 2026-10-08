@@ -29,7 +29,7 @@ export function createVoyageStore({indexedDB=globalThis.indexedDB,legacyStorage=
     // Concurrent first loads recheck the migration marker in this transaction.
     const tx=db.transaction(['voyages','history','migration'],'readwrite'),done=completed(tx);
     try{
-      const migrated=await requestResult(tx.objectStore('migration').get(SAVE_KEY));
+      const migrated=await requestResult(tx.objectStore('migration').count(SAVE_KEY));
       if(!migrated){
         const originals=readVoyages(legacyStorage);
         for(const raw of originals){

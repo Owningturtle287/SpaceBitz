@@ -11,9 +11,10 @@ export async function checkRelease11216(page,engine){
   // press, and automatic star selection must enable the actual touch controls.
   await page.evaluate(()=>{window.__qaPause=false;window.__game.frame(performance.now());});
   await page.locator('#flightSpeed').click({trial:true});
+  await page.waitForFunction(()=>{const e=document.getElementById('flightSpeed'),r=e.getBoundingClientRect();return document.elementFromPoint(r.right-6,r.y+r.height/2)===e;});
   const range=await page.locator('#flightSpeed').boundingBox();
-  await page.touchscreen.tap(range.x+range.width-3,range.y+range.height/2);
-  await page.waitForFunction(()=>window.__game.state.scene==='chart');
+  await page.touchscreen.tap(range.x+range.width-6,range.y+range.height/2);
+  try{await page.waitForFunction(()=>window.__game.state.scene==='chart');}catch(error){console.log('11216 failed warp tap',JSON.stringify(await inspect()));throw error;}
   await page.waitForTimeout(600);
   const before=await inspect();
   await tap('followShipButton');await page.waitForTimeout(1550);
@@ -34,8 +35,9 @@ export async function checkRelease11216(page,engine){
     await page.evaluate(()=>{const g=window.__game;g.state.followShip=false;g.state.centerZoom=null;g.settings.reducedMotion=false;g.settings.controls='touch';g.settings.terminalResizeHandles=true;g.applySettings();window.__qaPause=false;g.frame(performance.now());});
     await page.waitForTimeout(400);
     await page.locator('#flightSpeed').click({trial:true});
+    await page.waitForFunction(()=>{const e=document.getElementById('flightSpeed'),r=e.getBoundingClientRect();return document.elementFromPoint(r.right-6,r.y+r.height/2)===e;});
     const input=await page.locator('#flightSpeed').boundingBox();
-    await page.touchscreen.tap(input.x+input.width-3,input.y+input.height/2);
+    await page.touchscreen.tap(input.x+input.width-6,input.y+input.height/2);
     await page.waitForFunction(()=>window.__game.state.scene==='chart');
     await tap('followShipButton');
     await page.waitForFunction(()=>window.__game.state.followShip);

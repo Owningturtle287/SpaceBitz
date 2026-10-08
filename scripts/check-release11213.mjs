@@ -229,6 +229,8 @@ export async function checkRelease11213(page,engine){
   await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.notify('Course test recorded in the terminal');g.updateUI();});
   assert.equal(await page.locator('#toast').count(),0);assert.match(await page.locator('#targetStatus').innerText(),/Course test recorded/);
   await page.locator('#secondaryAction').click();await settle();
+  // Echo follows the existing typed record, rather than finishing it early.
+  await page.evaluate(()=>{const g=window.__game;if(g.state.terminal)g.updateTerminal(g.state.terminal.start+15000);});
   await page.locator('#terminalInput').fill('<b>pilot entry</b>');await page.keyboard.press('Enter');
   assert.equal(await page.locator('#terminalInput').inputValue(),'');assert.equal(await page.locator('#terminalMessages b').count(),0);
   assert.match(await page.locator('#terminalMessages').innerText(),/> <b>pilot entry<\/b>/);
