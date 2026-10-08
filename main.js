@@ -52,7 +52,7 @@ beginMusic();
 const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,y:0}, zoom:1,
   panUntil:0, centerZoom:null, centerReady:false, followShip:false, followPanRemaining:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, fps:60,
-  waypoint:null,coordinateTap:null,warpUntil:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
+  waypoint:null,coordinateTap:null,warpUntil:0,flightContext:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
 const {showDetails,toggleTerminal,buildTerminal,clearTerminal,finishTerminalRecord,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog:entry=>{if(state.save){if(entry.kind==='object')recordObject(state.save,entry);else recordAction(state.save,entry.text);}},resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
 const journal=createLogDevice({state,settings,$,formatDate:days=>formatGameDate(new Date(EPOCH+days*DAY_MS),true),resetInput,saveSettings,updateUI,closeSystemChart,setTerminalKeyboard});
 function closeJournal(immediate=true){journal.close(immediate);}
@@ -185,6 +185,7 @@ globalThis.screen?.orientation?.addEventListener?.('change',()=>setTimeout(()=>{
 applySettings();
 function start(save) {
   try{save=restoreVoyage(save);}catch(error){notify(error.message+' The stored voyage has not been changed.');return;}
+  state.flightContext++;
   closeJournal();state.save=save; state.scene=save.scene || 'system';state.terminalNotice=null;state.terminalEntries.length=0;state.terminalRecordKey=null;state.terminalCleared=false;$('terminalMessages').replaceChildren();
   if(save.generation)save.generation=checkedGeneration(save.generation);
   state.system=makeSystem(save.currentSystem || save.homeSeed,save.generation);
@@ -359,14 +360,14 @@ function markDiscovery(body) {
   state.save.log.unshift({name:body.name,action:'First landing',days:state.save.days});
   notify(`First landing on ${body.name} · added to logbook`);persist();
 }
-function enterChart() {state.warpUntil=0;state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
+function enterChart() {state.flightContext++;state.warpUntil=0;state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   const star=currentStar();state.scene='chart';state.selected=star;
   state.save.scene='chart';state.save.chart={x:star.x+38,y:star.y+30};
   state.camera={...state.save.chart};state.zoom=1;state.autopilot=null;persist();updateUI();
 }
-function enterSystem(star) {state.warpUntil=0;state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
+function enterSystem(star) {state.flightContext++;state.warpUntil=0;state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.followBody=null;state.shipMotion.thrust=0;
   state.system=makeSystem(star.seed,state.save.generation);state.save.currentSystem=star.seed;
@@ -384,12 +385,13 @@ function enterSystem(star) {state.warpUntil=0;state.coordinateTap=null;state.ter
 function enterSurface(body) {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   if(!body.solid){notify('No solid surface here. Explore one of its moons.');return;}
+  state.flightContext++;
   state.followBody=null;state.actorMotion={direction:'down',steps:0};
   state.selected=null;state.scene='surface';state.save.scene='surface';state.save.landed=body.id;
   state.save.surface={x:50,y:35};state.camera={...state.save.surface};state.zoom=1.3;
   state.autopilot=null;markDiscovery(body);persist();updateUI();
 }
-function launch() {state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
+function launch() {state.flightContext++;state.coordinateTap=null;state.terminal=null;state.terminalExpanded=false;state.followPanRemaining=0;
   state.waypoint=null;state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.panUntil=0;
   state.shipMotion={heading:-Math.PI/2,thrust:0};state.followBody=null;
   const body=findBody(state.save.landed);
@@ -472,7 +474,25 @@ function setFlightStage(value){
   notify('Warp Drive engaged · entering Deep Space');
   updateUI();
 }
-$('flightSpeed').oninput=e=>setFlightStage(e.target.value);
+const flightSpeed=$('flightSpeed');
+let flightInputContext=null,flightFocusContext=null;
+// A range event queued before arrival must not turn Deep Space's old Warp
+// value into a new exit. A fresh pointer/key action belongs to this layer only.
+flightSpeed.addEventListener('pointerdown',e=>{
+  if(e.button===0&&!flightSpeed.disabled)flightInputContext=state.flightContext;
+});
+flightSpeed.addEventListener('keydown',e=>{
+  if(!flightSpeed.disabled&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'].includes(e.key))flightInputContext=state.flightContext;
+});
+flightSpeed.addEventListener('pointercancel',()=>{flightInputContext=null;});
+flightSpeed.addEventListener('focus',()=>{flightFocusContext=state.flightContext;});
+flightSpeed.addEventListener('blur',()=>{flightInputContext=flightFocusContext=null;});
+flightSpeed.oninput=e=>{
+  // Native accessibility adjustments may have focus without pointer/key events.
+  const focusedAdjustment=e.isTrusted&&document.activeElement===flightSpeed&&flightFocusContext===state.flightContext;
+  if(flightInputContext!==state.flightContext&&!focusedAdjustment){updateUI();return;}
+  setFlightStage(e.target.value);
+};
 $('systemFit').onclick=()=>{
   state.focusBody=null;state.centerZoom=null;state.centerReady=false;state.followShip=false;
   const to=systemFitZoom(state.system,state.width,state.height,state.save.days);

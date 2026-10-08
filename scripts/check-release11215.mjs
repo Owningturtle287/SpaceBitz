@@ -7,8 +7,9 @@ export async function checkRelease11215(page,engine){
     await page.setViewportSize(viewport);
     for(const joyX of [16,92])for(const button of ['homeButton','followShipButton']){
       await page.evaluate(async joyX=>{const g=window.__game,{makeSystem}=await import('/model.js');g.cancelTarget();g.state.scene='system';g.state.system=makeSystem('sol');g.state.save.currentSystem='sol';g.state.followShip=false;g.state.followBody=null;g.state.save.ship={x:1e7,y:1e7};Object.assign(g.settings,{reducedMotion:false,paused:true,joyX,centerButton:'right',controls:'touch'});g.applySettings();},joyX);await settle();
-      // Complete a real slider-initiated exit, then tap before moving the ship.
-      await page.locator('#flightSpeed').evaluate(e=>{e.value='2';e.dispatchEvent(new Event('input',{bubbles:true}));});
+      // Complete an exit, then tap before moving the ship. Native slider input
+      // is covered by the 1.12.16 and 1.12.18 browser checks.
+      await page.evaluate(()=>window.__game.setFlightStage(2));
       await page.evaluate(()=>{const g=window.__game;g.state.warpUntil=performance.now()-1;g.update(1,0);});
       await page.evaluate(()=>new Promise(requestAnimationFrame));
       const position=await page.locator('#'+button).boundingBox();
