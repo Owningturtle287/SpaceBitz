@@ -127,5 +127,4 @@ body[data-reduced-motion=true] .journal-object-data{animation:none}
 .settings-footer .button{font-size:7px;min-height:32px}
 .inactive-setting{opacity:.45}
 @container game (max-height:500px){.modal-card:has(.settings-tabs){height:calc(calc(var(--view-height) * 1) - 16px);max-height:calc(calc(var(--view-height) * 1) - 16px);padding:8px 12px}.modal-card:has(.settings-tabs) .modal-head{margin-bottom:4px;padding-bottom:4px}.modal-card:has(.settings-tabs) .modal-head h2{font-size:11px}.settings-tabs{padding-bottom:5px}.settings-tab{min-height:32px;font-size:6px;padding:6px}.settings-pane .setting-row{min-height:38px}.journal-head{padding:6px 10px}.journal-entry-heading{flex-wrap:wrap;gap:4px 10px}}
-@container game (orientation:portrait){#journal{visibility:hidden;pointer-events:none}}
 @media(prefers-reduced-motion:reduce){.journal-object-data{animation:none}}

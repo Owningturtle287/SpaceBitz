@@ -1,8 +1,4 @@
 /* Landscape flight instruments and the shared terminal message stream. */
-.landscape-gate{position:fixed;inset:0;z-index:30;display:grid;align-content:center;justify-items:center;gap:18px;padding:28px;background:#030b12;color:#b8f6db;text-align:center;font:10px/1.8 var(--pixel)}
-.landscape-gate svg{width:96px;height:64px;image-rendering:pixelated}
-.landscape-gate h2{font:13px/1.8 var(--pixel);margin:0}
-.landscape-gate p{margin:0;color:#8faab1}
 .menu-terminal{margin-top:10px;border:2px solid #728f96;background:#03110d;color:#9af5b1;padding:7px 10px;max-height:96px;overflow:auto;font:8px/1.7 var(--pixel)}
 .menu-terminal h2{font:8px/1.5 var(--pixel);margin:0 0 5px;color:#c4ffd2}
 #welcome .welcome-card:has(#menuTerminal:not([hidden])) .generation-stage{height:calc(calc(var(--view-height) * 1) - 126px)}
@@ -58,4 +54,3 @@
 .flight-speed-stops span:last-child{color:#b48cf2}
 body[data-reduced-motion=true] #mapButton.flight-speed{transition:none}
 @media(prefers-reduced-motion:reduce){#mapButton.flight-speed{transition:none}}
-@container game (orientation:portrait){#app,#welcome,#modal{visibility:hidden;pointer-events:none}}

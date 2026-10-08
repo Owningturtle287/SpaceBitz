@@ -1,7 +1,8 @@
 /* The browser viewport may turn; the game keeps one landscape layout. */
 :root{--view-width:100vw;--view-height:100dvh;--view-min:100vmin;--safe-left:env(safe-area-inset-left,0px);--safe-right:env(safe-area-inset-right,0px);--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 #gameViewport{position:fixed;left:0;top:0;width:var(--view-width);height:var(--view-height);overflow:hidden;transform-origin:0 0;transform:translate(0,0);container:game / size;isolation:isolate}
-#app{position:absolute;inset:0}
+#app{position:absolute;inset:0;pointer-events:none}
+#joystick,.navigation-controls{pointer-events:auto}
 .topbar .flight-readout{width:calc(154px + max(0px,var(--safe-left) - 20px));padding-right:6px}
 
 /* Full-screen surfaces cover the game, including their curved corners. */

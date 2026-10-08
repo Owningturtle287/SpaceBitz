@@ -21,7 +21,7 @@ export async function checkRelease11221(page,engine){
   });
   assert.deepEqual(trail.route,[trail.home,trail.first]);assert.equal(trail.count,1);
   const layouts=[];
-  for(const physical of [{width:844,height:390},{width:390,height:844},{width:667,height:375},{width:375,height:667},{width:1024,height:768},{width:768,height:1024},{width:844,height:390}]){
+  for(const physical of [{width:844,height:390},{width:390,height:844},{width:667,height:375},{width:375,height:667},{width:1024,height:768},{width:768,height:1024},{width:600,height:600},{width:844,height:390}]){
     await page.setViewportSize(physical);
     await page.waitForFunction(v=>{const g=window.__game;return g.state.width===Math.max(v.width,v.height)&&g.state.height===Math.min(v.width,v.height)&&document.getElementById('gameViewport').dataset.rotated===String(v.height>v.width);},physical);
     await page.evaluate(async()=>{const g=window.__game;g.frame(performance.now());await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));});
@@ -40,6 +40,10 @@ export async function checkRelease11221(page,engine){
     const drag=await page.evaluate(async()=>{const {viewport:v,gameRect}=await import('/viewport.js'),r=gameRect(document.getElementById('joystick')),x=r.left+r.width/2,y=r.top+r.height/2,point=(x,y)=>v.rotated?{x:v.physicalWidth-y+v.left,y:x+v.top}:{x:x+v.left,y:y+v.top};return {a:point(x,y),b:point(x+16,y)};});
     await page.mouse.move(drag.a.x,drag.a.y);await page.mouse.down();await page.mouse.move(drag.b.x,drag.b.y);
     const steer=await page.evaluate(()=>({...window.__game.state.joy}));assert.ok(steer.x>0&&Math.abs(steer.y)<.01,JSON.stringify({physical,steer}));await page.mouse.up();
+    const pan=await page.evaluate(async()=>{const {viewport:v}=await import('/viewport.js'),x=v.width*.35,y=Math.max(90,v.height*.35),point=(x,y)=>v.rotated?{x:v.physicalWidth-y+v.left,y:x+v.top}:{x:x+v.left,y:y+v.top};return {a:point(x,y),b:point(x+12,y),before:window.__game.state.camera.x};});
+    await page.mouse.move(pan.a.x,pan.a.y);await page.mouse.down();assert.equal(await page.evaluate(()=>window.__game.inputPointerCount()),1);await page.mouse.move(pan.b.x,pan.b.y);await page.mouse.up();
+    assert.ok(await page.evaluate(before=>window.__game.state.camera.x<before,pan.before));assert.equal(await page.evaluate(()=>window.__game.inputPointerCount()),0);
+    await page.evaluate(()=>window.__game.frame(performance.now()));
     if(physical.width===844&&layouts.length===0)await capture('dashboard');
     await tap(page.locator('#settingsOpen'));
     const settings=await page.locator('.modal-card').evaluate(e=>{const r=e.getBoundingClientRect(),overlay=document.getElementById('modal'),close=document.getElementById('modalClose'),b=close.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,background:getComputedStyle(overlay).backgroundColor,rounded:parseFloat(getComputedStyle(e).borderTopLeftRadius),hit:document.elementFromPoint((b.left+b.right)/2,(b.top+b.bottom)/2)?.closest('button')?.id,overflow:e.scrollWidth>e.clientWidth};});

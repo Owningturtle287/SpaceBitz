@@ -233,7 +233,7 @@ without adding the deferred environment overhaul. Names track selected objects.
 A smaller green travel lever, with red Cancel centered above it, slides above the compact
 terminal or straight horizontally beside its expanded screen, leaving selected views clear.
 A 68px instrument row centers the wider corner-fitted joystick and equal-sized
-Center/Follow controls. Play is landscape-only; portrait orientation shows a rotation prompt and pauses voyage movement and time. The compact
+Center/Follow controls. The game keeps a landscape rendering and input space through device rotation, using native orientation locking where available and a rotated landscape surface elsewhere. The compact
 terminal casing follows the lower-right curve and sits slightly inward.
 Action messages and submitted keyboard text appear in a bounded terminal history. Records use diameter rather than body radius; orbit periods use Earth days and rotations use Earth days, hours and minutes. Resize arrows are optional and sit near the upper-left of the device. The speed slider selects light-blue Orbit or yellow Hyperspace free flight; purple Warp enters Deep Space, whose speed always uses Warp. Automatic transfers keep their appropriate drive.
 Follow eases back two seconds after the last pan without changing zoom. The lever
@@ -261,6 +261,6 @@ Start a new voyage to see the new population model. Barren systems remain valid.
 
 Node and Chromium/WebKit checks cover the tables, forced rare families/subtypes,
 restoration, wide hierarchies, stable projected names, docked travel controls, terminal typing/scrolling,
-opaque panels, reduced motion, 1 km scale, mobile landscape layouts and the portrait rotation guard and
+opaque panels, reduced motion, 1 km scale, mobile landscape layouts and the landscape rotation fallback and
 render/cache stress. Desktop engine tests do not establish real-device battery,
 thermal, audio-policy or GPU behavior; the README retains physical-device checks.
