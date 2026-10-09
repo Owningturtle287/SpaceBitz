@@ -16,7 +16,7 @@ export async function checkRelease11222(page,engine){
     const tab=await page.locator('#systemChartToggle').evaluate(e=>({text:e.textContent.trim(),height:e.getBoundingClientRect().height,name:document.getElementById('placeLabel').textContent,labels:document.querySelectorAll('#modeLabel,.mission-toggle .eyebrow').length}));
     assert.equal(tab.name,scene==='surface'?'Earth':scene==='system'?'Sol':'Deep Space');assert.equal(tab.labels,0);assert.ok(tab.height>=44&&tab.height<=46,JSON.stringify(tab));tabs.push(tab);
     await tap(page.locator('#systemChartToggle'));
-    if(scene==='surface'){assert.equal(await page.locator('#terminalScreen').isVisible(),true);assert.match(await page.locator('#terminalMessages').textContent(),/Object Data/);}
+    if(scene==='surface'){assert.equal(await page.locator('#terminalScreen').isVisible(),true);assert.match(await page.evaluate(()=>window.__game.state.terminal.text),/Object Data: Earth/);}
     else{assert.equal(await page.locator('#systemChartContent').isVisible(),true);await tap(page.locator('#systemChartToggle'));}
   }
   const layouts=[];
