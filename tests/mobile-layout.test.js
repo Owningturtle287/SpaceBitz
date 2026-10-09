@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {landscapeSize,gamePoint} from '../viewport.js';
+import {landscapeSize,gamePoint,viewportSize} from '../viewport.js';
 import {recordTravel} from '../navigation.js';
 import {logCategory} from '../voyage-log.js';
 import {makeSystem,bodyPosition} from '../model.js';
@@ -14,6 +14,17 @@ test('landscape layout and pointer coordinates stay coherent after physical rota
   const rotated={physicalWidth:390,left:4,top:8,rotated:true};
   assert.deepEqual(gamePoint({clientX:124,clientY:68},normal),{x:120,y:60});
   assert.deepEqual(gamePoint({clientX:334,clientY:128},rotated),{x:120,y:60});
+});
+test('browser focus zoom and pan preserve the whole landscape surface and input axes',()=>{
+  for(const [width,height]of [[844,390],[390,844]]){
+    const v=viewportSize(width,height,{width:width/2,height:height/2,scale:2,offsetLeft:110,offsetTop:70});
+    assert.equal(v.width,844);assert.equal(v.height,390);assert.equal(v.scale,2);
+    const clientX=v.left+(v.rotated?v.physicalWidth-60:120)/2,clientY=v.top+(v.rotated?120:60)/2;
+    assert.deepEqual(gamePoint({clientX,clientY},v),{x:120,y:60});
+  }
+  // Keyboard occlusion and toolbar changes still reduce the available area.
+  assert.equal(viewportSize(844,390,{width:844,height:210,scale:1}).height,210);
+  assert.deepEqual(viewportSize(844,390),{width:844,height:390,rotated:false,physicalWidth:844,physicalHeight:390,left:0,top:0,scale:1});
 });
 test('the first travel leg connects its departure, without duplicate arrivals or unbounded history',()=>{
   const save={route:[]};recordTravel(save,'home','first');assert.deepEqual(save.route,['home','first']);

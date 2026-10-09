@@ -44,9 +44,10 @@ body[data-scene=chart] #flightSpeed{opacity:1;cursor:default}
 .terminal-record .terminal-value{font:var(--terminal-data-font)/1.8 var(--pixel)}
 .terminal-record .terminal-title,.terminal-record .terminal-title .terminal-key,.terminal-record .terminal-title .terminal-value{font:var(--terminal-header-font)/1.7 var(--pixel);color:#c4ffd2}
 .terminal-record .terminal-note,.terminal-record .terminal-note .terminal-value{font:var(--terminal-label-font)/1.8 var(--pixel)}
-#terminalInput,#terminalInput::placeholder{font:var(--terminal-input-font)/1.5 var(--pixel)}
+#terminalInput{font:max(16px,var(--terminal-input-font))/1.5 var(--pixel)}
+#terminalInput::placeholder{font:var(--terminal-input-font)/1.5 var(--pixel)}
 .terminal-prompt{font-size:var(--terminal-input-font)}
-.terminal-input-caret{width:var(--terminal-input-font);height:calc(var(--terminal-input-font) + 5px)}
+.terminal-input-caret{width:max(16px,var(--terminal-input-font));height:calc(max(16px,var(--terminal-input-font)) + 5px)}
 #terminalResizeTop,#terminalResizeLeft{width:44px;height:44px;min-width:44px;min-height:44px;top:calc(50% - 22px);border:0;background:inherit;color:#fff;box-shadow:none;clip-path:none;touch-action:none;user-select:none;-webkit-user-select:none}
 #terminalResizeTop{left:0;cursor:ns-resize}
 #terminalResizeLeft{left:38px;cursor:ew-resize}

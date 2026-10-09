@@ -5,7 +5,7 @@
   "description": "An offline pocket galaxy with living orbits and worlds to explore.",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#010205",
   "theme_color": "#02040a",
   "orientation": "landscape",

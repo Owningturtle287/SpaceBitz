@@ -111,6 +111,11 @@ function setTerminalKeyboard(visible){
 }
 const terminalSymbols={'Q':'!','W':'@','E':'#','R':'$','T':'%','Y':'^','U':'&','I':'*','O':'(','P':')','A':'-','S':'_','D':'=','F':'+','G':'[','H':']','J':'{','K':'}','L':'\\','Z':';','X':':','C':"'",'V':'"','B':',','N':'.','M':'?'};
 function terminalCharacter(key){return terminalShift?(terminalSymbols[key]||key):terminalCaps?key:key.toLowerCase();}
+function editTerminalInput(text,from,end){
+  const input=$('terminalInput');
+  if(input.value.length-(end-from)+text.length>input.maxLength)return;
+  input.setRangeText(text,from,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));
+}
 function terminalKey(key){
   const input=$('terminalInput'),start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
   if(key==='Shift'||key==='CapsLock'){if(key==='Shift')terminalShift=!terminalShift;else terminalCaps=!terminalCaps;renderTerminalKeyboard();return;}
@@ -118,26 +123,26 @@ function terminalKey(key){
   if(key==='Clear'){input.value='';input.setSelectionRange(0,0);input.dispatchEvent(new Event('input',{bubbles:true}));return;}
   const from=key==='Backspace'&&start===end?Math.max(0,start-1):start;
   const text=key==='Backspace'?'':key==='Space'?' ':terminalCharacter(key);
-  if(input.value.length-(end-from)+text.length>input.maxLength)return;
-  input.setRangeText(text,from,end,'end');input.dispatchEvent(new Event('input',{bubbles:true}));
+  editTerminalInput(text,from,end);
 }
 function bindTerminalKey(button,key){
   let pointerClickPending=false,lastPointerRelease=-Infinity;
+  const restoreFocus=()=>{if(!$('terminalKeyboard').hidden)$('terminalInput').focus({preventScroll:true});};
   button.onpointerdown=e=>{
     if(e.button!==0)return;e.preventDefault();e.stopPropagation();pointerClickPending=true;lastPointerRelease=performance.now();if(e.isTrusted)button.setPointerCapture?.(e.pointerId);terminalKey(key);
     if(['Shift','CapsLock','Enter','Clear'].includes(key))return;
     const press={delay:setTimeout(()=>{press.repeat=setInterval(()=>terminalKey(key),55);terminalKey(key);},350)};
     heldTerminalKeys.set(e.pointerId,press);
   };
-  const release=e=>{lastPointerRelease=performance.now();if(e.type==='pointercancel')pointerClickPending=false;const press=heldTerminalKeys.get(e.pointerId);if(press){clearTimeout(press.delay);clearInterval(press.repeat);heldTerminalKeys.delete(e.pointerId);}};
+  const release=e=>{lastPointerRelease=performance.now();if(e.type==='pointercancel')pointerClickPending=false;const press=heldTerminalKeys.get(e.pointerId);if(press){clearTimeout(press.delay);clearInterval(press.repeat);heldTerminalKeys.delete(e.pointerId);}if(e.type==='pointerup')restoreFocus();};
   button.onpointerup=release;button.onpointercancel=release;button.onlostpointercapture=release;
   // Assistive technology and physical keyboard activation have no preceding pointer press.
   button.onkeydown=e=>{if(e.key==='Enter'||e.key===' ')pointerClickPending=false;};
   button.onclick=e=>{
     // Chromium touch clicks can have detail=0 too. Consume the click belonging to
     // the press already handled above, including after a long held-key repeat.
-    if(pointerClickPending&&e.isTrusted&&performance.now()-lastPointerRelease<750){pointerClickPending=false;return;}
-    if(e.detail===0)terminalKey(key);
+    if(pointerClickPending&&e.isTrusted&&performance.now()-lastPointerRelease<750){pointerClickPending=false;restoreFocus();return;}
+    if(e.detail===0)terminalKey(key);restoreFocus();
   };
 }
 function renderTerminalKeyboard(){
@@ -167,10 +172,29 @@ function updateInputCaret(){
   caret.style.left=(6+measured-input.scrollLeft)+'px';
 }
 renderTerminalKeyboard();bindTerminalKey($('terminalDelete'),'Backspace');
+// inputmode=none alone does not reliably suppress iOS focus zoom/keyboard.
+// A touch-focused read-only field still supports selection and our pixel keys.
+// Physical keyboards and paste are handled below without invoking the OS keyboard.
+$('terminalInput').readOnly=matchMedia('(pointer:coarse)').matches;
+$('terminalInput').onpointerdown=e=>{const input=$('terminalInput');input.readOnly=e.pointerType!=='mouse';if(input.readOnly)input.focus({preventScroll:true});};
 $('terminalInput').onfocus=()=>{resetInput();setTerminalKeyboard(true);};
 $('terminalInput').onblur=updateInputCaret;
 $('terminalInput').oninput=updateInputCaret;
-$('terminalInput').onkeydown=e=>{if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();if(e.key==='Enter'&&!e.repeat)submitTerminalInput();setTerminalKeyboard(false);$('terminalInput').blur();}else requestAnimationFrame(updateInputCaret);};
+$('terminalInput').onkeydown=e=>{
+  const input=$('terminalInput');
+  if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();if(e.key==='Enter'&&!e.repeat)submitTerminalInput();setTerminalKeyboard(false);input.blur();return;}
+  if(input.readOnly&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!e.isComposing){
+    const start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
+    if(e.key.length===1){e.preventDefault();e.stopPropagation();editTerminalInput(e.key,start,end);}
+    else if(e.key==='Backspace'||e.key==='Delete'){e.preventDefault();e.stopPropagation();editTerminalInput('',e.key==='Backspace'&&start===end?Math.max(0,start-1):start,e.key==='Delete'&&start===end?Math.min(input.value.length,end+1):end);}
+  }
+  requestAnimationFrame(updateInputCaret);
+};
+$('terminalInput').onpaste=e=>{
+  const input=$('terminalInput');if(!input.readOnly)return;e.preventDefault();
+  const start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
+  editTerminalInput((e.clipboardData?.getData('text/plain')||'').replace(/[\r\n]/g,' ').slice(0,input.maxLength-input.value.length+end-start),start,end);
+};
 document.addEventListener('selectionchange',()=>{if(document.activeElement===$('terminalInput'))updateInputCaret();});
 window.addEventListener('blur',stopTerminalKeys);
 $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden;if(open)$('terminalInput').focus({preventScroll:true});setTerminalKeyboard(open);};

@@ -24,7 +24,7 @@ export async function checkRelease11214(page,engine){
   await page.evaluate(()=>{const g=window.__game;g.state.save.chart={x:g.state.selected.x,y:g.state.selected.y};g.primary();g.cancelTarget();g.settings.joyX=16;g.settings.reducedMotion=false;g.applySettings();g.clearTerminal();const earth=g.state.system.planets.find(p=>p.name==='Earth');g.select(earth);g.showDetails(earth);g.updateTerminal(g.state.terminal.start+100);g.notify('Survey queued after Earth');});
   await settle();
   assert.equal(await page.locator('#targetName').innerText(),'TERMINAL');
-  await page.locator('#terminalInput').fill('<b>pilot entry</b>');await page.keyboard.press('Enter');
+  await page.locator('#terminalInput').click();await page.locator('#terminalInput').fill('<b>pilot entry</b>');await page.keyboard.press('Enter');
   await page.evaluate(()=>{const g=window.__game;const moon=g.state.system.planets.find(p=>p.name==='Earth').moons[0];g.select(moon);g.showDetails(moon);g.updateTerminal(g.state.terminal.start+10000);});await settle();
   const stream=await page.evaluate(()=>[...document.getElementById('terminalMessages').children].map(e=>({kind:e.classList.contains('terminal-record')?'record':e.classList.contains('input')?'input':'message',text:e.textContent})));
   assert.deepEqual(stream.map(e=>e.kind),['record','message','input','record']);

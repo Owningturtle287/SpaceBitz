@@ -1,6 +1,7 @@
 /* The browser viewport may turn; the game keeps one landscape layout. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 :root{--view-width:100vw;--view-height:100dvh;--view-min:100vmin;--safe-left:env(safe-area-inset-left,0px);--safe-right:env(safe-area-inset-right,0px);--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
-#gameViewport{position:fixed;left:0;top:0;width:var(--view-width);height:var(--view-height);overflow:hidden;transform-origin:0 0;transform:translate(0,0);container:game / size;isolation:isolate}
+#gameViewport{position:fixed;left:0;top:0;width:var(--view-width);height:var(--view-height);overflow:hidden;transform-origin:0 0;transform:translate(0,0);transition:none;container:game / size;isolation:isolate}
 #app{position:absolute;inset:0;pointer-events:none}
 #joystick,.navigation-controls{pointer-events:auto}
 .topbar .flight-readout{width:calc(154px + max(0px,var(--safe-left) - 20px));padding-right:6px}
@@ -14,6 +15,8 @@
 .settings-footer{gap:8px;padding-top:8px}
 .settings-footer .button{min-height:38px}
 .journal-overlay{background:#03110d}
+.journal-overlay.closing{background:transparent}
+body.journal-open:has(.journal-overlay.closing) #terminalPocket,body.journal-open:has(.journal-overlay.closing) #travelControls,body.journal-open:has(.journal-overlay.closing) #contextActions{visibility:visible}
 .journal-panel{border-radius:var(--dashboard-corner)}
 .journal-head{padding:max(10px,var(--safe-top)) max(16px,var(--safe-right),calc(var(--dashboard-corner)*.65)) 8px max(16px,var(--safe-left),calc(var(--dashboard-corner)*.65))}
 .journal-filters,.journal-content{padding-left:max(16px,var(--safe-left));padding-right:max(16px,var(--safe-right))}
@@ -35,6 +38,9 @@ body:has(#homeButton[data-center-position=above]) #joystick{height:calc(var(--da
 #flightSpeed::-moz-range-thumb{height:calc(var(--speed-track-height) - 4px)}
 
 .mission-content{transform-origin:top right}
+.topbar .top-system-chart{border-top-right-radius:min(20px,calc(var(--dashboard-corner) - 3px))}
+.top-system-chart .mission-toggle{height:44px;min-height:44px;padding:6px max(18px,var(--safe-right)) 6px 10px}
+.mission-toggle-copy{display:block}
 .mission-dropdown.open .mission-content{animation:chart-unfold .32s cubic-bezier(.22,.7,.25,1)}
 .mission-chevron{transition:transform .32s cubic-bezier(.22,.7,.25,1)}
 @keyframes chart-unfold{from{opacity:0;transform:translateY(-8px) scale(.96,.82)}to{opacity:1;transform:translateY(0) scale(1)}}

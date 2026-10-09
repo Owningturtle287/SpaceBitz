@@ -13,6 +13,7 @@ import {checkRelease11218} from './check-release11218.mjs';
 import {checkRelease11219} from './check-release11219.mjs';
 import {checkRelease11220} from './check-release11220.mjs';
 import {checkRelease11221} from './check-release11221.mjs';
+import {checkRelease11222} from './check-release11222.mjs';
 import {checkRelease11212} from './check-release11212.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -34,6 +35,9 @@ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const browser=await ({chromium,webkit}[engine]).launch({headless:true,...(process.env.CHROMIUM_EXECUTABLE_PATH&&engine==='chromium'?{executablePath:process.env.CHROMIUM_EXECUTABLE_PATH,args:['--no-sandbox','--no-zygote','--single-process','--disable-gpu']}: {})});
 try{
   const page=await browser.newPage({viewport:{width:844,height:390},deviceScaleFactor:2,hasTouch:true,serviceWorkers:'block'});
+  // Desktop headless fullscreen does not emulate phone fullscreen/orientation.
+  // The release checks exercise the mobile API path with controlled capabilities.
+  await page.addInitScript(()=>Object.defineProperty(document,'fullscreenEnabled',{configurable:true,value:false}));
   page.setDefaultTimeout(15000);
   const errors=[];page.on('pageerror',error=>{errors.push(error.message);console.error('Game error:',error.message);});
   await page.addInitScript(()=>localStorage.setItem('spacebitz:field:settings',JSON.stringify({music:false,paused:true,controls:'touch',resolution:'2',showCoords:true})));
@@ -75,6 +79,9 @@ try{
   // Exercise the current device controls before the longer renderer soak, then
   // restore the exact launch fixture so the simulation checks stay independent.
   const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
+  const release11222=await checkRelease11222(page,engine);
+  console.log('11222 keyboard and overlay checks',JSON.stringify(release11222));
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11221=await checkRelease11221(page,engine);
   console.log('11221 mobile checks',JSON.stringify(release11221));
   await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
@@ -174,7 +181,7 @@ try{
     if(!document.getElementById('terminalOutput').textContent.includes('12,742 km'))throw new Error('Diameter not kilometres');
     if(getComputedStyle(document.getElementById('targetCard')).backgroundColor!=='rgb(3, 17, 13)')throw new Error('World terminal is not opaque');
     g.enterSurface(earth);g.updateUI();
-    if(!document.getElementById('mapButton').hidden||!document.getElementById('modeLabel').hidden)throw new Error('Surface still has warp/expedition label');
+    if(!document.getElementById('mapButton').hidden||document.getElementById('modeLabel'))throw new Error('Surface still has warp/expedition label');
     g.showDetails(earth);g.updateTerminal(performance.now()+9000);const info=document.getElementById('terminalOutput');
     for(const fact of ['12,742 km','365.256 Earth days','MOON COUNT','ROTATION'])if(!info.textContent.includes(fact))throw new Error('Missing terminal fact '+fact);
     s.zoom=.65;s.camera={x:999,y:999};document.getElementById('homeButton').click();
@@ -550,5 +557,5 @@ try{
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
   const release11212=await checkRelease11212(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,release11216,release11217,release11218,release11219,release11220,release11221,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,release11216,release11217,release11218,release11219,release11220,release11221,release11222,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}
