@@ -1,6 +1,14 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.24",
+    "items": [
+      "Removed the chart tab's inner curve and corner tail, retaining its 28px thickness and the screen-fitting top-right outer arc above a straight bottom edge. Enlarged the dropdown arrow.",
+      "Made the chart and its scrollbar slide smoothly from behind the tab's bottom edge over 640ms. Raised Settings and Center on System by 4px.",
+      "Showed the selected target's live distance beside Open Terminal when collapsed, using the same ship/target positions and scene units as the expanded readout without taking space from the object summary."
+    ]
+  },
+  {
     "version": "1.12.23",
     "items": [
       "Slowed Log closing to 720ms with gentle acceleration, proportional scaling toward its button and a later fade. Repeated close taps preserve the running animation; interrupted opening and reduced motion remain supported.",

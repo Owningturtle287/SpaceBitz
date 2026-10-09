@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.24 — Flat chart tab and collapsed terminal distance
+- Removed the chart tab's inner curve and corner tail, retaining its 28px thickness and the screen-fitting top-right outer arc above a straight bottom edge. Enlarged the dropdown arrow.
+- Made the chart and its scrollbar slide smoothly from behind the tab's bottom edge over 640ms. Raised Settings and Center on System by 4px.
+- Showed the selected target's live distance beside Open Terminal when collapsed, using the same ship/target positions and scene units as the expanded readout without taking space from the object summary.
+
 ## 1.12.23 — Fluid panels and stable terminal cursor
 - Slowed Log closing to 720ms with gentle acceleration, proportional scaling toward its button and a later fade. Repeated close taps preserve the running animation; interrupted opening and reduced motion remain supported.
 - Slowed the System Chart dropdown to 640ms and removed content stretching. Fitted its 28px text-and-arrow band around the top-right screen corner with concentric inner and outer arcs.

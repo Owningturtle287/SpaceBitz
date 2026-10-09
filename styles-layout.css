@@ -38,10 +38,10 @@ body:has(#homeButton[data-center-position=above]) #joystick{height:calc(var(--da
 #flightSpeed::-moz-range-thumb{height:calc(var(--speed-track-height) - 4px)}
 
 .mission-content{transform-origin:top right}
-.mission-dropdown.open .mission-content{animation:chart-unfold .64s cubic-bezier(.4,0,.2,1)}
+.mission-dropdown.open .mission-drop-sheet{animation:chart-unfold .64s cubic-bezier(.4,0,.2,1)}
 .mission-chevron{transition:transform .64s cubic-bezier(.4,0,.2,1)}
-@keyframes chart-unfold{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
-body[data-reduced-motion=true] .mission-dropdown.open .mission-content{animation:none}
+@keyframes chart-unfold{from{transform:translateY(-100%)}to{transform:translateY(0)}}
+body[data-reduced-motion=true] .mission-dropdown.open .mission-drop-sheet{animation:none}
 body[data-reduced-motion=true] .mission-chevron{transition:none}
 .delete-voyage-dialog{font:10px/1.9 var(--pixel);color:#c4ffd2;overflow-wrap:anywhere}
 .dialog-actions{display:flex;gap:12px;justify-content:flex-end;flex-wrap:wrap;margin-top:20px}
@@ -49,4 +49,4 @@ body[data-reduced-motion=true] .mission-chevron{transition:none}
 .delete-voyage-confirm{background:#581e2b;border-color:#b46868;color:#ffb1a3}
 .dialog-error{color:#ffc29e}
 .modal-card:has(.delete-voyage-dialog){border-radius:18px;clip-path:none;background:#101e32}
-@media(prefers-reduced-motion:reduce){.mission-dropdown.open .mission-content{animation:none}.mission-chevron{transition:none}}
+@media(prefers-reduced-motion:reduce){.mission-dropdown.open .mission-drop-sheet{animation:none}.mission-chevron{transition:none}}
