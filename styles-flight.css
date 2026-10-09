@@ -25,18 +25,21 @@
 .topbar .flight-readout #clockDate{font-size:8px}
 .topbar .flight-readout #telemetry{flex-direction:column;align-items:flex-start;gap:1px;font-size:9px;line-height:1.4;overflow-wrap:anywhere;white-space:pre-line;text-align:left}
 .top-actions{margin-left:auto;gap:0}
-.top-actions .mission-tools{display:flex;align-items:center;gap:10px;width:auto;flex:none}
-.topbar .top-system-chart{--chart-radius:calc(var(--dashboard-corner) - 3px);--chart-thickness:28px;width:194px;max-width:calc(var(--view-width) * 0.32);margin:0;border:0;border-top-right-radius:var(--chart-radius);clip-path:none;box-shadow:none;background:none}
-.top-system-chart .mission-toggle{position:relative;height:var(--chart-radius);min-height:var(--chart-radius);align-items:flex-start;border:0;box-shadow:none;clip-path:none;background:none;padding:0 max(calc(var(--chart-radius) + 4px),var(--safe-right,0px)) 0 10px;border-top-right-radius:inherit}
+.top-actions .mission-tools{display:flex;align-items:center;gap:10px;width:auto;flex:none;min-height:calc(var(--dashboard-corner) - 3px)}
+.topbar .top-system-chart{--chart-radius:calc(var(--dashboard-corner) - 3px);--chart-thickness:28px;align-self:flex-start;width:194px;max-width:calc(var(--view-width) * 0.32);margin:0;border:0;border-top-right-radius:var(--chart-radius);clip-path:none;box-shadow:none;background:none}
+.top-system-chart .mission-toggle{position:relative;height:var(--chart-thickness);min-height:var(--chart-thickness);align-items:flex-start;border:0;box-shadow:none;clip-path:none;background:none;padding:0 max(calc(var(--chart-radius) + 4px),var(--safe-right,0px)) 0 10px;border-top-right-radius:inherit}
 .mission-tab-frame{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
-.mission-tab-frame path{fill:rgb(16 30 50 / 25%);stroke:#81979d;stroke-width:2;stroke-linejoin:round}
+.mission-tab-frame path{fill:rgb(16 30 50 / 25%);stroke:#81979d;stroke-width:2;stroke-linejoin:miter}
 .top-system-chart .mission-toggle-copy,.top-system-chart .mission-chevron{position:relative;display:flex;align-items:center;height:var(--chart-thickness)}
 .top-system-chart .mission-toggle-copy{flex:1;min-width:0}
-.top-system-chart .mission-chevron{flex:none;justify-content:center;width:14px}
+.top-system-chart .mission-chevron{flex:none;justify-content:center;width:18px}
 .top-system-chart .mission-toggle strong{font-size:10px}
 .top-system-chart .mission-toggle .eyebrow{font-size:7px;white-space:normal}
-.top-system-chart .mission-chevron{font-size:16px}
-.top-system-chart .mission-content{left:auto;right:-2px}
+.top-system-chart .mission-chevron{font-size:20px;line-height:1}
+.top-system-chart .mission-reveal{position:absolute;left:0;top:calc(100% - 1px);width:var(--chart-bottom-width,100%);overflow:hidden}
+.mission-drop-sheet{position:relative}
+.top-system-chart .mission-content{position:relative;left:0;right:auto;top:0;width:100%}
+#settingsOpen,#systemFit.system-center{transform:translateY(-4px)}
 #settingsOpen{width:32px;height:32px;min-width:32px;min-height:32px}
 
 /* Three physical drive detents over a stepped, widening velocity scale. */

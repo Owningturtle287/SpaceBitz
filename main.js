@@ -595,13 +595,15 @@ $('homeButton').addEventListener('pointercancel',finishCenterDrag);
 $('homeButton').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')centerSuppressClick=false;});
 $('journalButton').onclick=showJournal;
 $('zoneToggle').onclick=()=>{settings.zone=!settings.zone;saveSettings();updateUI();};
-// A constant-width strip turns around the screen corner. An ordinary rounded
-// rectangle would shrink its radius to half the thin tab's height.
+// Keep the screen's outer corner arc, cropped at the thin tab's flat bottom.
+// A plain rounded rectangle would shrink that radius to the tab's height.
 const chartFrameObserver=new ResizeObserver(()=>{
   const button=$('systemChartToggle'),style=getComputedStyle(button),w=button.clientWidth,r=parseFloat(style.borderTopRightRadius),t=parseFloat(getComputedStyle($('systemChart')).getPropertyValue('--chart-thickness'));
   if(!w||!r)return;
-  $('systemChartFrame').setAttribute('viewBox',`0 0 ${w} ${r}`);
-  $('systemChartFramePath').setAttribute('d',`M1 1 H${w-r} A${r-1} ${r-1} 0 0 1 ${w-1} ${r} H${w-t+1} A${r-t+1} ${r-t+1} 0 0 0 ${w-r} ${t-1} H1 Z`);
+  const edge=w-r+Math.sqrt(Math.max(0,(r-1)**2-(r-t+1)**2));
+  $('systemChartFrame').setAttribute('viewBox',`0 0 ${w} ${t}`);
+  $('systemChartFramePath').setAttribute('d',`M1 1 H${w-r} A${r-1} ${r-1} 0 0 1 ${edge} ${t-1} H1 Z`);
+  $('systemChart').style.setProperty('--chart-bottom-width',(edge+1)+'px');
 });
 chartFrameObserver.observe($('systemChartToggle'));
 function closeSystemChart(){
@@ -697,7 +699,10 @@ function updateUI() {
   if(!hasTarget&&state.terminalNotice)$('targetStatus').textContent=state.terminalNotice;
   if(!state.terminalExpanded){setTerminalKeyboard(false);if(document.activeElement===$('terminalInput'))$('terminalInput').blur();}
   if(state.terminalExpanded&&!state.terminal&&!state.terminalCleared)buildTerminal();
-  $('targetDistance').textContent=destination?(state.terminalExpanded&&state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
+  const distanceText=destination?(state.terminalExpanded&&state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
+  $('targetDistance').textContent=distanceText;
+  $('targetCollapsedDistance').textContent=distanceText;
+  $('targetCollapsedDistance').hidden=state.terminalExpanded||!hasTarget||!distanceText;
   $('primaryActionLabel').textContent=action;$('primaryAction').classList.toggle('engaged',traveling);
   $('primaryAction').setAttribute('aria-busy',String(traveling));
   $('primaryAction').setAttribute('aria-label',action==='GO HERE'?'Go Here':action);
