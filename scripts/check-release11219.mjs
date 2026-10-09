@@ -41,7 +41,9 @@ export async function checkRelease11219(page,engine){
     g.settings.logLabelFont=14;g.settings.logDataFont=9;g.settings.reducedMotion=true;g.applySettings();await g.persist();g.showJournal();
   });
   await page.getByRole('button',{name:'All',exact:true}).click();
-  await page.waitForFunction(()=>document.querySelectorAll('.journal-entry').length===80);
+  // Clicking the current filter refreshes the page asynchronously while its
+  // previous rows remain visible. Wait before selecting a survey from that page.
+  await page.waitForFunction(()=>!document.getElementById('journalContent').hasAttribute('aria-busy')&&document.querySelectorAll('.journal-entry').length===80);
   const survey=page.locator('.object-survey').filter({hasText:/Earth ·/});
   assert.equal(await survey.locator('.journal-object-data').count(),0);await survey.locator('summary').click();
   await page.waitForFunction(()=>Boolean(document.querySelector('.object-survey[open] .journal-data-key')));
