@@ -38,12 +38,9 @@ body:has(#homeButton[data-center-position=above]) #joystick{height:calc(var(--da
 #flightSpeed::-moz-range-thumb{height:calc(var(--speed-track-height) - 4px)}
 
 .mission-content{transform-origin:top right}
-.topbar .top-system-chart{border-top-right-radius:min(20px,calc(var(--dashboard-corner) - 3px))}
-.top-system-chart .mission-toggle{height:44px;min-height:44px;padding:6px max(18px,var(--safe-right)) 6px 10px}
-.mission-toggle-copy{display:block}
-.mission-dropdown.open .mission-content{animation:chart-unfold .32s cubic-bezier(.22,.7,.25,1)}
-.mission-chevron{transition:transform .32s cubic-bezier(.22,.7,.25,1)}
-@keyframes chart-unfold{from{opacity:0;transform:translateY(-8px) scale(.96,.82)}to{opacity:1;transform:translateY(0) scale(1)}}
+.mission-dropdown.open .mission-content{animation:chart-unfold .64s cubic-bezier(.4,0,.2,1)}
+.mission-chevron{transition:transform .64s cubic-bezier(.4,0,.2,1)}
+@keyframes chart-unfold{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
 body[data-reduced-motion=true] .mission-dropdown.open .mission-content{animation:none}
 body[data-reduced-motion=true] .mission-chevron{transition:none}
 .delete-voyage-dialog{font:10px/1.9 var(--pixel);color:#c4ffd2;overflow-wrap:anywhere}

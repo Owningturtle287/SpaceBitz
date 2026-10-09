@@ -1,6 +1,15 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.23",
+    "items": [
+      "Slowed Log closing to 720ms with gentle acceleration, proportional scaling toward its button and a later fade. Repeated close taps preserve the running animation; interrupted opening and reduced motion remain supported.",
+      "Slowed the System Chart dropdown to 640ms and removed content stretching. Fitted its 28px text-and-arrow band around the top-right screen corner with concentric inner and outer arcs.",
+      "Halved the terminal input cursor width and positioned it before revealing it after focus and pointer selection settle. Kept it aligned during typing, selection, native input scrolling, font changes and terminal resizing.",
+      "Added Chromium and WebKit regression checks for curved tab geometry across orientations, animation continuity, cursor position across frames and reduced motion."
+    ]
+  },
+  {
     "version": "1.12.22",
     "items": [
       "Prevented terminal focus from invoking mobile keyboard zoom: touch input uses the pixel keyboard, while physical typing, selection, deletion and paste remain available. Kept the focused field at least 16px without changing terminal history character settings.",

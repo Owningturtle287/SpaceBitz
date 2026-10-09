@@ -595,6 +595,15 @@ $('homeButton').addEventListener('pointercancel',finishCenterDrag);
 $('homeButton').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')centerSuppressClick=false;});
 $('journalButton').onclick=showJournal;
 $('zoneToggle').onclick=()=>{settings.zone=!settings.zone;saveSettings();updateUI();};
+// A constant-width strip turns around the screen corner. An ordinary rounded
+// rectangle would shrink its radius to half the thin tab's height.
+const chartFrameObserver=new ResizeObserver(()=>{
+  const button=$('systemChartToggle'),style=getComputedStyle(button),w=button.clientWidth,r=parseFloat(style.borderTopRightRadius),t=parseFloat(getComputedStyle($('systemChart')).getPropertyValue('--chart-thickness'));
+  if(!w||!r)return;
+  $('systemChartFrame').setAttribute('viewBox',`0 0 ${w} ${r}`);
+  $('systemChartFramePath').setAttribute('d',`M1 1 H${w-r} A${r-1} ${r-1} 0 0 1 ${w-1} ${r} H${w-t+1} A${r-t+1} ${r-t+1} 0 0 0 ${w-r} ${t-1} H1 Z`);
+});
+chartFrameObserver.observe($('systemChartToggle'));
 function closeSystemChart(){
   $('systemChart').classList.remove('open');$('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');
 }

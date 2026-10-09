@@ -57,7 +57,7 @@ export async function checkRelease11221(page,engine){
     if(physical.width===844&&layouts.length===0)await capture('log');await tap(page.locator('#journalClose'));layouts.push({physical,...layout});
   }
   await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;g.applySettings();});await tap(page.locator('#systemChartToggle'));
-  const animation=await page.locator('#systemChartContent').evaluate(e=>e.getAnimations().map(a=>({name:a.animationName,duration:a.effect.getTiming().duration})));assert.ok(animation.some(a=>a.name==='chart-unfold'&&a.duration>=300));await page.waitForTimeout(350);await tap(page.locator('#systemChartToggle'));
+  const animation=await page.locator('#systemChartContent').evaluate(e=>e.getAnimations().map(a=>({name:a.animationName,duration:a.effect.getTiming().duration})));assert.ok(animation.some(a=>a.name==='chart-unfold'&&a.duration>=300));await page.locator('#systemChartContent').evaluate(e=>Promise.all(e.getAnimations().map(a=>a.finished)));await tap(page.locator('#systemChartToggle'));
   await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.applySettings();g.openSettings();});
   await page.getByRole('button',{name:'SAVE & MAIN MENU',exact:true}).click();await page.waitForFunction(()=>window.__game.state.save===null);await page.locator('#startGame').click();
   const row=page.locator(`[data-voyage-id="${trail.id}"]`);await row.waitFor();const count=await page.locator('.save-row').count();const native=[];page.on('dialog',dialog=>{native.push(dialog.message());dialog.dismiss();});
