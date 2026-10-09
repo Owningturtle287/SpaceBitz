@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.12.22 — Terminal keyboard and mobile overlay fixes
+- Prevented terminal focus from invoking mobile keyboard zoom: touch input uses the pixel keyboard, while physical typing, selection, deletion and paste remain available. Kept the focused field at least 16px without changing terminal history character settings.
+- Compensated browser visual-viewport scale and offsets in both rendering and pointer input so focus zoom cannot strand the terminal off screen or leave the canvas black. Disabled automatic text inflation during rotation.
+- Entered fullscreen from Play/Continue gestures and requested landscape locking where supported, with fullscreen installation metadata and the existing landscape fallback for other browsers. Browser and OS status-bar rotation remains outside game control on iPhone Safari.
+- Replaced the system chart mode labels with a slim place-name tab while retaining its fluid dropdown and accessible touch target.
+- Made the log shrink smoothly toward its button, clear its background immediately on closing, reveal the dashboard beneath it and handle interrupted animations without jumping.
+
 ## 1.12.21 — Landscape viewport and dashboard refinements
 - Narrowed the clock/date panel from its right edge and added current distances from each planet to its host star and each moon to its host planet.
 - Fixed the missing first travel-trail leg by retaining the departure system before entering a new system.

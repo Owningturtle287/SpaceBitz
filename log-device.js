@@ -73,34 +73,35 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,updateUI
     }return record;
   }
   function origin(){
-    const button=gameRect($('journalButton')),r=gameRect(panel);
-    const x=button.left+button.width/2,y=button.top+button.height/2,cx=r.left+r.width/2,cy=r.top+r.height/2;
+    const button=gameRect($('journalButton'));
+    const x=button.left+button.width/2,y=button.top+button.height/2,cx=panel.offsetLeft+panel.offsetWidth/2,cy=panel.offsetTop+panel.offsetHeight/2;
     return {dx:x-cx,dy:y-cy};
   }
   function animate(opening){
+    const current=getComputedStyle(panel),start={transform:current.transform,opacity:current.opacity},moving=panel.getAnimations().length>0;
     for(const a of panel.getAnimations())a.cancel();
     const {dx,dy}=origin();
-    const frames=[{transform:`translate(${dx}px,${dy}px) scale(.06,.04)`,opacity:0},{transform:`translate(${dx*.24}px,${dy*.2}px) scale(.48,.12)`,opacity:.85,offset:.4},{transform:'translate(0,0) scale(1)',opacity:1}];
-    const duration=opening?620:360;
-    return panel.animate(opening?frames:[...frames].reverse(),{duration,easing:'cubic-bezier(.22,.7,.25,1)',fill:'none'});
+    const compact={transform:`translate(${dx}px,${dy}px) scale(.06,.04)`,opacity:0},full={transform:'translate(0,0) scale(1)',opacity:1};
+    const frames=opening?[moving?start:compact,full]:[start,compact];
+    return panel.animate(frames,{duration:opening?440:300,easing:'cubic-bezier(.22,.7,.25,1)',fill:'forwards'});
   }
   function open(){
     if(!state.save)return;if(state.journalOpen){close();return;}
-    serial++;closing=false;previousFocus=document.activeElement;resetInput();closeSystemChart();
+    serial++;closing=false;overlay.classList.remove('closing');previousFocus=document.activeElement;resetInput();closeSystemChart();
     const dock=$('terminalDock');state.journalDeckTarget=dock.classList.contains('has-target');
     document.documentElement.style.setProperty('--journal-dock-width',gameRect(dock).width+'px');
     pauseTerminalOutput();state.journalOpen=true;state.terminalExpanded=false;setTerminalKeyboard(false);$('terminalInput').blur();
     document.body.classList.add('journal-open');$('app').inert=true;$('targetCard').inert=true;
     $('journalButton').setAttribute('aria-expanded','true');overlay.hidden=false;applySize();render();updateUI();
-    $('journalClose').focus({preventScroll:true});if(!reduced())animate(true);
+    $('journalClose').focus({preventScroll:true});if(!reduced())animate(true).finished.then(()=>{if(!closing)for(const a of panel.getAnimations())a.cancel();}).catch(()=>{});
   }
   function close(immediate=false){
     if(!state.journalOpen&&overlay.hidden)return;
     remember();renderSerial++;
-    const token=++serial;closing=true;
+    const token=++serial;closing=true;overlay.classList.add('closing');
     const finish=()=>{
       if(token!==serial)return;
-      closing=false;state.journalOpen=false;overlay.hidden=true;document.body.classList.remove('journal-open');$('app').inert=Boolean(state.landscapeBlocked||state.saveConflict);$('targetCard').inert=false;
+      closing=false;state.journalOpen=false;overlay.hidden=true;overlay.classList.remove('closing');for(const a of panel.getAnimations())a.cancel();document.body.classList.remove('journal-open');$('app').inert=Boolean(state.landscapeBlocked||state.saveConflict);$('targetCard').inert=false;
       $('journalButton').setAttribute('aria-expanded','false');updateUI();
       if(previousFocus?.isConnected&&!previousFocus.closest('[hidden]'))previousFocus.focus({preventScroll:true});else $('journalButton').focus({preventScroll:true});
     };

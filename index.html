@@ -4,6 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#02040a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Explore a living pocket galaxy. Follow real orbital rhythms, find habitable worlds and leave your mark among the stars.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="./icon.svg">
@@ -38,7 +40,7 @@
       </button>
       <aside class="mission glass mission-dropdown top-system-chart" id="systemChart" aria-live="polite">
         <button id="systemChartToggle" class="mission-toggle" type="button" aria-expanded="false" aria-controls="systemChartContent">
-          <span class="mission-toggle-copy"><span class="eyebrow" id="modeLabel">ORBITAL / SYSTEM</span><strong id="placeLabel">Sol</strong></span>
+          <span class="mission-toggle-copy"><strong id="placeLabel">Sol</strong></span>
           <span class="mission-chevron" aria-hidden="true">⌄</span>
         </button>
         <div id="systemChartContent" class="mission-content" hidden>
@@ -121,7 +123,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.12.21</span>
+        <span class="version-chip main-menu-version">v1.12.22</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>

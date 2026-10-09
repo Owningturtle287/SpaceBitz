@@ -1,4 +1,4 @@
-import {viewport,refreshViewport,watchViewport,gamePoint,gameRect} from './viewport.js';
+import {viewport,refreshViewport,watchViewport,gamePoint,gameRect,enterLandscape} from './viewport.js';
 import {createMusicController} from './audio.js';
 import {CHANGELOG} from './changelog.js';
 import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
@@ -268,7 +268,7 @@ async function renderSaves() {
     const row=document.createElement('div');row.className='save-row';row.dataset.voyageId=save.id;
     const play=document.createElement('button');play.className='load-save';
     play.textContent=save.name || 'Unnamed Universe';play.title='Continue '+play.textContent+(save.generation?' · '+(save.generation.scientific?'Scientific':'Custom')+' stellar universe':' · Legacy generation preserved; create a new voyage for v1.12 stars');
-    play.onclick=async()=>{play.disabled=true;try{start(await voyages.load(save.id));}catch(error){notify(error.message);}finally{play.disabled=false;}};
+    play.onclick=async()=>{enterLandscape();play.disabled=true;try{start(await voyages.load(save.id));}catch(error){notify(error.message);}finally{play.disabled=false;}};
     const date=document.createElement('small');date.textContent=new Date(save.updated||Date.now()).toLocaleDateString();
     const del=document.createElement('button');del.className='delete-save';del.textContent='✕';del.setAttribute('aria-label','Delete '+play.textContent);
     del.onclick=()=>showDeleteVoyage(save);
@@ -368,7 +368,7 @@ function showGenerationOptions(){
   cancel.onclick=close;restore.onclick=()=>{Object.assign(draft,defaults(false));draft.pools=structuredClone(defaults(true).pools);render();};
   apply.onclick=()=>{if(validateGeneration(draft).length)return;customPreset=checkedGeneration(draft);universePreset=structuredClone(customPreset);try{localStorage.setItem(GENERATION_KEY,JSON.stringify(customPreset));}catch{notify('Could not save generation preset.');}close();updateUniverseMode();};render();
 }
-$('newGame').onclick=()=>create(false); $('solGame').onclick=()=>create(true);
+$('newGame').onclick=()=>{enterLandscape();create(false);}; $('solGame').onclick=()=>{enterLandscape();create(true);};
 $('importButton').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{
   const file=e.target.files?.[0];if(!file)return;
@@ -627,8 +627,6 @@ function updateUI() {
   if(!state.save)return;
   const scene=state.scene,sys=state.system,sel=state.selected;
   document.body.dataset.scene=scene;
-  $('modeLabel').hidden=scene==='surface';
-  $('modeLabel').textContent=scene==='chart'?'SECTOR / STAR CHART':'ORBITAL / SYSTEM';
   $('placeLabel').textContent=scene==='chart'?'Deep Space':scene==='surface'?findBody(state.save.landed)?.name||'Surface':sys.name;
   const {planets:planetCount,dwarfPlanets:dwarfCount}=bodyCounts(sys);
   $('hint').textContent=scene==='chart'?'Select a star, then engage Warp Drive.':scene==='surface'?'Double-tap a 1 m square, then use the green travel lever. Collect samples and return to your lander.':`${sys.star.type} STAR · ${planetCount} PLANETS${dwarfCount?` · ${dwarfCount} DWARF PLANET${dwarfCount===1?'':'S'}`:''}`;
