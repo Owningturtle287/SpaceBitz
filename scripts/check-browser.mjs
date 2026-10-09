@@ -14,6 +14,7 @@ import {checkRelease11219} from './check-release11219.mjs';
 import {checkRelease11220} from './check-release11220.mjs';
 import {checkRelease11221} from './check-release11221.mjs';
 import {checkRelease11222} from './check-release11222.mjs';
+import {checkRelease11223} from './check-release11223.mjs';
 import {checkRelease11212} from './check-release11212.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -79,6 +80,9 @@ try{
   // Exercise the current device controls before the longer renderer soak, then
   // restore the exact launch fixture so the simulation checks stay independent.
   const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
+  const release11223=await checkRelease11223(page,engine);
+  console.log('11223 fluid panels and cursor checks',JSON.stringify(release11223));
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11222=await checkRelease11222(page,engine);
   console.log('11222 keyboard and overlay checks',JSON.stringify(release11222));
   await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
@@ -136,7 +140,7 @@ try{
   await page.screenshot({path:`.qa/${engine}-system-fit.png`});
   await page.evaluate(()=>{const g=window.__game;g.state.panUntil=0;g.state.zoom=.95;g.state.camera={...g.state.save.ship};});
   const controls=await page.evaluate(()=>{
-    const alpha=id=>getComputedStyle(document.getElementById(id)).backgroundColor;
+    const alpha=id=>id==='systemChart'?getComputedStyle(document.getElementById('systemChartFramePath')).fill:getComputedStyle(document.getElementById(id)).backgroundColor;
     const rect=id=>{const r=document.getElementById(id).getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,width:r.width,height:r.height};};
     return {panels:['systemChart','flightReadout','joystick','homeButton','mapButton'].map(alpha),thumb:alpha('stick'),joy:rect('joystick'),center:rect('homeButton'),warp:rect('mapButton'),target:rect('targetCard')};
   });
@@ -557,5 +561,5 @@ try{
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
   const release11212=await checkRelease11212(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,release11216,release11217,release11218,release11219,release11220,release11221,release11222,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,release11216,release11217,release11218,release11219,release11220,release11221,release11222,release11223,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}

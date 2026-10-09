@@ -75,15 +75,17 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,updateUI
   function origin(){
     const button=gameRect($('journalButton'));
     const x=button.left+button.width/2,y=button.top+button.height/2,cx=panel.offsetLeft+panel.offsetWidth/2,cy=panel.offsetTop+panel.offsetHeight/2;
-    return {dx:x-cx,dy:y-cy};
+    return {dx:x-cx,dy:y-cy,scale:Math.min(button.width/panel.offsetWidth,button.height/panel.offsetHeight)};
   }
   function animate(opening){
     const current=getComputedStyle(panel),start={transform:current.transform,opacity:current.opacity},moving=panel.getAnimations().length>0;
     for(const a of panel.getAnimations())a.cancel();
-    const {dx,dy}=origin();
-    const compact={transform:`translate(${dx}px,${dy}px) scale(.06,.04)`,opacity:0},full={transform:'translate(0,0) scale(1)',opacity:1};
-    const frames=opening?[moving?start:compact,full]:[start,compact];
-    return panel.animate(frames,{duration:opening?440:300,easing:'cubic-bezier(.22,.7,.25,1)',fill:'forwards'});
+    const {dx,dy,scale}=origin();
+    const compact={transform:`translate(${dx}px,${dy}px) scale(${scale})`,opacity:0},full={transform:'translate(0,0) scale(1)',opacity:1};
+    // Preserve proportions and readable contents through most of the return
+    // to the Log button, with a gentle start and stop rather than a snap.
+    const frames=opening?[moving?start:compact,full]:[{...start,offset:0},{opacity:start.opacity,offset:.55},{...compact,offset:1}];
+    return panel.animate(frames,{duration:opening?520:720,easing:'cubic-bezier(.4,0,.2,1)',fill:'forwards'});
   }
   function open(){
     if(!state.save)return;if(state.journalOpen){close();return;}
@@ -97,6 +99,7 @@ export function createLogDevice({state,settings,$,formatDate,resetInput,updateUI
   }
   function close(immediate=false){
     if(!state.journalOpen&&overlay.hidden)return;
+    if(closing&&!immediate)return;
     remember();renderSerial++;
     const token=++serial;closing=true;overlay.classList.add('closing');
     const finish=()=>{

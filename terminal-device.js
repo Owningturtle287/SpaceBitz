@@ -107,7 +107,7 @@ function setTerminalKeyboard(visible){
   if(!visible)stopTerminalKeys();
   $('terminalKeyboard').hidden=!visible;$('targetCard').classList.toggle('keyboard-open',visible);
   $('terminalKeyboardToggle').setAttribute('aria-expanded',String(visible));$('terminalKeyboardToggle').setAttribute('aria-label',visible?'Hide terminal keyboard':'Show terminal keyboard');
-  scheduleTerminalLayout();updateInputCaret();
+  scheduleTerminalLayout();scheduleInputCaret();
 }
 const terminalSymbols={'Q':'!','W':'@','E':'#','R':'$','T':'%','Y':'^','U':'&','I':'*','O':'(','P':')','A':'-','S':'_','D':'=','F':'+','G':'[','H':']','J':'{','K':'}','L':'\\','Z':';','X':':','C':"'",'V':'"','B':',','N':'.','M':'?'};
 function terminalCharacter(key){return terminalShift?(terminalSymbols[key]||key):terminalCaps?key:key.toLowerCase();}
@@ -160,26 +160,44 @@ function renderTerminalKeyboard(){
   }
 }
 const inputMeasure=document.createElement('canvas').getContext('2d');
+let caretFrame=0,caretSettle=0,caretPointer=null;
+function scheduleInputCaret(hide=false){
+  if(hide){$('terminalInputCaret').hidden=true;caretSettle=2;}
+  if(caretFrame)return;
+  caretFrame=requestAnimationFrame(()=>{
+    caretFrame=0;
+    if(caretPointer!==null)return;
+    if(caretSettle>0){caretSettle--;scheduleInputCaret();return;}
+    updateInputCaret();
+  });
+}
 function updateInputCaret(){
   const input=$('terminalInput'),caret=$('terminalInputCaret');
-  caret.hidden=!state.terminalExpanded||document.activeElement!==input||input.selectionStart!==input.selectionEnd;
-  if(caret.hidden)return;
-  const style=getComputedStyle(input);inputMeasure.font=style.font;
+  if(!state.terminalExpanded||document.activeElement!==input||input.selectionStart!==input.selectionEnd||!input.clientWidth){caret.hidden=true;return;}
+  const style=getComputedStyle(input);
+  // Some browsers omit the computed font shorthand when longhands differ.
+  inputMeasure.font=style.font||`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
   const measured=inputMeasure.measureText(input.value.slice(0,input.selectionStart)).width;
-  const available=input.clientWidth-12;
+  const left=parseFloat(style.paddingLeft),right=parseFloat(style.paddingRight),width=parseFloat(getComputedStyle(caret).width);
+  const available=Math.max(0,input.clientWidth-left-right-width);
   if(measured-input.scrollLeft>available)input.scrollLeft=measured-available;
   else if(measured<input.scrollLeft)input.scrollLeft=measured;
-  caret.style.left=(6+measured-input.scrollLeft)+'px';
+  // Position before revealing: focus, selection and native scrolling must
+  // settle before a newly visible cursor can be painted at its default origin.
+  caret.style.left=(input.offsetLeft+input.clientLeft+left+measured-input.scrollLeft)+'px';
+  caret.hidden=false;
 }
 renderTerminalKeyboard();bindTerminalKey($('terminalDelete'),'Backspace');
 // inputmode=none alone does not reliably suppress iOS focus zoom/keyboard.
 // A touch-focused read-only field still supports selection and our pixel keys.
 // Physical keyboards and paste are handled below without invoking the OS keyboard.
 $('terminalInput').readOnly=matchMedia('(pointer:coarse)').matches;
-$('terminalInput').onpointerdown=e=>{const input=$('terminalInput');input.readOnly=e.pointerType!=='mouse';if(input.readOnly)input.focus({preventScroll:true});};
-$('terminalInput').onfocus=()=>{resetInput();setTerminalKeyboard(true);};
-$('terminalInput').onblur=updateInputCaret;
-$('terminalInput').oninput=updateInputCaret;
+$('terminalInput').onpointerdown=e=>{const input=$('terminalInput');caretPointer=e.pointerId;scheduleInputCaret(true);input.readOnly=e.pointerType!=='mouse';if(input.readOnly)input.focus({preventScroll:true});};
+for(const event of ['pointerup','pointercancel'])document.addEventListener(event,e=>{if(e.pointerId===caretPointer){caretPointer=null;scheduleInputCaret();}});
+$('terminalInput').onfocus=()=>{scheduleInputCaret(true);resetInput();setTerminalKeyboard(true);};
+$('terminalInput').onblur=()=>{caretPointer=null;$('terminalInputCaret').hidden=true;};
+$('terminalInput').oninput=()=>scheduleInputCaret();
+$('terminalInput').onscroll=()=>scheduleInputCaret();
 $('terminalInput').onkeydown=e=>{
   const input=$('terminalInput');
   if(e.key==='Enter'||e.key==='Escape'){e.preventDefault();e.stopPropagation();if(e.key==='Enter'&&!e.repeat)submitTerminalInput();setTerminalKeyboard(false);input.blur();return;}
@@ -188,14 +206,15 @@ $('terminalInput').onkeydown=e=>{
     if(e.key.length===1){e.preventDefault();e.stopPropagation();editTerminalInput(e.key,start,end);}
     else if(e.key==='Backspace'||e.key==='Delete'){e.preventDefault();e.stopPropagation();editTerminalInput('',e.key==='Backspace'&&start===end?Math.max(0,start-1):start,e.key==='Delete'&&start===end?Math.min(input.value.length,end+1):end);}
   }
-  requestAnimationFrame(updateInputCaret);
+  scheduleInputCaret();
 };
 $('terminalInput').onpaste=e=>{
   const input=$('terminalInput');if(!input.readOnly)return;e.preventDefault();
   const start=input.selectionStart??input.value.length,end=input.selectionEnd??start;
   editTerminalInput((e.clipboardData?.getData('text/plain')||'').replace(/[\r\n]/g,' ').slice(0,input.maxLength-input.value.length+end-start),start,end);
 };
-document.addEventListener('selectionchange',()=>{if(document.activeElement===$('terminalInput'))updateInputCaret();});
+document.addEventListener('selectionchange',()=>{if(document.activeElement===$('terminalInput'))scheduleInputCaret();});
+document.fonts.ready.then(()=>scheduleInputCaret());
 window.addEventListener('blur',stopTerminalKeys);
 $('terminalKeyboardToggle').onclick=()=>{const open=$('terminalKeyboard').hidden;if(open)$('terminalInput').focus({preventScroll:true});setTerminalKeyboard(open);};
 
@@ -229,7 +248,7 @@ function applyTerminalSize(){
 function resizeTerminal(width,height){
   const limits=terminalLimits();state.terminalSize={width:clamp(width,limits.minWidth,limits.maxWidth),height:clamp(height,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight)};
   settings.terminalWidthScale=clamp(state.terminalSize.width/264*100,60,240);settings.terminalHeightScale=clamp(state.terminalSize.height/(viewport.height*.7)*100,40,130);
-  applyTerminalSize();scheduleTerminalLayout();updateInputCaret();
+  applyTerminalSize();scheduleTerminalLayout();scheduleInputCaret();
 }
 for(const [id,axis] of [['terminalResizeTop','height'],['terminalResizeLeft','width']]){
   const handle=$(id);
@@ -296,7 +315,7 @@ function scheduleTerminalLayout(){
   terminalLayoutFrame=requestAnimationFrame(()=>{
     terminalLayoutFrame=0;layoutTerminalDock();
     const height=gameRect($('terminalPocket')).height;
-    document.documentElement.style.setProperty('--terminal-height',height+'px');applyCenterButtonLayout();
+    document.documentElement.style.setProperty('--terminal-height',height+'px');applyCenterButtonLayout();scheduleInputCaret();
   });
 }
 const terminalObserver=new ResizeObserver(scheduleTerminalLayout);
