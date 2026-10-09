@@ -69,7 +69,7 @@ export async function checkRelease11222(page,engine){
   assert.equal(animation.background,'rgba(0, 0, 0, 0)');assert.equal(animation.deck,'visible');assert.ok(animation.midScale>0&&animation.midScale<1);assert.deepEqual(animation.target,animation.button);await page.locator('#journal').waitFor({state:'hidden'});
   // Closing before opening finishes must start from the visible size, not jump.
   await page.evaluate(()=>{const g=window.__game;g.showJournal();const a=document.getElementById('journalPanel').getAnimations()[0];a.pause();a.currentTime=100;});
-  const interrupted=await page.evaluate(()=>{const panel=document.getElementById('journalPanel'),before=getComputedStyle(panel).transform;window.__game.closeJournal();const first=panel.getAnimations()[0].effect.getKeyframes()[0].transform;return {before,first};});
+  const interrupted=await page.evaluate(()=>{const panel=document.getElementById('journalPanel'),before=getComputedStyle(panel).transform;window.__game.closeJournal(false);const first=panel.getAnimations()[0].effect.getKeyframes()[0].transform;return {before,first};});
   assert.deepEqual(DOMMatrixValues(interrupted.before),DOMMatrixValues(interrupted.first));await page.locator('#journal').waitFor({state:'hidden'});
   const native=await page.evaluate(async()=>{
     const {enterLandscape}=await import('/viewport.js'),root=document.documentElement,orientation=screen.orientation;
