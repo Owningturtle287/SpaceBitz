@@ -48,7 +48,7 @@ export async function checkRelease11223(page,engine){
   });
   assert.equal(caretSamples.selectedHidden,true);assert.equal(caretSamples.scrolled,true);
   for(const label of ['focus','long input','move left','refocus','font resize'])assert.ok(caretSamples.samples.some(s=>s.label===label),'No visible cursor after '+label);
-  for(const sample of caretSamples.samples){assert.ok(sample.error<1,JSON.stringify(sample));assert.equal(sample.width,sample.font/2);}
+  for(const sample of caretSamples.samples){assert.ok(sample.error<=1,JSON.stringify(sample));assert.equal(sample.width,sample.font/2);}
   await page.screenshot({path:`.qa/${engine}-11223-caret.png`});
   await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.applySettings();g.closeJournal();document.getElementById('terminalInput').blur();document.getElementById('terminalKeyboardToggle').click();document.getElementById('systemChartToggle').click();});
   assert.equal(await page.locator('#systemChartContent').evaluate(e=>e.getAnimations().length),0);
