@@ -244,6 +244,7 @@ function applyTerminalSize(){
   const height=clamp(state.terminalSize?.height??viewport.height*.7*settings.terminalHeightScale/100,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight);
   dock.style.setProperty('--terminal-user-height',height+'px');
   for(const id of ['terminalResizeTop','terminalResizeLeft'])$(id).hidden=!state.terminalExpanded||!settings.terminalResizeHandles;
+  scheduleInputCaret();
 }
 function resizeTerminal(width,height){
   const limits=terminalLimits();state.terminalSize={width:clamp(width,limits.minWidth,limits.maxWidth),height:clamp(height,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight)};
