@@ -18,13 +18,16 @@ export async function checkRelease11223(page,engine){
   }
   await page.setViewportSize({width:844,height:390});
   await page.locator('#systemChartToggle').click();
-  const dropdown=await page.locator('.mission-drop-sheet').evaluate(e=>{
-    const a=e.getAnimations()[0],reveal=e.parentElement;a.pause();a.currentTime=0;
+  const dropdown=await page.locator('.mission-drop-sheet').evaluate(async e=>{
+    const a=e.getAnimations()[0],reveal=e.parentElement,paint=()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    // WebKit applies animation seeks on its next paint. Sample the paused
+    // frame after it is ready rather than the preceding compositor frame.
+    a.pause();await a.ready;a.currentTime=0;await paint();
     const originGap=e.getBoundingClientRect().bottom-reveal.getBoundingClientRect().top;
-    a.currentTime=320;const style=getComputedStyle(e),m=new DOMMatrix(style.transform),rect=e.getBoundingClientRect(),clip=reveal.getBoundingClientRect(),tab=document.getElementById('systemChartToggle').getBoundingClientRect();
+    a.currentTime=320;await paint();const style=getComputedStyle(e),m=new DOMMatrix(style.transform),rect=e.getBoundingClientRect(),clip=reveal.getBoundingClientRect(),tab=document.getElementById('systemChartToggle').getBoundingClientRect();
     const result={duration:a.effect.getTiming().duration,scale:[m.a,m.d],originGap,slide:m.f,height:rect.height,clip:getComputedStyle(reveal).overflow,tabGap:clip.top-tab.bottom,opacity:Number(style.opacity)};a.play();return result;
   });
-  assert.ok(dropdown.duration>=600);assert.deepEqual(dropdown.scale,[1,1]);assert.ok(Math.abs(dropdown.originGap)<.1);assert.ok(dropdown.slide<0&&dropdown.slide>-dropdown.height);assert.equal(dropdown.clip,'hidden');assert.ok(Math.abs(dropdown.tabGap+1)<.1);assert.equal(dropdown.opacity,1);
+  assert.ok(dropdown.duration>=600);assert.deepEqual(dropdown.scale,[1,1]);assert.ok(Math.abs(dropdown.originGap)<.1,JSON.stringify(dropdown));assert.ok(dropdown.slide<0&&dropdown.slide>-dropdown.height);assert.equal(dropdown.clip,'hidden');assert.ok(Math.abs(dropdown.tabGap+1)<.1,JSON.stringify(dropdown));assert.equal(dropdown.opacity,1);
   await page.locator('.mission-drop-sheet').evaluate(e=>Promise.all(e.getAnimations().map(a=>a.finished)));
   const png=await page.screenshot({path:`.qa/${engine}-11223-chart.png`});
   if(engine==='webkit'&&process.env.QA_LAYOUT_PREVIEW==='true'){const data=png.toString('base64');for(let i=0;i<data.length;i+=6000)console.log(`QA_PREVIEW:11223-chart:${i/6000}:${data.slice(i,i+6000)}`);}
