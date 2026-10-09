@@ -127,21 +127,22 @@ function terminalKey(key){
 }
 function bindTerminalKey(button,key){
   let pointerClickPending=false,lastPointerRelease=-Infinity;
+  const restoreFocus=()=>{if(!$('terminalKeyboard').hidden)$('terminalInput').focus({preventScroll:true});};
   button.onpointerdown=e=>{
     if(e.button!==0)return;e.preventDefault();e.stopPropagation();pointerClickPending=true;lastPointerRelease=performance.now();if(e.isTrusted)button.setPointerCapture?.(e.pointerId);terminalKey(key);
     if(['Shift','CapsLock','Enter','Clear'].includes(key))return;
     const press={delay:setTimeout(()=>{press.repeat=setInterval(()=>terminalKey(key),55);terminalKey(key);},350)};
     heldTerminalKeys.set(e.pointerId,press);
   };
-  const release=e=>{lastPointerRelease=performance.now();if(e.type==='pointercancel')pointerClickPending=false;const press=heldTerminalKeys.get(e.pointerId);if(press){clearTimeout(press.delay);clearInterval(press.repeat);heldTerminalKeys.delete(e.pointerId);}};
+  const release=e=>{lastPointerRelease=performance.now();if(e.type==='pointercancel')pointerClickPending=false;const press=heldTerminalKeys.get(e.pointerId);if(press){clearTimeout(press.delay);clearInterval(press.repeat);heldTerminalKeys.delete(e.pointerId);}if(e.type==='pointerup')restoreFocus();};
   button.onpointerup=release;button.onpointercancel=release;button.onlostpointercapture=release;
   // Assistive technology and physical keyboard activation have no preceding pointer press.
   button.onkeydown=e=>{if(e.key==='Enter'||e.key===' ')pointerClickPending=false;};
   button.onclick=e=>{
     // Chromium touch clicks can have detail=0 too. Consume the click belonging to
     // the press already handled above, including after a long held-key repeat.
-    if(pointerClickPending&&e.isTrusted&&performance.now()-lastPointerRelease<750){pointerClickPending=false;return;}
-    if(e.detail===0)terminalKey(key);
+    if(pointerClickPending&&e.isTrusted&&performance.now()-lastPointerRelease<750){pointerClickPending=false;restoreFocus();return;}
+    if(e.detail===0)terminalKey(key);restoreFocus();
   };
 }
 function renderTerminalKeyboard(){
@@ -175,7 +176,7 @@ renderTerminalKeyboard();bindTerminalKey($('terminalDelete'),'Backspace');
 // A touch-focused read-only field still supports selection and our pixel keys.
 // Physical keyboards and paste are handled below without invoking the OS keyboard.
 $('terminalInput').readOnly=matchMedia('(pointer:coarse)').matches;
-$('terminalInput').onpointerdown=e=>{$('terminalInput').readOnly=e.pointerType!=='mouse';};
+$('terminalInput').onpointerdown=e=>{const input=$('terminalInput');input.readOnly=e.pointerType!=='mouse';if(input.readOnly)input.focus({preventScroll:true});};
 $('terminalInput').onfocus=()=>{resetInput();setTerminalKeyboard(true);};
 $('terminalInput').onblur=updateInputCaret;
 $('terminalInput').oninput=updateInputCaret;

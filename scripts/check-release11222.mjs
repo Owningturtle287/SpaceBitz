@@ -33,6 +33,7 @@ export async function checkRelease11222(page,engine){
     });
     assert.equal(layout.scale,1);assert.equal(layout.inside,true);assert.equal(layout.painted,true);layouts.push(layout);
     await tap(page.locator('[data-key="Q"]'));await tap(page.locator('[data-key="W"]'));assert.equal(await page.locator('#terminalInput').inputValue(),'qw');
+    assert.equal(await page.locator('#terminalInput').evaluate(e=>document.activeElement===e),true,'Pixel keys lost terminal input focus');
     await page.keyboard.press('Backspace');await page.keyboard.type('A');assert.equal(await page.locator('#terminalInput').inputValue(),'qA');
     await page.locator('#terminalInput').evaluate(e=>{e.setSelectionRange(0,1);const data=new DataTransfer();data.setData('text/plain','<b>\n');e.dispatchEvent(new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true}));});
     assert.equal(await page.locator('#terminalInput').inputValue(),'<b> A');
