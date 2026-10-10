@@ -435,10 +435,10 @@ try{
   assert.equal(await page.evaluate(()=>window.__game.state.followBody.id),'sol:Neptune');
   // This save/landscape fixture needs a landable home. Random new universes can
   // legitimately be barren; that startup/entry path has separate coverage below.
-  await page.evaluate(()=>{document.getElementById('universeSeed').value='browser-start-2';window.__game.state.warpUntil=0;window.__game.create(false);window.__game.frame(performance.now());});
+  const landscapeVoyageId=await page.evaluate(async()=>{const g=window.__game;document.getElementById('universeSeed').value='browser-start-2';g.state.warpUntil=0;g.create(false);g.frame(performance.now());if(!await g.persist())throw Error('Landscape fixture was not saved');return g.state.save.id;});
   assert.equal(await page.evaluate(()=>window.__game.state.scene),'surface');
-  await page.reload();await page.locator('#startGame').click();await page.locator('.load-save').first().click();
-  await page.waitForFunction(()=>window.__game?.state.scene==='surface'&&window.__game.state.lastUI>0);
+  await page.reload();await page.locator('#startGame').click();await page.locator(`.save-row[data-voyage-id="${landscapeVoyageId}"] .load-save`).click();
+  await page.waitForFunction(id=>window.__game?.state.save?.id===id&&window.__game.state.scene==='surface'&&window.__game.state.lastUI>0,landscapeVoyageId);
   await page.setViewportSize({width:667,height:375});await page.waitForTimeout(200);
   await page.screenshot({path:`.qa/${engine}-landscape.png`});
   await page.evaluate(()=>{const g=window.__game;g.select({id:'lander',name:'Lander',kind:'lander',x:0,y:0});});
