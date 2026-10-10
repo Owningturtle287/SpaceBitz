@@ -249,11 +249,11 @@ function applyTerminalSize(){
   let minHeight=$('terminalKeyboard').hidden?170:310;
   if(state.terminalExpanded){
     const card=$('targetCard'),css=getComputedStyle(card),log=$('terminalScreen'),logCss=getComputedStyle(log);
-    const fixed=[card.querySelector('.terminal-head'),card.querySelector('.terminal-meta'),$('terminalInputBar'),$('terminalKeyboard')].filter(e=>!e.hidden).reduce((height,e)=>{const style=getComputedStyle(e);return height+e.offsetHeight+parseFloat(style.marginTop)+parseFloat(style.marginBottom);},0);
+    const fixed=[card.querySelector('.terminal-head'),card.querySelector('.terminal-meta'),$('terminalInputBar'),$('terminalKeyboard')].filter(e=>!e.hidden).reduce((height,e)=>{const style=getComputedStyle(e);return height+gameRect(e).height+parseFloat(style.marginTop)+parseFloat(style.marginBottom);},0);
     const outputFont=settings.terminalFontMode==='master'?settings.terminalFontSize:Math.max(settings.terminalDataFont,settings.terminalStatusFont,settings.terminalInputFont);
     const outputHeight=Math.max(35,outputFont*1.8+parseFloat(logCss.paddingTop)+parseFloat(logCss.paddingBottom));
     const safe=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-safe-bottom'))||0;
-    minHeight=Math.max(minHeight,Math.ceil(fixed+outputHeight+parseFloat(logCss.marginTop)+parseFloat(logCss.marginBottom)+parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)+parseFloat(css.borderTopWidth)+parseFloat(css.borderBottomWidth)-safe+1));
+    minHeight=Math.max(minHeight,Math.ceil(fixed+outputHeight+parseFloat(logCss.marginTop)+parseFloat(logCss.marginBottom)+parseFloat(logCss.borderTopWidth)+parseFloat(logCss.borderBottomWidth)+parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)+parseFloat(css.borderTopWidth)+parseFloat(css.borderBottomWidth)-safe+1));
   }
   const height=clamp(state.terminalSize?.height??viewport.height*.7*settings.terminalHeightScale/100,Math.min(minHeight,limits.maxHeight),limits.maxHeight);
   dock.style.setProperty('--terminal-user-height',height+'px');
