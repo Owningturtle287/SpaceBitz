@@ -62,7 +62,7 @@ function selectedRecord(){
 }
 function selectedSummary(){
   if(!state.selected&&!state.waypoint)return '';
-  const {object}=selectedRecord();return 'Object selected: '+object.name+' · '+objectType(object);
+  const {object}=selectedRecord();return (state.terminalExpanded?'':'Object selected: ')+object.name+' · '+objectType(object);
 }
 function buildTerminal(){
   if(!state.save||!state.terminalExpanded||state.journalOpen||state.landscapeBlocked||state.terminalCleared)return;const record=selectedRecord();
