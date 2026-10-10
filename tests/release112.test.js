@@ -1,17 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {defaults,makeStar,percentUnits,checkedGeneration} from '../universe.js';
-import {defaults as oldDefaults} from '../universe-v2.js';
-import {makeSystem,bodyPosition,visualRadius} from '../model.js';
-import {systemFitZoom,systemMinZoom,systemExtent} from '../navigation.js';
-import {terminalLines,typedLength} from '../terminal.js';
-import {contextPosition} from '../target-ui.js';
-import {chartStyle} from '../presentation.js';
-import {compactState} from '../substellar.js';
-import {stellarActivity,stellarProminences} from '../stellar.js';
-import {SYSTEM_SHIP_SIZE,SHIP_PIXEL_HEIGHT,SYSTEM_PX_PER_KM,SHIP_FOCUS_ZOOM,SYSTEM_MAX_ZOOM} from '../scale.js';
-import {importVoyage} from '../saves.js';
+import {defaults,makeStar,percentUnits,checkedGeneration} from '../src/universe/universe.js';
+import {defaults as oldDefaults} from '../src/universe/legacy/universe-v2.js';
+import {makeSystem,bodyPosition,visualRadius} from '../src/universe/model.js';
+import {systemFitZoom,systemMinZoom,systemExtent} from '../src/flight/navigation.js';
+import {terminalLines,typedLength} from '../src/terminal/terminal.js';
+import {contextPosition} from '../src/ui/target-ui.js';
+import {chartStyle} from '../src/rendering/presentation.js';
+import {compactState} from '../src/rendering/substellar.js';
+import {stellarActivity,stellarProminences} from '../src/rendering/stellar.js';
+import {SYSTEM_SHIP_SIZE,SHIP_PIXEL_HEIGHT,SYSTEM_PX_PER_KM,SHIP_FOCUS_ZOOM,SYSTEM_MAX_ZOOM} from '../src/core/scale.js';
+import {importVoyage} from '../src/storage/saves.js';
 const force=(pool,id)=>{const c=defaults(false);for(const key of Object.keys(c.pools[pool]))c.pools[pool][key]=key===id?100:0;c.pools.speculative={...defaults(true).pools.speculative};return c;};
 test('release population tables balance exactly and neutron activity is conditional',()=>{
   const c=defaults();for(const pool of Object.values(c.pools))assert.equal(Object.values(pool).reduce((sum,v)=>sum+percentUnits(v),0),100e6);

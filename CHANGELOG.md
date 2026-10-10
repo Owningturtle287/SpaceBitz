@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.28 — Organized repository source tree
+- Grouped all 43 runtime modules under `src/` by subsystem, and moved the six stylesheets into `styles/`. The SVG app icon now sits beside the PNG icons.
+- Grouped browser checks and their regression cases under `tests/browser/`, and moved soundtrack authoring into `tools/`. Removed the obsolete one-off font patcher; the standard font builder already includes those glyphs.
+- Updated imports, asset references, documentation, test paths and recursive release/cache discovery. The root retains only the app entry, offline worker, manifest, package configuration, README, changelog and Git ignore rules.
+
 ## 1.12.27 — Chart corner follows viewport resizing
 - Recalculate the tab and yellow arrow frame when the game viewport changes size, including height changes that leave the tab width unchanged. Both frames continue to share the current screen-corner radius.
 

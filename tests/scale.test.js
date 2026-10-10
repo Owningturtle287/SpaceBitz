@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {AU_KM,SYSTEM_VISUAL_SCALE,SUN_DIAMETER_KM,SOL_RADIUS,SYSTEM_PX_PER_KM,SYSTEM_UNIT,SURFACE_UNIT,CHART_UNIT,ASTRONAUT_SCALE,ASTRONAUT_PIXEL_HEIGHT,LANDER_SIZE,SHIP_PIXEL_HEIGHT,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter} from '../scale.js';
-import {makeSystem,visualRadius,orbitRadius,orbitalElements,orbitPoint,bodyPosition,TAU} from '../model.js';
-import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt,starApproachPoint,systemDrive,advanceToArrival,cameraViewAt} from '../navigation.js';
-import {navigationTarget} from '../motion.js';
-import {stellarActivity,stellarProminences} from '../stellar.js';
+import {AU_KM,SYSTEM_VISUAL_SCALE,SUN_DIAMETER_KM,SOL_RADIUS,SYSTEM_PX_PER_KM,SYSTEM_UNIT,SURFACE_UNIT,CHART_UNIT,ASTRONAUT_SCALE,ASTRONAUT_PIXEL_HEIGHT,LANDER_SIZE,SHIP_PIXEL_HEIGHT,gridCell,gridStride,formatDistance,formatCoordinates,formatSystemKm,formatDiameter} from '../src/core/scale.js';
+import {makeSystem,visualRadius,orbitRadius,orbitalElements,orbitPoint,bodyPosition,TAU} from '../src/universe/model.js';
+import {migrateLayout,travelSpeed,systemFitZoom,centerZoomAt,starApproachPoint,systemDrive,advanceToArrival,cameraViewAt} from '../src/flight/navigation.js';
+import {navigationTarget} from '../src/flight/motion.js';
+import {stellarActivity,stellarProminences} from '../src/rendering/stellar.js';
 const close=(a,b,tol=1e-8)=>assert.ok(Math.abs(a-b)<tol,`${a} != ${b}`);
 
 test('one surface metre is one standing explorer high, exactly one-third of the parked ship',()=>{

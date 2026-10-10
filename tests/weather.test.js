@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeSystem,TAU} from '../model.js';
-import {giantProfile} from '../giants.js';
-import {giantWind,giantStorms} from '../weather.js';
+import {makeSystem,TAU} from '../src/universe/model.js';
+import {giantProfile} from '../src/rendering/giants.js';
+import {giantWind,giantStorms} from '../src/rendering/weather.js';
 
 const sol=makeSystem('sol'),profile=name=>sol.planets.find(p=>p.name===name).atmosphere;
 const angular=(a,b)=>Math.abs(Math.atan2(Math.sin(a-b),Math.cos(a-b)));

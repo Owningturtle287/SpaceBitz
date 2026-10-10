@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {canvasContextOptions,ellipseInView,circleGeometry,clipSegment,fillAnnulus,drawImageInView,clearFrame,backgroundPosition} from '../rendering.js';
+import {canvasContextOptions,ellipseInView,circleGeometry,clipSegment,fillAnnulus,drawImageInView,clearFrame,backgroundPosition} from '../src/rendering/rendering.js';
 
 test('WebKit, including iOS browsers, uses the verified first-frame canvas path',()=>{
   for(const ua of ['AppleWebKit/605.1.15 Version/18 Safari/605.1.15','AppleWebKit/605.1.15 CriOS/145 Mobile','AppleWebKit/605.1.15 FxiOS/144 Mobile']){

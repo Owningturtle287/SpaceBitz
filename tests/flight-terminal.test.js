@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {addTerminalEntry,TERMINAL_HISTORY_LIMIT} from '../terminal-history.js';
-import {flightStage,isLandscape} from '../flight-drive.js';
-import {rotationText,terminalLines,objectType} from '../terminal.js';
-import {makeSystem} from '../model.js';
-import {normalizeSettings,DEFAULT_SETTINGS} from '../settings.js';
+import {addTerminalEntry,TERMINAL_HISTORY_LIMIT} from '../src/terminal/terminal-history.js';
+import {flightStage,isLandscape} from '../src/flight/flight-drive.js';
+import {rotationText,terminalLines,objectType} from '../src/terminal/terminal.js';
+import {makeSystem} from '../src/universe/model.js';
+import {normalizeSettings,DEFAULT_SETTINGS} from '../src/core/settings.js';
 
 test('terminal history rejects blank submissions, retains plain text and bounds repeated messages',()=>{
   const history=[];assert.equal(addTerminalEntry(history,'   ','input'),null);

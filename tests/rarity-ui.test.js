@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {rarityPages} from '../rarity-ui.js';
+import {rarityPages} from '../src/ui/rarity-ui.js';
 test('rarity pages use available space and preserve wrapped entries without losing any rows',()=>{
   const heights=[30,30,45,30,60,30,30,30,45,30,30,30];
   for(const available of [80,180,400,1000]){

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {enableTouchButtons} from '../touch-buttons.js';
+import {enableTouchButtons} from '../src/ui/touch-buttons.js';
 
 // Model Safari's trusted compatibility events separately from the script click
 // used to activate a released touch. They can arrive at a different control.

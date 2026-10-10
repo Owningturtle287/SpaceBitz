@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {persistVoyage,readVoyages,saveBeforeExit,SAVE_KEY} from '../voyage-storage.js';
-import {recordAction,recordObject,pendingLogEntries,acknowledgeLogEntries,RECENT_LOG_LIMIT} from '../voyage-log.js';
-import {makeSystem,bodyPosition,visualRadius} from '../model.js';
-import {stationAnchor,applyStationAnchor,resetFlightContext} from '../flight-state.js';
-import {importVoyage} from '../saves.js';
-import {registerAppWorker} from '../pwa.js';
+import {persistVoyage,readVoyages,saveBeforeExit,SAVE_KEY} from '../src/storage/voyage-storage.js';
+import {recordAction,recordObject,pendingLogEntries,acknowledgeLogEntries,RECENT_LOG_LIMIT} from '../src/journal/voyage-log.js';
+import {makeSystem,bodyPosition,visualRadius} from '../src/universe/model.js';
+import {stationAnchor,applyStationAnchor,resetFlightContext} from '../src/flight/flight-state.js';
+import {importVoyage} from '../src/storage/saves.js';
+import {registerAppWorker} from '../src/core/pwa.js';
 const memory=()=>({data:new Map(),getItem(k){return this.data.get(k)??null;},setItem(k,v){this.data.set(k,v);}});
 const voyage=()=>({id:'audit',name:'Audit',seed:'audit',homeSeed:'sol',currentSystem:'sol',scene:'system',ship:{x:1000,y:0},surface:{x:0,y:0},chart:{x:0,y:0},days:200,layoutVersion:4,discoveries:[],route:[],log:[]});
 

@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {defaults,validateGeneration,checkedGeneration,percentUnits,POPULATIONS,makeStar,makeArchitecture,temperatureColor,mainLifetime,stabilityLimit} from '../universe.js';
-import {makeSystem,stellarPositions,bodyPosition,orbitRadius} from '../model.js';
-import {stellarRows} from '../star-info.js';
-import {importVoyage} from '../saves.js';
-import {systemFitZoom} from '../navigation.js';
+import {defaults,validateGeneration,checkedGeneration,percentUnits,POPULATIONS,makeStar,makeArchitecture,temperatureColor,mainLifetime,stabilityLimit} from '../src/universe/universe.js';
+import {makeSystem,stellarPositions,bodyPosition,orbitRadius} from '../src/universe/model.js';
+import {stellarRows} from '../src/universe/star-info.js';
+import {importVoyage} from '../src/storage/saves.js';
+import {systemFitZoom} from '../src/flight/navigation.js';
 const force=(group,type)=>{const c=defaults(false);for(const k of Object.keys(c.pools[group]))c.pools[group][k]=k===type?100:0;c.pools.speculative=Object.fromEntries(Object.keys(c.pools.speculative).map(k=>[k,k==='ordinary'?100:0]));return c;};
 const close=(a,b,t=1e-8)=>assert.ok(Math.abs(a-b)<=t*Math.max(1,Math.abs(a)),`${a} != ${b}`);
 
