@@ -66,7 +66,7 @@ const {showDetails,toggleTerminal,buildTerminal,clearTerminal,pauseTerminalOutpu
 const journal=createLogDevice({state,settings,$,formatDate:days=>formatGameDate(new Date(EPOCH+days*DAY_MS),true),resetInput,saveSettings,updateUI,closeSystemChart,setTerminalKeyboard,pauseTerminalOutput,
   createPreview:(entry,save)=>createLogPreview(entry,save,chartSystem),
   readPage:async(save,filter,offset,limit)=>{await persist();return voyages.page(save.id,filter,offset,limit);}});
-createEdgeScrollbar($('terminalScreen'),{id:'terminalScrollbar',label:'Scroll terminal output',onScrollIntent:()=>{if(state.terminal)state.terminal.followOutput=false;}});
+createEdgeScrollbar($('terminalScreen'),{id:'terminalScrollbar',label:'Scroll terminal output',onScrollIntent:()=>{state.terminalFollowOutput=false;if(state.terminal)state.terminal.followOutput=false;}});
 createEdgeScrollbar($('systemChartContent'),{id:'systemChartScrollbar',label:'Scroll system chart'});
 function closeJournal(immediate=true){journal.close(immediate);}
 const loadSaves = async() => {
@@ -609,7 +609,7 @@ chartFrameObserver.observe($('systemChartToggle'));
 function closeSystemChart(){
   $('systemChart').classList.remove('open');$('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');
 }
-$('systemChartToggle').onclick=()=>{
+function toggleSystemChart(){
   closeJournal();
   if(state.scene==='surface'){select(findBody(state.save.landed));showDetails(state.selected);return;}
   const panel=$('systemChart'),content=$('systemChartContent'),open=!panel.classList.contains('open');
@@ -617,6 +617,28 @@ $('systemChartToggle').onclick=()=>{
   panel.classList.toggle('open',open);content.hidden=!open;
   $('systemChartToggle').setAttribute('aria-expanded',String(open));
   updateUI();
+}
+// Capture a single tap so a small finger movement or a compatibility click
+// cannot drop the activation or toggle the chart a second time.
+const chartToggle=$('systemChartToggle');
+let chartPress=null,chartPointerClick=false,chartPointerRelease=-Infinity;
+chartToggle.onpointerdown=e=>{
+  if(e.button!==0||chartPress)return;e.preventDefault();e.stopPropagation();
+  chartPress={id:e.pointerId,x:e.clientX,y:e.clientY,moved:false};chartPointerClick=true;
+  if(e.isTrusted)chartToggle.setPointerCapture(e.pointerId);
+};
+chartToggle.onpointermove=e=>{if(chartPress?.id===e.pointerId&&Math.hypot(e.clientX-chartPress.x,e.clientY-chartPress.y)>12)chartPress.moved=true;};
+chartToggle.onpointerup=e=>{
+  if(chartPress?.id!==e.pointerId)return;e.preventDefault();e.stopPropagation();
+  const tap=!chartPress.moved&&Math.hypot(e.clientX-chartPress.x,e.clientY-chartPress.y)<=12;
+  chartPress=null;chartPointerRelease=performance.now();if(tap)toggleSystemChart();
+};
+const cancelChartPress=e=>{if(chartPress?.id===e.pointerId){chartPress=null;chartPointerRelease=performance.now();}};
+chartToggle.onpointercancel=cancelChartPress;chartToggle.onlostpointercapture=cancelChartPress;
+chartToggle.onkeydown=e=>{if(e.key==='Enter'||e.key===' ')chartPointerClick=false;};
+chartToggle.onclick=e=>{
+  if(chartPointerClick&&e.isTrusted&&performance.now()-chartPointerRelease<750){chartPointerClick=false;return;}
+  toggleSystemChart();
 };
 function zoom(factor){state.coordinateTap=null;const following=state.followShip||state.centerZoom?.centerAction==='follow';state.centerZoom=null;state.centerReady=false;state.followShip=following;state.zoom=clamp(state.zoom*factor,state.scene==='system'?systemMinZoom(state.system,state.width,state.height,state.save.days):state.scene==='surface'?.65:.34,state.scene==='system'?SYSTEM_MAX_ZOOM:2.4);if(following&&!state.followPanRemaining)state.camera={...(state.scene==='surface'?state.save.surface:state.scene==='chart'?state.save.chart:state.save.ship)};}
 
@@ -701,8 +723,7 @@ function updateUI() {
   if(state.terminalExpanded&&!state.terminal&&!state.terminalCleared)buildTerminal();
   const distanceText=destination?(state.terminalExpanded&&state.waypoint?formatCoordinates(destination,scene)+' / ':'')+formatDistance(Math.hypot(destination.x-pos.x,destination.y-pos.y),scene)+(scene==='surface'&&sel?.kind==='lander'?' TO LANDER':' AWAY')+(scene==='system'&&state.autopilot?(state.autopilot.drive==='orbit'?' · 0.1 ls/s':' · 0.5 AU/s'):''):'';
   $('targetDistance').textContent=distanceText;
-  $('targetCollapsedDistance').textContent=distanceText;
-  $('targetCollapsedDistance').hidden=state.terminalExpanded||!hasTarget||!distanceText;
+  $('targetDistance').hidden=!hasTarget||!distanceText;
   $('primaryActionLabel').textContent=action;$('primaryAction').classList.toggle('engaged',traveling);
   $('primaryAction').setAttribute('aria-busy',String(traveling));
   $('primaryAction').setAttribute('aria-label',action==='GO HERE'?'Go Here':action);

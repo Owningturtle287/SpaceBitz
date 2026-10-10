@@ -7,7 +7,7 @@ import {systemMinZoom} from './navigation.js';
 import {addTerminalEntry} from './terminal-history.js';
 
 export function createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog,resetInput,saveSettings,applyCenterButtonLayout,screen}){
-state.terminalEntries=[];
+state.terminalEntries=[];state.terminalFollowOutput=true;
 function canViewOutput(){return !document.hidden&&state.terminalExpanded&&!state.journalOpen&&!state.landscapeBlocked&&!$('targetCard').hidden&&!$('terminalScreen').hidden&&!$('modal').classList.contains('visible');}
 function pauseTerminalOutput(now=performance.now()){
   const record=state.terminal;if(record&&!record.finished&&record.pausedAt==null)record.pausedAt=now;
@@ -15,7 +15,7 @@ function pauseTerminalOutput(now=performance.now()){
 function releaseTerminalQueue(){
   for(const entry of state.terminalEntries)if(entry.afterRecord){delete entry.afterRecord;if(entry.node)entry.node.hidden=false;}
 }
-function atBottom(){const screen=$('terminalScreen');return screen.scrollHeight-screen.scrollTop-screen.clientHeight<24;}
+function followTerminalOutput(){state.terminalFollowOutput=true;if(state.terminal)state.terminal.followOutput=true;scheduleTerminalLayout();}
 function renderRecord(record,count){
   record.count=count;
   for(const row of record.lines){const visible=count>row.offset,text=row.text.slice(0,Math.max(0,count-row.offset)),split=row.colon<0?0:Math.min(text.length,row.colon+3);row.node.hidden=!visible;row.key.textContent=text.slice(0,split);row.value.textContent=text.slice(split);}
@@ -24,13 +24,16 @@ function renderRecord(record,count){
   if(record.finished&&record.survey&&!record.logged&&canViewOutput()){recordLog?.(record.survey);record.logged=true;}
 }
 function appendTerminalEntry(text,kind='message',{log=true}={}){
-  const follow=atBottom();
   const entry=addTerminalEntry(state.terminalEntries,text,kind);if(!entry)return;
   const record=state.terminal||state.terminalEntries.findLast(e=>e.kind==='record'&&e.key===state.terminalRecordKey);
-  if(record&&!record.finished)entry.afterRecord=record;
+  if(record&&!record.finished){
+    // A new user entry or visible reply takes precedence over the cosmetic
+    // survey typing. Complete that record so the newest entry appears now.
+    if(kind==='input'||canViewOutput())renderRecord(record,record.text.length);else entry.afterRecord=record;
+  }
   if(kind==='message'){state.terminalNotice=entry.text;if(log)recordLog?.({kind:'action',text:entry.text});}
   renderTerminalHistory();
-  if(state.terminalExpanded&&follow)requestAnimationFrame(()=>{$('terminalScreen').scrollTop=$('terminalScreen').scrollHeight;});
+  followTerminalOutput();
   if(!state.save){
     $('menuTerminal').hidden=false;
     $('menuTerminalMessages').replaceChildren(...state.terminalEntries.slice(-2).map(terminalEntryNode));
@@ -68,7 +71,7 @@ function buildTerminal(){
   if(state.terminalRecordKey===key&&prior){state.terminal=prior;if(prior.pausedAt!=null){prior.start+=performance.now()-prior.pausedAt;prior.pausedAt=null;}return;}
   let text=terminalLines(record.object,record.system,{days:state.save.days,scene:state.scene,position:record.position,ship:record.ship,homeSystem:state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.save.currentSystem===state.save.homeSeed&&record.object.kind==='star',homeWorld:record.object.id===state.save.homePlanet});
   if(!state.selected&&!state.waypoint)text='Ship Terminal\n\nSTATUS : READY\nLAYER : '+(state.scene==='chart'?'Deep Space':state.scene==='surface'?'Surface':'System')+'\nPOSITION : '+formatCoordinates(record.ship,state.scene)+'\nVOYAGE : '+state.save.name+'\n\nSelect an object or area to retrieve its data.';
-  const entry=addTerminalEntry(state.terminalEntries,text,'record');Object.assign(entry,{key,start:performance.now(),count:-1,followOutput:true});state.terminal=entry;state.terminalRecordKey=key;
+  const entry=addTerminalEntry(state.terminalEntries,text,'record');Object.assign(entry,{key,start:performance.now(),count:-1,followOutput:true});state.terminalFollowOutput=true;state.terminal=entry;state.terminalRecordKey=key;
   const output=document.createElement('div');output.className='terminal-record terminal-data';entry.node=output;let offset=0;
   entry.lines=entry.text.split('\n').map((text,index)=>{
     const node=document.createElement('div'),colon=text.indexOf(' : '),key=document.createElement('span'),value=document.createElement('span');
@@ -80,7 +83,7 @@ function buildTerminal(){
   $('terminalScreen').scrollTop=$('terminalScreen').scrollHeight;
 }
 function clearTerminal(){
-  state.terminalEntries.length=0;state.terminal=null;state.terminalRecordKey=null;state.terminalNotice=null;state.terminalCleared=true;
+  state.terminalEntries.length=0;state.terminalFollowOutput=true;state.terminal=null;state.terminalRecordKey=null;state.terminalNotice=null;state.terminalCleared=true;
   renderTerminalHistory();$('terminalScreen').scrollTop=0;updateUI();
 }
 function showDetails(body){
@@ -104,7 +107,7 @@ let terminalShift=false,terminalCaps=false;
 const heldTerminalKeys=new Map();
 function stopTerminalKeys(){for(const press of heldTerminalKeys.values()){clearTimeout(press.delay);clearInterval(press.repeat);}heldTerminalKeys.clear();}
 function setTerminalKeyboard(visible){
-  if(!visible)stopTerminalKeys();
+  if(!visible)stopTerminalKeys();else followTerminalOutput();
   $('terminalKeyboard').hidden=!visible;$('targetCard').classList.toggle('keyboard-open',visible);
   $('terminalKeyboardToggle').setAttribute('aria-expanded',String(visible));$('terminalKeyboardToggle').setAttribute('aria-label',visible?'Hide terminal keyboard':'Show terminal keyboard');
   scheduleTerminalLayout();scheduleInputCaret();
@@ -196,7 +199,7 @@ $('terminalInput').onpointerdown=e=>{const input=$('terminalInput');caretPointer
 for(const event of ['pointerup','pointercancel'])document.addEventListener(event,e=>{if(e.pointerId===caretPointer){caretPointer=null;scheduleInputCaret();}});
 $('terminalInput').onfocus=()=>{scheduleInputCaret(true);resetInput();setTerminalKeyboard(true);};
 $('terminalInput').onblur=()=>{caretPointer=null;$('terminalInputCaret').hidden=true;};
-$('terminalInput').oninput=()=>scheduleInputCaret();
+$('terminalInput').oninput=()=>{scheduleInputCaret();followTerminalOutput();};
 $('terminalInput').onscroll=()=>scheduleInputCaret();
 $('terminalInput').onkeydown=e=>{
   const input=$('terminalInput');
@@ -294,7 +297,7 @@ function updateTerminal(now){
   if(count===record.count)return;renderRecord(record,count);
   if(record.followOutput)screen.scrollTop=screen.scrollHeight;
 }
-for(const event of ['wheel','touchmove','pointerdown'])$('terminalScreen').addEventListener(event,()=>{if(state.terminal)state.terminal.followOutput=false;},{passive:true});
+for(const event of ['wheel','touchmove','pointerdown'])$('terminalScreen').addEventListener(event,()=>{state.terminalFollowOutput=false;if(state.terminal)state.terminal.followOutput=false;},{passive:true});
 function positionContext(){
   if($('contextActions').hidden||!state.save)return;const record=selectedRecord(),target=screen(record.position.x,record.position.y),element=$('contextActions');
   const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
@@ -315,11 +318,14 @@ function scheduleTerminalLayout(){
   // Defer ancestor sizing until the next frame, outside nested observer delivery.
   terminalLayoutFrame=requestAnimationFrame(()=>{
     terminalLayoutFrame=0;layoutTerminalDock();
+    // The keyboard and resize handles shrink the scrolling viewport even when
+    // the outer device stays the same size. Follow after that layout settles.
+    if(state.terminalExpanded&&state.terminalFollowOutput)$('terminalScreen').scrollTop=$('terminalScreen').scrollHeight;
     const height=gameRect($('terminalPocket')).height;
     document.documentElement.style.setProperty('--terminal-height',height+'px');applyCenterButtonLayout();scheduleInputCaret();
   });
 }
 const terminalObserver=new ResizeObserver(scheduleTerminalLayout);
-terminalObserver.observe($('targetCard'));terminalObserver.observe($('terminalPocket'));
+terminalObserver.observe($('targetCard'));terminalObserver.observe($('terminalPocket'));terminalObserver.observe($('terminalScreen'));
 return {showDetails,toggleTerminal,buildTerminal,clearTerminal,pauseTerminalOutput,releaseTerminalQueue,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext};
 }

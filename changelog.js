@@ -1,6 +1,14 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.25",
+    "items": [
+      "Removed the chart's rectangular orange focus outline, enlarged its arrow and touch target, and made each pointer tap toggle once, including small finger movements and rapid presses during the slide animation. Keyboard focus follows the curved frame.",
+      "Moved the collapsed terminal's live target distance from its top border into the selected-object data beneath the name and type. The compact device grows just enough to keep those details visible.",
+      "Made new terminal input and replies snap to the latest output even after scrolling back. Opening the keyboard or changing its layout keeps the newest output above the keys, and new entries no longer wait behind a survey's typing animation."
+    ]
+  },
+  {
     "version": "1.12.24",
     "items": [
       "Removed the chart tab's inner curve and corner tail, retaining its 28px thickness and the screen-fitting top-right outer arc above a straight bottom edge. Enlarged the dropdown arrow.",

@@ -31,8 +31,8 @@ export async function checkRelease11223(page,engine){
   const png=await page.screenshot({path:`.qa/${engine}-11223-chart.png`});
   if(engine==='webkit'&&process.env.QA_LAYOUT_PREVIEW==='true'){const data=png.toString('base64');for(let i=0;i<data.length;i+=6000)console.log(`QA_PREVIEW:11223-chart:${i/6000}:${data.slice(i,i+6000)}`);}
   await page.locator('#systemChartToggle').click();
-  // The collapsed header has room beside Open Terminal for the same live
-  // distance used by the expanded device, without reducing the object summary.
+  // The collapsed data includes the same live distance beneath the name and
+  // type, with enough natural height to keep both the summary and distance visible.
   await page.evaluate(()=>{const g=window.__game;g.state.followBody=null;g.select(g.state.system.planets.find(p=>p.name==='Earth'));g.showDetails(g.state.selected);});
   await page.locator('#secondaryAction').click();
   await page.waitForFunction(()=>!document.getElementById('targetCard').classList.contains('expanded'));
@@ -40,8 +40,8 @@ export async function checkRelease11223(page,engine){
   const readDistance=async()=>page.evaluate(async()=>{
     const g=window.__game,s=g.state,{bodyPosition}=await import('/model.js'),{formatDistance}=await import('/scale.js');
     const ship=s.scene==='chart'?s.save.chart:s.scene==='surface'?s.save.surface:s.save.ship,target=s.scene==='system'?bodyPosition(s.selected,s.save.days,s.system):s.selected;
-    const distance=document.getElementById('targetCollapsedDistance'),button=document.getElementById('secondaryAction'),head=button.parentElement,r=distance.getBoundingClientRect(),b=button.getBoundingClientRect(),h=head.getBoundingClientRect();
-    return {scene:s.scene,text:distance.textContent,expected:formatDistance(Math.hypot(target.x-ship.x,target.y-ship.y),s.scene)+' AWAY',visible:!distance.hidden&&r.width>0&&r.height>0,clear:r.right<=b.left&&r.top>=h.top&&r.bottom<=h.bottom,summary:document.getElementById('targetStatus').textContent};
+    const distance=document.getElementById('targetDistance'),status=document.getElementById('targetStatus'),card=document.getElementById('targetCard'),r=distance.getBoundingClientRect(),name=status.getBoundingClientRect(),device=card.getBoundingClientRect();
+    return {scene:s.scene,text:distance.textContent,expected:formatDistance(Math.hypot(target.x-ship.x,target.y-ship.y),s.scene)+' AWAY',visible:!distance.hidden&&r.width>0&&r.height>0,clear:distance.parentElement.classList.contains('terminal-meta')&&r.top>=name.bottom&&r.bottom<=device.bottom-2,summary:status.textContent};
   });
   distances.push(await readDistance());
   await page.evaluate(()=>{const g=window.__game;g.state.save.ship.x+=50000;g.state.save.ship.y-=17000;g.state.save.days+=1;g.updateUI();});
@@ -55,7 +55,7 @@ export async function checkRelease11223(page,engine){
   distances.push(await readDistance());
   for(const d of distances){assert.equal(d.text,d.expected);assert.ok(d.visible&&d.clear,JSON.stringify(d));assert.match(d.summary,/Object selected:/);}
   await page.evaluate(()=>window.__game.cancelTarget());
-  assert.equal(await page.locator('#targetCollapsedDistance').isVisible(),false);
+  assert.equal(await page.locator('#targetDistance').isVisible(),false);
   await page.evaluate(()=>{const g=window.__game;g.create(true);g.launch();g.applySettings();});
   await page.evaluate(()=>window.__game.showJournal());
   await page.waitForFunction(()=>!document.getElementById('journalPanel').getAnimations().length);
