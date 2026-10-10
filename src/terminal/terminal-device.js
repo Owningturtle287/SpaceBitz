@@ -62,7 +62,7 @@ function selectedRecord(){
 }
 function selectedSummary(){
   if(!state.selected&&!state.waypoint)return '';
-  const {object}=selectedRecord();return 'Object selected: '+object.name+' · '+objectType(object);
+  const {object}=selectedRecord();return (state.terminalExpanded?'':'Object selected: ')+object.name+' · '+objectType(object);
 }
 function buildTerminal(){
   if(!state.save||!state.terminalExpanded||state.journalOpen||state.landscapeBlocked||state.terminalCleared)return;const record=selectedRecord();
@@ -232,7 +232,9 @@ function terminalLimits(){
   const joyRect=gameRect($('joystick'));
   const reserve=Math.max(370,joyRect.width?joyRect.right+272:0);
   const maxWidth=Math.max(200,viewport.width-reserve);
-  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,viewport.height-88)};
+  // The keyboard may use the space below the top HUD controls.
+  const topReserve=$('terminalKeyboard').hidden?88:48;
+  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,viewport.height-topReserve)};
 }
 function applyTerminalSize(){
   $('targetCard').classList.toggle('terminal-large-data',(settings.terminalFontMode==='master'?settings.terminalFontSize:settings.terminalDataFont)>12);
@@ -244,7 +246,18 @@ function applyTerminalSize(){
   dock.style.setProperty('--terminal-expanded-width',expanded+'px');
   const terminalWidth=$('targetCard').hidden?94:state.terminalExpanded?expanded:collapsed;
   document.documentElement.style.setProperty('--deck-joy-max',Math.max(6,viewport.width-terminalWidth-($('targetCard').hidden?338:390))+'px');
-  const height=clamp(state.terminalSize?.height??viewport.height*.7*settings.terminalHeightScale/100,Math.min($('terminalKeyboard').hidden?170:310,limits.maxHeight),limits.maxHeight);
+  // Wrapped identity and a visible keyboard are fixed siblings of the log.
+  // Reserve at least one complete output line when users shorten the device.
+  let minHeight=$('terminalKeyboard').hidden?170:310;
+  if(state.terminalExpanded){
+    const card=$('targetCard'),css=getComputedStyle(card),log=$('terminalScreen'),logCss=getComputedStyle(log);
+    const fixed=[card.querySelector('.terminal-head'),card.querySelector('.terminal-meta'),$('terminalInputBar'),$('terminalKeyboard')].filter(e=>!e.hidden).reduce((height,e)=>{const style=getComputedStyle(e);return height+gameRect(e).height+parseFloat(style.marginTop)+parseFloat(style.marginBottom);},0);
+    const outputFont=settings.terminalFontMode==='master'?settings.terminalFontSize:Math.max(settings.terminalDataFont,settings.terminalStatusFont,settings.terminalInputFont);
+    const outputHeight=Math.max(35,outputFont*1.8+parseFloat(logCss.paddingTop)+parseFloat(logCss.paddingBottom));
+    const safe=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dashboard-safe-bottom'))||0;
+    minHeight=Math.max(minHeight,Math.ceil(fixed+outputHeight+parseFloat(logCss.marginTop)+parseFloat(logCss.marginBottom)+parseFloat(logCss.borderTopWidth)+parseFloat(logCss.borderBottomWidth)+parseFloat(css.paddingTop)+parseFloat(css.paddingBottom)+parseFloat(css.borderTopWidth)+parseFloat(css.borderBottomWidth)-safe+1));
+  }
+  const height=clamp(state.terminalSize?.height??viewport.height*.7*settings.terminalHeightScale/100,Math.min(minHeight,limits.maxHeight),limits.maxHeight);
   dock.style.setProperty('--terminal-user-height',height+'px');
   for(const id of ['terminalResizeTop','terminalResizeLeft'])$(id).hidden=!state.terminalExpanded||!settings.terminalResizeHandles;
   scheduleInputCaret();

@@ -39,7 +39,7 @@ export async function checkRelease1122(page,engine){
     const card=document.getElementById('targetCard'),screen=document.getElementById('terminalScreen'),r=card.getBoundingClientRect(),log=document.getElementById('journalButton').getBoundingClientRect();
     return {width:r.width,header:screen.getBoundingClientRect().top-r.top,distance:parseFloat(getComputedStyle(document.getElementById('targetDistance')).fontSize),status:parseFloat(getComputedStyle(document.getElementById('targetStatus')).fontSize),overflow:screen.scrollWidth-screen.clientWidth,columns:getComputedStyle(window.__game.state.terminal.node).gridTemplateColumns.split(' ').length,logBottom:log.bottom,top:r.top};
   });
-  assert.ok(layout.width<=267&&layout.header<64&&layout.distance<layout.status&&layout.overflow<=1&&layout.logBottom<=896,JSON.stringify(layout));assert.equal(layout.columns,2);
+  assert.ok(layout.width<=267&&layout.header<96&&layout.distance<layout.status&&layout.overflow<=1&&layout.logBottom<=896,JSON.stringify(layout));assert.equal(layout.columns,2);
   await page.evaluate(()=>{const g=window.__game;g.positionContext();document.getElementById('contextActions').classList.add('ready');g.backdrop(0);g.drawSystem(0);});
   await page.screenshot({path:`.qa/${engine}-1122-terminal-desktop.png`});
   const reading=await page.evaluate(()=>{

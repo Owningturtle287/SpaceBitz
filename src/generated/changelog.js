@@ -1,6 +1,12 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.29",
+    "items": [
+      "Show the selected object’s name and type before its live ship distance in the expanded terminal’s fixed data strip. The full identity wraps within the device at minimum widths, with compact readout fonts that preserve room for recent output and the keyboard."
+    ]
+  },
+  {
     "version": "1.12.28",
     "items": [
       "Grouped all 43 runtime modules under `src/` by subsystem, and moved the six stylesheets into `styles/`. The SVG app icon now sits beside the PNG icons.",
