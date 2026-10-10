@@ -259,9 +259,9 @@ export async function checkRelease11213(page,engine){
         const keys=[...document.querySelectorAll('#terminalInputBar button,#terminalKeyboard:not([hidden]) button')];
         const curveClear=phase!=='expanded'&&phase!=='keyboard'||keys.every(button=>{const b=button.getBoundingClientRect();return [[b.left+4,b.top+4],[b.right-4,b.bottom-4]].every(([x,y])=>pointFits(x,y)&&document.elementFromPoint(x,y)?.closest('button')===button);});
         const before=bar.top;screen.scrollTop=screen.scrollHeight;
-        // The collapsed data can grow above the deck to fit a live distance.
-        // Keep its text inside the device and the target buttons above it.
-        const distance=r('targetDistance'),summary=r('targetStatus'),compactFits=card.left>=0&&card.right<=innerWidth&&card.top>=0&&card.bottom<=deck.bottom&&distance.height>0&&distance.top>=summary.bottom&&distance.bottom<=card.bottom-2&&lever.bottom<=card.top;
+        // The closed device stays within the dashboard while its data and
+        // target controls remain clear of the rounded frame.
+        const distance=r('targetDistance'),summary=r('targetStatus'),compactFits=inside(card)&&distance.height>0&&distance.top>=summary.bottom&&distance.bottom<=card.bottom-2&&lever.bottom<=card.top;
         return {deck,card,joy,nav,speed,log,term,travel,lever,cancel,clock,chart,contained:controls.every(inside)&&(phase!=='compact'||compactFits),clear:controls.every((a,i)=>controls.slice(i+1).every(b=>!overlap(a,b)))&&(phase==='closed'||controls.every(a=>!overlap(a,card))),curveClear,barFixed:before===r('terminalInputBar').top,screenHeight:screen.clientHeight,overflow:screen.scrollWidth-screen.clientWidth,scrollbarGap:card.right-(r('terminalScreen').right),keyboardFits:phase!=='keyboard'||keyboard.bottom<=card.bottom,topOrder:clock.right<=settings.left&&system.right<=chart.left,rounded:parseFloat(getComputedStyle(document.getElementById('flightReadout')).borderTopLeftRadius)>0&&parseFloat(getComputedStyle(document.getElementById('systemChart')).borderTopRightRadius)>0,fonts:['terminalOutput','terminalInput','clock','coordsReadout'].every(id=>getComputedStyle(document.getElementById(id)).fontFamily.includes('SpaceBitz Pixel'))};
       },phase);
       assert.ok(fit.contained&&fit.clear&&fit.topOrder&&fit.rounded&&fit.fonts&&fit.keyboardFits&&fit.curveClear,JSON.stringify({viewport,phase,fit}));

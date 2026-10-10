@@ -139,4 +139,4 @@ Version 1.12.23 refines panel motion: the Log returns to its button over 720ms w
 
 Version 1.12.24 gives the System Chart tab a flat bottom and only an outer top-right curve, while retaining its thin height. The larger arrow opens a chart that slides out from the tab's bottom edge. Settings and Center on System sit slightly higher. A collapsed terminal now shows the selected target's live distance beside Open Terminal.
 
-Version 1.12.25 enlarges the chart arrow and touch target, removes the rectangular orange outline, and registers each tap once. The collapsed distance sits in the selected-object data beneath its name and type. New terminal input and replies scroll to the bottom, and keyboard layout changes keep the latest output above the keys.
+Version 1.12.26 gives the chart arrow a broad yellow frame fitted to the tab's screen corner. The closed terminal stays flush with the dashboard, with name, type and distance inside its data area. The selected-target X, green lever and focus controls slide smoothly sideways as the terminal opens and closes.

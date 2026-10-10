@@ -603,6 +603,11 @@ const chartFrameObserver=new ResizeObserver(()=>{
   const edge=w-r+Math.sqrt(Math.max(0,(r-1)**2-(r-t+1)**2));
   $('systemChartFrame').setAttribute('viewBox',`0 0 ${w} ${t}`);
   $('systemChartFramePath').setAttribute('d',`M1 1 H${w-r} A${r-1} ${r-1} 0 0 1 ${edge} ${t-1} H1 Z`);
+  // Frame a broad arrow control with the exact same outer arc as the tab.
+  const controlLeft=Math.max(10,w-r-18);
+  $('systemChartButtonPath').setAttribute('d',`M${controlLeft} 1 H${w-r} A${r-1} ${r-1} 0 0 1 ${edge} ${t-1} H${controlLeft} Z`);
+  button.style.setProperty('--chart-control-left',controlLeft+'px');
+  button.style.setProperty('--chart-control-padding',(w-controlLeft+6)+'px');
   $('systemChart').style.setProperty('--chart-bottom-width',(edge+1)+'px');
 });
 chartFrameObserver.observe($('systemChartToggle'));

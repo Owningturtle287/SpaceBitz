@@ -32,7 +32,7 @@ export async function checkRelease11223(page,engine){
   if(engine==='webkit'&&process.env.QA_LAYOUT_PREVIEW==='true'){const data=png.toString('base64');for(let i=0;i<data.length;i+=6000)console.log(`QA_PREVIEW:11223-chart:${i/6000}:${data.slice(i,i+6000)}`);}
   await page.locator('#systemChartToggle').click();
   // The collapsed data includes the same live distance beneath the name and
-  // type, with enough natural height to keep both the summary and distance visible.
+  // type, with compact typography that keeps both inside the dashboard row.
   await page.evaluate(()=>{const g=window.__game;g.state.followBody=null;g.select(g.state.system.planets.find(p=>p.name==='Earth'));g.showDetails(g.state.selected);});
   await page.locator('#secondaryAction').click();
   await page.waitForFunction(()=>!document.getElementById('targetCard').classList.contains('expanded'));

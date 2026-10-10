@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.26 — Framed chart control and flush terminal
+- Framed the chart arrow in a broad yellow control on the right of the tab, following the same outer screen corner and straight bottom. Kept its larger touch target and reliable single-tap response.
+- Fixed the closed terminal to the dashboard row height, with compact name, type and distance text inside its data area.
+- Kept the selected-target X, lever and focus controls at a constant vertical position while the terminal opens or closes, so they slide smoothly sideways without jumping.
+
 ## 1.12.25 — Responsive chart taps and visible terminal output
 - Removed the chart's rectangular orange focus outline, enlarged its arrow and touch target, and made each pointer tap toggle once, including small finger movements and rapid presses during the slide animation. Keyboard focus follows the curved frame.
 - Moved the collapsed terminal's live target distance from its top border into the selected-object data beneath the name and type. The compact device grows just enough to keep those details visible.
