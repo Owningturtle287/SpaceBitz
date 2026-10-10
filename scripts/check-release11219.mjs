@@ -20,7 +20,8 @@ export async function checkRelease11219(page,engine){
   await page.evaluate(()=>{const g=window.__game;g.clearTerminal();g.showDetails(g.state.selected);g.updateTerminal(g.state.terminal.start+100);});
   await page.locator('#systemChartToggle').click();
   assert.equal(await page.evaluate(()=>Number.isFinite(window.__game.state.terminalEntries[0].pausedAt)),true);
-  assert.equal(await page.evaluate(()=>{const g=window.__game;g.notify('Status while viewing the chart');return g.state.terminalEntries.at(-1).node.hidden;}),true);
+  const hiddenEntries=await page.evaluate(()=>{const g=window.__game,r=g.state.terminalEntries[0],before=r.count;g.notify('Status while viewing the chart');g.appendTerminalEntry('Input while hidden','input');return {before,after:r.count,hidden:g.state.terminalEntries.slice(-2).every(e=>e.node.hidden)};});
+  assert.equal(hiddenEntries.hidden,true);assert.equal(hiddenEntries.before,hiddenEntries.after);
   await page.waitForTimeout(450);await page.locator('#systemChartToggle').click();
   await page.evaluate(()=>{const g=window.__game;g.showDetails(g.state.selected);g.updateTerminal(performance.now());});
   assert.equal(await page.evaluate(()=>window.__game.state.terminal.finished),false);

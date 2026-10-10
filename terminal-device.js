@@ -29,7 +29,7 @@ function appendTerminalEntry(text,kind='message',{log=true}={}){
   if(record&&!record.finished){
     // A new user entry or visible reply takes precedence over the cosmetic
     // survey typing. Complete that record so the newest entry appears now.
-    if(kind==='input'||canViewOutput())renderRecord(record,record.text.length);else entry.afterRecord=record;
+    if(canViewOutput())renderRecord(record,record.text.length);else entry.afterRecord=record;
   }
   if(kind==='message'){state.terminalNotice=entry.text;if(log)recordLog?.({kind:'action',text:entry.text});}
   renderTerminalHistory();
