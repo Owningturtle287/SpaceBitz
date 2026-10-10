@@ -229,7 +229,7 @@ export async function checkRelease11213(page,engine){
   await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.notify('Course test recorded in the terminal');g.updateUI();});
   assert.equal(await page.locator('#toast').count(),0);assert.match(await page.locator('#targetStatus').innerText(),/Course test recorded/);
   await page.locator('#secondaryAction').click();await settle();
-  // Echo follows the existing typed record, rather than finishing it early.
+  // Complete this fixture before checking plain-text note echoing.
   await page.evaluate(()=>{const g=window.__game;if(g.state.terminal)g.updateTerminal(g.state.terminal.start+15000);});
   await page.locator('#terminalInput').click();await page.locator('#terminalInput').fill('<b>pilot entry</b>');await page.keyboard.press('Enter');
   assert.equal(await page.locator('#terminalInput').inputValue(),'');assert.equal(await page.locator('#terminalMessages b').count(),0);
@@ -259,7 +259,10 @@ export async function checkRelease11213(page,engine){
         const keys=[...document.querySelectorAll('#terminalInputBar button,#terminalKeyboard:not([hidden]) button')];
         const curveClear=phase!=='expanded'&&phase!=='keyboard'||keys.every(button=>{const b=button.getBoundingClientRect();return [[b.left+4,b.top+4],[b.right-4,b.bottom-4]].every(([x,y])=>pointFits(x,y)&&document.elementFromPoint(x,y)?.closest('button')===button);});
         const before=bar.top;screen.scrollTop=screen.scrollHeight;
-        return {deck,card,joy,nav,speed,log,term,travel,lever,cancel,clock,chart,contained:controls.every(inside)&&(phase==='closed'||phase==='expanded'||phase==='keyboard'||inside(card)),clear:controls.every((a,i)=>controls.slice(i+1).every(b=>!overlap(a,b)))&&(phase==='closed'||controls.every(a=>!overlap(a,card))),curveClear,barFixed:before===r('terminalInputBar').top,screenHeight:screen.clientHeight,overflow:screen.scrollWidth-screen.clientWidth,scrollbarGap:card.right-(r('terminalScreen').right),keyboardFits:phase!=='keyboard'||keyboard.bottom<=card.bottom,topOrder:clock.right<=settings.left&&system.right<=chart.left,rounded:parseFloat(getComputedStyle(document.getElementById('flightReadout')).borderTopLeftRadius)>0&&parseFloat(getComputedStyle(document.getElementById('systemChart')).borderTopRightRadius)>0,fonts:['terminalOutput','terminalInput','clock','coordsReadout'].every(id=>getComputedStyle(document.getElementById(id)).fontFamily.includes('SpaceBitz Pixel'))};
+        // The collapsed data can grow above the deck to fit a live distance.
+        // Keep its text inside the device and the target buttons above it.
+        const distance=r('targetDistance'),summary=r('targetStatus'),compactFits=card.left>=0&&card.right<=innerWidth&&card.top>=0&&card.bottom<=deck.bottom&&distance.height>0&&distance.top>=summary.bottom&&distance.bottom<=card.bottom-2&&lever.bottom<=card.top;
+        return {deck,card,joy,nav,speed,log,term,travel,lever,cancel,clock,chart,contained:controls.every(inside)&&(phase!=='compact'||compactFits),clear:controls.every((a,i)=>controls.slice(i+1).every(b=>!overlap(a,b)))&&(phase==='closed'||controls.every(a=>!overlap(a,card))),curveClear,barFixed:before===r('terminalInputBar').top,screenHeight:screen.clientHeight,overflow:screen.scrollWidth-screen.clientWidth,scrollbarGap:card.right-(r('terminalScreen').right),keyboardFits:phase!=='keyboard'||keyboard.bottom<=card.bottom,topOrder:clock.right<=settings.left&&system.right<=chart.left,rounded:parseFloat(getComputedStyle(document.getElementById('flightReadout')).borderTopLeftRadius)>0&&parseFloat(getComputedStyle(document.getElementById('systemChart')).borderTopRightRadius)>0,fonts:['terminalOutput','terminalInput','clock','coordsReadout'].every(id=>getComputedStyle(document.getElementById(id)).fontFamily.includes('SpaceBitz Pixel'))};
       },phase);
       assert.ok(fit.contained&&fit.clear&&fit.topOrder&&fit.rounded&&fit.fonts&&fit.keyboardFits&&fit.curveClear,JSON.stringify({viewport,phase,fit}));
       assert.ok(Math.abs(fit.joy.top-fit.deck.top-6)<.2&&Math.abs(fit.deck.bottom-fit.joy.bottom-6)<.2,'Joystick inset must keep the dashboard curve concentric');

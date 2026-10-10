@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.12.25 — Responsive chart taps and visible terminal output
+- Removed the chart's rectangular orange focus outline, enlarged its arrow and touch target, and made each pointer tap toggle once, including small finger movements and rapid presses during the slide animation. Keyboard focus follows the curved frame.
+- Moved the collapsed terminal's live target distance from its top border into the selected-object data beneath the name and type. The compact device grows just enough to keep those details visible.
+- Made new terminal input and replies snap to the latest output even after scrolling back. Opening the keyboard or changing its layout keeps the newest output above the keys, and new entries no longer wait behind a survey's typing animation.
+
 ## 1.12.24 — Flat chart tab and collapsed terminal distance
 - Removed the chart tab's inner curve and corner tail, retaining its 28px thickness and the screen-fitting top-right outer arc above a straight bottom edge. Enlarged the dropdown arrow.
 - Made the chart and its scrollbar slide smoothly from behind the tab's bottom edge over 640ms. Raised Settings and Center on System by 4px.

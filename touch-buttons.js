@@ -12,7 +12,7 @@ export function enableTouchButtons(root){
   };
   const buttonAt=target=>{
     const button=target?.closest?.('button');
-    return button&&!button.matches('.terminal-resize,.pixel-key,#terminalDelete')?button:null;
+    return button&&!button.matches('.terminal-resize,.pixel-key,#terminalDelete,#systemChartToggle')?button:null;
   };
   const available=button=>button.isConnected&&!button.disabled&&!button.closest('[hidden],[inert]');
   root.addEventListener('pointerdown',()=>{compatibilityTap=null;},{capture:true});
