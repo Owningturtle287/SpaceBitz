@@ -611,6 +611,8 @@ const chartFrameObserver=new ResizeObserver(()=>{
   $('systemChart').style.setProperty('--chart-bottom-width',(edge+1)+'px');
 });
 chartFrameObserver.observe($('systemChartToggle'));
+// Radius changes with viewport height even when the tab width stays fixed.
+chartFrameObserver.observe($('gameViewport'));
 function closeSystemChart(){
   $('systemChart').classList.remove('open');$('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');
 }

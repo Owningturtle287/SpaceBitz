@@ -1,6 +1,12 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.27",
+    "items": [
+      "Recalculate the tab and yellow arrow frame when the game viewport changes size, including height changes that leave the tab width unchanged. Both frames continue to share the current screen-corner radius."
+    ]
+  },
+  {
     "version": "1.12.26",
     "items": [
       "Framed the chart arrow in a broad yellow control on the right of the tab, following the same outer screen corner and straight bottom. Kept its larger touch target and reliable single-tap response.",
