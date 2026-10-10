@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {landscapeSize,gamePoint,viewportSize} from '../viewport.js';
-import {recordTravel} from '../navigation.js';
-import {logCategory} from '../voyage-log.js';
-import {makeSystem,bodyPosition} from '../model.js';
-import {terminalLines} from '../terminal.js';
-import {formatDistance} from '../scale.js';
+import {landscapeSize,gamePoint,viewportSize} from '../src/core/viewport.js';
+import {recordTravel} from '../src/flight/navigation.js';
+import {logCategory} from '../src/journal/voyage-log.js';
+import {makeSystem,bodyPosition} from '../src/universe/model.js';
+import {terminalLines} from '../src/terminal/terminal.js';
+import {formatDistance} from '../src/core/scale.js';
 
 test('landscape layout and pointer coordinates stay coherent after physical rotation',()=>{
   assert.deepEqual(landscapeSize(844,390),{width:844,height:390,rotated:false});

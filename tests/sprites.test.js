@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {astronautFrame,astronautSprite,paintAstronaut,paintShip,WALK_FRAMES,WALK_CYCLE_DISTANCE,walkingLegs} from '../sprites.js';
-import {ASTRONAUT_SCALE} from '../scale.js';
-import {updateMotion} from '../motion.js';
+import {astronautFrame,astronautSprite,paintAstronaut,paintShip,WALK_FRAMES,WALK_CYCLE_DISTANCE,walkingLegs} from '../src/rendering/sprites.js';
+import {ASTRONAUT_SCALE} from '../src/core/scale.js';
+import {updateMotion} from '../src/flight/motion.js';
 
 // A tiny recording canvas checks the renderer's world-to-screen contract without
 // adding browser/runtime dependencies to the game's existing Node test suite.

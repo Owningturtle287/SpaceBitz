@@ -8,10 +8,10 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Explore a living pocket galaxy. Follow real orbital rhythms, find habitable worlds and leave your mark among the stars.">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="icon" type="image/svg+xml" href="./icon.svg">
+  <link rel="icon" type="image/svg+xml" href="./icons/icon.svg">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="preload" href="./assets/spacebitz-pixel.woff" as="font" type="font/woff" crossorigin>
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./styles/index.css">
   <title>SpaceBitz — The small universe</title>
 </head>
 <body>
@@ -126,7 +126,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.12.27</span>
+        <span class="version-chip main-menu-version">v1.12.28</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>
@@ -168,6 +168,6 @@
   </div>
   <audio id="soundtrackAudio" preload="auto" autoplay playsinline loop src="./audio/nostalgic_melody_soft_synth.mp3"></audio>
   </div>
-  <script type="module" src="./main.js"></script>
+  <script type="module" src="./src/main.js"></script>
 </body>
 </html>

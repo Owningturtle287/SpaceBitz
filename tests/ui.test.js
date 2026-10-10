@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const index=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-const main=readFileSync(new URL('../main.js',import.meta.url),'utf8');
-const settings=readFileSync(new URL('../settings.js',import.meta.url),'utf8');
+const main=readFileSync(new URL('../src/main.js',import.meta.url),'utf8');
+const settings=readFileSync(new URL('../src/core/settings.js',import.meta.url),'utf8');
 
 test('flight HUD keeps settings at the top and log beside the terminal in the dashboard',()=>{
   assert.doesNotMatch(index,/class="brand"/);

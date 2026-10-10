@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync} from 'node:fs';
-import {createTerrainSampler} from '../terrain.js';
-import {makeSystem} from '../model.js';
-import {turnToward,updateMotion,navigationTarget} from '../motion.js';
-import {normalizeSettings} from '../settings.js';
+import {createTerrainSampler} from '../src/rendering/terrain.js';
+import {makeSystem} from '../src/universe/model.js';
+import {turnToward,updateMotion,navigationTarget} from '../src/flight/motion.js';
+import {normalizeSettings} from '../src/core/settings.js';
 
 test('terrain is deterministic, continuous at chunk edges, and has a dry landing site',()=>{
   const body=makeSystem('sol').planets[2],a=createTerrainSampler(body),b=createTerrainSampler(body);
@@ -33,13 +33,24 @@ test('old time-speed settings cannot restore accelerated orbits',()=>{
   const value=normalizeSettings({speed:30,volume:4,joyX:-10,controls:'mobile',units:'mi'});
   assert.equal('speed' in value,false);assert.equal(value.volume,1);assert.equal(value.joyX,8);assert.equal(value.controls,'auto');assert.equal('units' in value,false);
 });
-test('every offline shell entry and module dependency exists',()=>{
-  const sw=readFileSync(new URL('../sw.js',import.meta.url),'utf8');
+test('the complete runtime dependency graph is cached at its nested paths',()=>{
+  const root=new URL('../',import.meta.url),sw=readFileSync(new URL('sw.js',root),'utf8');
   const shell=sw.match(/const SHELL=\[([^\]]+)\]/)[1].match(/'([^']+)'/g).map(s=>s.slice(1,-1));
-  for(const path of shell)assert.ok(existsSync(new URL('../'+path,import.meta.url)),path);
-  for(const file of ['main.js','model.js','sprites.js','celestial.js','terrain.js','stellar.js','rendering.js','navigation.js']){
-    const text=readFileSync(new URL('../'+file,import.meta.url),'utf8');
-    for(const match of text.matchAll(/from '(.+?)'/g))assert.ok(shell.includes(match[1]),match[1]+' not cached');
+  const cached=new Set(shell.map(path=>new URL(path,root).href));
+  for(const path of shell)assert.ok(existsSync(new URL(path,root)),path);
+  const visited=new Set(),queue=[new URL('src/main.js',root)];
+  while(queue.length){
+    const file=queue.pop();if(visited.has(file.href))continue;visited.add(file.href);
+    assert.ok(cached.has(file.href),file.href+' not cached');
+    const source=readFileSync(file,'utf8');
+    for(const [,spec] of source.matchAll(/from ['"]([^'"]+)['"]/g)){
+      const dependency=new URL(spec,file);assert.ok(cached.has(dependency.href),dependency.href+' not cached');queue.push(dependency);
+    }
+  }
+  assert.equal(visited.size,shell.filter(path=>path.endsWith('.js')).length,'Unused runtime modules must not be shipped');
+  for(const path of shell.filter(path=>path.endsWith('.css'))){
+    const file=new URL(path,root),source=readFileSync(file,'utf8');
+    for(const [,spec] of source.matchAll(/url\(['"]([^'"]+)['"]\)/g))if(!spec.startsWith('data:'))assert.ok(cached.has(new URL(spec,file).href),spec+' not cached');
   }
 });
 

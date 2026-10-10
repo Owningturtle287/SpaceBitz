@@ -5,12 +5,21 @@ const write=process.argv.includes('--write'),{version}=JSON.parse(await read('pa
 const markdown=await read('CHANGELOG.md');
 const releases=[...markdown.matchAll(/^## (\d+(?:\.\d+)+)[^\n]*\n([\s\S]*?)(?=^## |$(?![\s\S]))/gm)].map(([,version,body])=>({version,items:[...body.matchAll(/^- (.+)$/gm)].map(m=>m[1])}));
 if(releases[0]?.version!==version)throw Error('The latest changelog entry must match package.json.');
-const entries=await readdir(root);
-const modules=entries.filter(name=>name.endsWith('.js')&&name!=='sw.js').sort().map(name=>'./'+name);
-const styles=entries.filter(name=>name.endsWith('.css')).sort().map(name=>'./'+name);
-const shell=['./','./index.html',...modules,...styles,'./assets/spacebitz-pixel.woff','./assets/spacebitz-title.svg','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
+// Discover nested runtime files only; tests and authoring tools never enter the shell.
+async function runtimeFiles(directory,extension){
+  const paths=[];
+  for(const entry of await readdir(new URL(directory+'/',root),{withFileTypes:true})){
+    const path=directory+'/'+entry.name;
+    if(entry.isDirectory())paths.push(...await runtimeFiles(path,extension));
+    else if(entry.isFile()&&entry.name.endsWith(extension))paths.push('./'+path);
+  }
+  return paths.sort();
+}
+const modules=await runtimeFiles('src','.js');
+const styles=await runtimeFiles('styles','.css');
+const shell=['./','./index.html',...modules,...styles,'./assets/spacebitz-pixel.woff','./assets/spacebitz-title.svg','./manifest.webmanifest','./icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 const files=new Map([
-  ['changelog.js','// Generated from CHANGELOG.md by npm run release:sync.\nexport const CHANGELOG='+JSON.stringify(releases,null,2)+';\n'],
+  ['src/generated/changelog.js','// Generated from CHANGELOG.md by npm run release:sync.\nexport const CHANGELOG='+JSON.stringify(releases,null,2)+';\n'],
   ['index.html',(await read('index.html')).replace(/(class="version-chip[^\"]*">)v[\d.]+/,`$1v${version}`)],
   ['sw.js',(await read('sw.js')).replace(/^const CACHE=.*;$/m,`const CACHE='spacebitz-field-v${version}';`).replace(/^const SHELL=.*;$/m,'const SHELL='+JSON.stringify(shell).replaceAll('"',"'")+';')]
 ]);

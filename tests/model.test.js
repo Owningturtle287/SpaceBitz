@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeSystem,starAppearance,habitableZone,periodDays,bodyPosition,visualRadius,advanceDays,rotationAngle,TAU,orbitRadius} from '../model.js';
+import {makeSystem,starAppearance,habitableZone,periodDays,bodyPosition,visualRadius,advanceDays,rotationAngle,TAU,orbitRadius} from '../src/universe/model.js';
 
 test('Sol preserves orbital order, factual diameters and approximate year',()=>{
   const sol=makeSystem('sol');

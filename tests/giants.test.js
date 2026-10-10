@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {makeSystem,bodyPosition,orbitalElements,position,TAU} from '../model.js';
-import {outermostPlanet,systemDrive,systemFitZoom} from '../navigation.js';
-import {giantProfile,giantColor,ringSprites,ringCacheStats} from '../giants.js';
-import {celestialSprite} from '../celestial.js';
+import {makeSystem,bodyPosition,orbitalElements,position,TAU} from '../src/universe/model.js';
+import {outermostPlanet,systemDrive,systemFitZoom} from '../src/flight/navigation.js';
+import {giantProfile,giantColor,ringSprites,ringCacheStats} from '../src/rendering/giants.js';
+import {celestialSprite} from '../src/rendering/celestial.js';
 
 // Image buffers exercise real raster generation without adding runtime libraries.
 globalThis.document={createElement(){const canvas={width:0,height:0,pixels:null};canvas.getContext=()=>({

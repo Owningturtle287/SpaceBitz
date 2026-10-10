@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {importVoyage} from '../saves.js';
-import {SYSTEM_UNIT,CHART_UNIT,ORBIT_DRIVE_LS_PER_SECOND,HYPERDRIVE_AU_PER_SECOND,LIGHT_SECONDS_PER_AU} from '../scale.js';
-import {makeSystem} from '../model.js';
-import {manualSpeed,outermostPlanet} from '../navigation.js';
-import {placeControls,overlaps,locatorPoint,paintLocator} from '../hud.js';
-import {chartBrightness} from '../stellar.js';
+import {importVoyage} from '../src/storage/saves.js';
+import {SYSTEM_UNIT,CHART_UNIT,ORBIT_DRIVE_LS_PER_SECOND,HYPERDRIVE_AU_PER_SECOND,LIGHT_SECONDS_PER_AU} from '../src/core/scale.js';
+import {makeSystem} from '../src/universe/model.js';
+import {manualSpeed,outermostPlanet} from '../src/flight/navigation.js';
+import {placeControls,overlaps,locatorPoint,paintLocator} from '../src/ui/hud.js';
+import {chartBrightness} from '../src/rendering/stellar.js';
 const saved=scene=>({id:'original',name:'Away from home',seed:'voyage',homeSeed:'sol',currentSystem:'home:other',scene,
   ship:{x:931232,y:-22345},surface:{x:90,y:-185},chart:{x:-430,y:990},days:234.75,layoutVersion:3,
   landed:makeSystem('home:other').planets.find(p=>p.solid).id,homePlanet:'sol:Earth',

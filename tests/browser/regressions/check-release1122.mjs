@@ -1,0 +1,93 @@
+import assert from 'node:assert/strict';
+
+export async function checkRelease1122(page,engine){
+  await page.setViewportSize({width:1440,height:900});
+  await page.evaluate(async()=>{
+    const g=window.__game,{makeSystem,visualRadius}=await import('/src/universe/model.js');
+    globalThis.__qaPause=true;g.cancelTarget();g.settings.reducedMotion=false;g.applySettings();
+    g.state.system=makeSystem('sol');g.state.save.currentSystem=g.state.save.homeSeed='sol';
+    g.state.scene='system';g.state.save.homePlanet=null;g.state.autopilot=g.state.centerZoom=g.state.followBody=null;
+    g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.state.panUntil=Infinity;
+    g.updateUI();g.backdrop(0);g.drawSystem(0);
+  });await page.waitForTimeout(350);
+  const opening=await page.evaluate(()=>{
+    const g=window.__game,pocket=document.getElementById('terminalPocket'),log=document.getElementById('journalButton');
+    const before=log.getBoundingClientRect().left;g.select(g.state.system.star);
+    // Capture before waiting for frames: a busy renderer can consume the whole transition.
+    const animation=pocket.getAnimations().find(a=>a.transitionProperty==='height');
+    if(!animation)throw Error('Terminal did not animate upward on selection');
+    const horizontal=log.getAnimations().find(a=>a.transitionProperty==='right');
+    if(!horizontal)throw Error('Log did not slide beside Warp Drive');
+    horizontal.pause();horizontal.currentTime=horizontal.effect.getTiming().duration/2;
+    animation.pause();animation.currentTime=animation.effect.getTiming().duration/2;
+    const result={before,after:log.getBoundingClientRect().left,height:pocket.getBoundingClientRect().height,full:document.getElementById('targetCard').getBoundingClientRect().height};
+    animation.finish();horizontal.finish();return result;
+  });
+  assert.ok(opening.before>1200,JSON.stringify(opening));
+  assert.ok(opening.height>0&&opening.height<opening.full&&opening.after<opening.before,JSON.stringify(opening));
+  await page.waitForTimeout(350);
+  await page.evaluate(()=>window.__game.showDetails(window.__game.state.selected));await page.waitForTimeout(350);
+  await page.evaluate(async()=>{for(const id of ['terminalDock','terminalPocket','journalButton','mapButton'])for(const a of document.getElementById(id).getAnimations())a.finish();await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+  const typing=await page.evaluate(()=>{
+    const g=window.__game,record=g.state.terminal,screen=document.getElementById('terminalScreen');
+    for(let elapsed=0;elapsed<=8000;elapsed+=100){g.updateTerminal(record.start+elapsed);if(record.finished)break;}
+    const from=screen.scrollTop;g.updateTerminal(record.start+10000);
+    return {from,stable:screen.scrollTop,full:record.count===record.text.length};
+  });
+  assert.ok(typing.full&&typing.stable===typing.from,JSON.stringify(typing));
+  const layout=await page.evaluate(()=>{
+    const card=document.getElementById('targetCard'),screen=document.getElementById('terminalScreen'),r=card.getBoundingClientRect(),log=document.getElementById('journalButton').getBoundingClientRect();
+    return {width:r.width,header:screen.getBoundingClientRect().top-r.top,distance:parseFloat(getComputedStyle(document.getElementById('targetDistance')).fontSize),status:parseFloat(getComputedStyle(document.getElementById('targetStatus')).fontSize),overflow:screen.scrollWidth-screen.clientWidth,columns:getComputedStyle(window.__game.state.terminal.node).gridTemplateColumns.split(' ').length,logBottom:log.bottom,top:r.top};
+  });
+  assert.ok(layout.width<=267&&layout.header<64&&layout.distance<layout.status&&layout.overflow<=1&&layout.logBottom<=896,JSON.stringify(layout));assert.equal(layout.columns,2);
+  await page.evaluate(()=>{const g=window.__game;g.positionContext();document.getElementById('contextActions').classList.add('ready');g.backdrop(0);g.drawSystem(0);});
+  await page.screenshot({path:`.qa/${engine}-1122-terminal-desktop.png`});
+  const reading=await page.evaluate(()=>{
+    const g=window.__game,screen=document.getElementById('terminalScreen');g.showDetails(g.state.selected);const record=g.state.terminal;
+    for(let elapsed=0;elapsed<=8000;elapsed+=100){g.updateTerminal(record.start+elapsed);if(record.finished)break;}
+    screen.dispatchEvent(new WheelEvent('wheel',{deltaY:1}));screen.scrollTop=60;g.updateTerminal(record.start+14000);
+    const manual=screen.scrollTop,cancelled=!record.rewind;
+    g.settings.reducedMotion=true;g.applySettings();g.showDetails(g.state.selected);g.updateTerminal(performance.now());g.updateUI();
+    return {manual,cancelled,reducedTop:screen.scrollTop,full:g.state.terminal.count===g.state.terminal.text.length,rewind:!!g.state.terminal.rewind};
+  });assert.ok(reading.manual===60&&reading.cancelled&&reading.reducedTop===60&&reading.full&&!reading.rewind,JSON.stringify(reading));
+  for(const viewport of [{width:844,height:390},{width:667,height:375}]){
+    await page.setViewportSize(viewport);await page.waitForTimeout(100);await page.evaluate(()=>{const g=window.__game;g.updateUI();g.positionContext();g.backdrop(0);g.drawSystem(0);});
+    const fits=await page.evaluate(()=>{const r=document.getElementById('targetCard').getBoundingClientRect(),screen=document.getElementById('terminalScreen'),log=document.getElementById('journalButton').getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,log:log.bottom,overflow:screen.scrollWidth-screen.clientWidth};});
+    const bottom=viewport.height-3;assert.ok(fits.left>=0&&fits.right<=viewport.width&&Math.abs(fits.bottom-bottom)<1&&fits.top>=60&&fits.log<=viewport.height-2&&fits.overflow<=1,JSON.stringify(fits));
+    await page.screenshot({path:`.qa/${engine}-1122-terminal-${viewport.width}.png`});
+  }
+  await page.setViewportSize({width:844,height:390});
+  await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;g.applySettings();});
+  const closing=await page.evaluate(()=>{
+    const g=window.__game,pocket=document.getElementById('terminalPocket'),before=pocket.getBoundingClientRect().height;g.cancelTarget();
+    const animation=pocket.getAnimations().find(a=>a.transitionProperty==='height');
+    if(!animation)throw Error('Terminal did not animate downward on cancellation');
+    animation.pause();animation.currentTime=animation.effect.getTiming().duration/2;
+    const result={before,mid:pocket.getBoundingClientRect().height,cardHidden:document.getElementById('targetCard').hidden};
+    animation.finish();return result;
+  });assert.ok(closing.cardHidden&&closing.mid>0&&closing.mid<closing.before,JSON.stringify(closing));await page.waitForTimeout(350);
+  assert.ok(await page.locator('#journalButton').evaluate(e=>e.getBoundingClientRect().bottom)<=388);
+  const directions=await page.evaluate(()=>{
+    const g=window.__game;g.state.save.ship={x:1e7,y:1e7};g.state.camera={...g.state.save.ship};g.state.zoom=.1;
+    g.state.waypoint={x:1e7+100,y:1e7-100};g.updateUI();g.positionContext();
+    const button=document.getElementById('primaryAction'),cancel=document.getElementById('cancelTravel');
+    if(button.parentElement.parentElement.id!=='travelControls'||button.getBoundingClientRect().width!==48||cancel.getBoundingClientRect().width!==30)throw Error('Travel lever is not docked');
+    if(document.getElementById('contextActions').contains(button))throw Error('Travel still overlays the target');
+    g.backdrop(0);g.drawSystem(0);return {dockedLever:true};
+  });
+  await page.waitForTimeout(350);await page.screenshot({path:`.qa/${engine}-1122-coordinate.png`});
+  const markers=await page.evaluate(async()=>{
+    const g=window.__game,{bodyPosition,visualRadius}=await import('/src/universe/model.js'),ctx=document.getElementById('sky').getContext('2d'),fill=ctx.fill;let count=0;
+    ctx.fill=function(...args){if(this.fillStyle==='#75ee98')count++;return fill.apply(this,args);};
+    try{
+      g.cancelTarget();g.settings.labels=false;g.state.scene='system';g.state.camera={x:0,y:0};g.state.zoom=45/visualRadius(g.state.system.star.diameter);g.state.save.homePlanet=null;g.drawSystem(0);const system=count;
+      g.enterChart();g.cancelTarget();g.state.camera={x:0,y:0};g.state.zoom=1;count=0;g.backdrop(0);g.drawChart(0);const chart=count;
+      g.state.scene='system';const earth=g.state.system.planets.find(b=>b.name==='Earth');g.state.save.homePlanet=earth.id;g.state.camera=bodyPosition(earth,g.state.save.days,g.state.system);g.state.zoom=30/visualRadius(earth.diameter);g.updateUI();count=0;g.backdrop(0);g.drawSystem(0);
+      return {system,chart,planet:count};
+    }finally{ctx.fill=fill;}
+  });assert.deepEqual(markers,{system:0,chart:1,planet:1});
+  await page.waitForTimeout(350);await page.screenshot({path:`.qa/${engine}-1122-home-world.png`});
+  await page.evaluate(()=>{const g=window.__game;g.enterChart();g.cancelTarget();g.state.camera={x:0,y:0};g.backdrop(0);g.drawChart(0);});
+  await page.waitForTimeout(350);await page.screenshot({path:`.qa/${engine}-1122-home-star.png`});
+  return {opening,typing,layout,reading,closing,directions,markers};
+}

@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {recordAction,recordObject,recordEvent,logCategory,restoreLogEntry,LOG_FILTERS} from '../voyage-log.js';
-import {logObjectReference,normalizeLogVisual} from '../log-objects.js';
-import {addTerminalEntry,TERMINAL_HISTORY_LIMIT} from '../terminal-history.js';
-import {normalizeSettings} from '../settings.js';
-import {interfaceFonts} from '../interface-fonts.js';
-import {importVoyage} from '../saves.js';
+import {recordAction,recordObject,recordEvent,logCategory,restoreLogEntry,LOG_FILTERS} from '../src/journal/voyage-log.js';
+import {logObjectReference,normalizeLogVisual} from '../src/journal/log-objects.js';
+import {addTerminalEntry,TERMINAL_HISTORY_LIMIT} from '../src/terminal/terminal-history.js';
+import {normalizeSettings} from '../src/core/settings.js';
+import {interfaceFonts} from '../src/ui/interface-fonts.js';
+import {importVoyage} from '../src/storage/saves.js';
 
 test('log filters retain survey categories across saves and recognize legacy records',()=>{
   assert.deepEqual(LOG_FILTERS.map(([key])=>key),['all','star','planet','moon','item','status']);
