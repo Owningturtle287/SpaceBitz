@@ -8,13 +8,13 @@ export async function checkRelease11223(page,engine){
     await page.waitForFunction(v=>window.__game.state.width===Math.max(v.width,v.height)&&window.__game.state.height===Math.min(v.width,v.height),physical);
     await page.waitForTimeout(80);
     const corner=await page.evaluate(async()=>{
-      const {viewport,gameRect}=await import('/src/core/viewport.js'),button=document.getElementById('systemChartToggle'),r=parseFloat(getComputedStyle(button).borderTopRightRadius),box=gameRect(button),path=document.getElementById('systemChartFramePath'),w=button.clientWidth,t=parseFloat(getComputedStyle(document.getElementById('systemChart')).getPropertyValue('--chart-thickness'));
+      const {viewport,gameRect}=await import('/src/core/viewport.js'),button=document.getElementById('systemChartToggle'),chart=document.getElementById('systemChart'),r=parseFloat(getComputedStyle(chart).borderTopLeftRadius),box=gameRect(chart),tab=gameRect(button),path=document.getElementById('systemChartFramePath'),w=button.clientWidth,h=box.height,t=button.clientHeight;
       const inside=(x,y)=>path.isPointInFill(new DOMPoint(x,y));
-      const copy=document.querySelector('.mission-toggle-copy'),arrow=document.querySelector('.mission-chevron'),screenRadius=parseFloat(getComputedStyle(document.getElementById('dashboardBase')).borderBottomRightRadius);
-      return {radius:r,center:[box.right-r,box.top+r],screenCenter:[viewport.width-screenRadius,screenRadius],insets:[viewport.width-box.right,box.top],thickness:t,textHeight:copy.offsetHeight,straightBand:inside(12,t/2)&&!inside(12,t+3),arcBand:inside(w-r+(r-3)/Math.SQRT2,r-(r-3)/Math.SQRT2)&&!inside(w-r+(r-t-3)/Math.SQRT2,r-(r-t-3)/Math.SQRT2),flatBottom:Math.abs(path.getBBox().y+path.getBBox().height-(t-1))<.02&&[12,w-r,w-3].every(x=>!inside(x,t+2)),textFits:copy.offsetWidth>0&&copy.offsetLeft+copy.offsetWidth<=arrow.offsetLeft};
+      const copy=document.querySelector('.mission-toggle-copy'),arrow=document.querySelector('.mission-chevron'),screenRadius=parseFloat(getComputedStyle(document.getElementById('dashboardBase')).borderBottomLeftRadius);
+      return {radius:r,center:[box.left+r,box.top+r],screenCenter:[screenRadius,screenRadius],insets:[box.left,box.top],thickness:t,textHeight:copy.offsetHeight,straightBand:inside(12,h-t/2)&&!inside(12,h+3),arcBand:inside(r-(r-3)/Math.SQRT2,r-(r-3)/Math.SQRT2)&&!inside(r-(r+3)/Math.SQRT2,r-(r+3)/Math.SQRT2),flatBottom:Math.abs(path.getBBox().y+path.getBBox().height-(h-1))<.02&&[12,w-r,w-3].every(x=>!inside(x,h+2)),textFits:copy.offsetWidth>0&&copy.offsetLeft+copy.offsetWidth<=arrow.offsetLeft,readoutAbove:gameRect(document.getElementById('flightReadout')).bottom<=tab.top};
     });
     assert.ok(corner.center.every((n,i)=>Math.abs(n-corner.screenCenter[i])<.1),JSON.stringify(corner));
-    assert.deepEqual(corner.insets,[3,3]);assert.equal(corner.thickness,28);assert.equal(corner.textHeight,28);assert.ok(corner.straightBand&&corner.arcBand&&corner.flatBottom&&corner.textFits,JSON.stringify(corner));corners.push(corner);
+    assert.deepEqual(corner.insets,[3,3]);assert.equal(corner.thickness,28);assert.equal(corner.textHeight,28);assert.ok(corner.straightBand&&corner.arcBand&&corner.flatBottom&&corner.textFits&&corner.readoutAbove,JSON.stringify(corner));corners.push(corner);
   }
   await page.setViewportSize({width:844,height:390});
   await page.locator('#systemChartToggle').click();

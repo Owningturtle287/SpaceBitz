@@ -135,4 +135,4 @@ Version 1.12.23 refines panel motion: the Log returns to its button over 720ms w
 
 Version 1.12.24 gives the System Chart tab a flat bottom and only an outer top-right curve, while retaining its thin height. The larger arrow opens a chart that slides out from the tab's bottom edge. Settings and Center on System sit slightly higher. A collapsed terminal now shows the selected target's live distance beside Open Terminal.
 
-Version 1.12.29 adds the selected object’s name and type before its live ship distance in the expanded terminal’s fixed readout, with wrapping that keeps the full identity inside narrow devices and recent output visible above the keyboard.
+Version 1.12.30 combines the clock, date, coordinates and system chart into one left-side flight console, with a screen-fitting top-left curve and the same framed arrow and fluid dropdown.

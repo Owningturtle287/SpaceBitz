@@ -16,29 +16,27 @@
 #targetCard:has(.terminal-resize:not([hidden])) .terminal-head{padding-left:28px;padding-top:10px}
 .travel-controls .context-action-row{flex-direction:column-reverse;align-items:center;}
 
-/* Thin framed panels follow the same screen-corner curve as the dashboard. */
+/* One flight console owns the screen-matching top-left curve and chart. */
 .topbar{padding:3px 3px 0;gap:12px;align-items:flex-start}
-.flight-instruments{display:flex;align-items:center;gap:10px;min-width:0;pointer-events:none}
-.flight-instruments .utility-stack{pointer-events:auto;flex:none}
-.topbar .flight-readout{flex:none;width:calc(180px + max(0px,var(--safe-left,0px) - 20px));max-width:calc(calc(var(--view-width) * 0.48) - 50px);min-height:0;gap:1px;padding:10px 8px 4px max(20px,var(--safe-left,0px));margin:0;justify-items:start;border:2px solid #81979d;border-top-left-radius:calc(var(--dashboard-corner) - 3px);clip-path:none;box-shadow:inset 1px 1px #bfd0cb,inset -1px -1px #293f4e;background:rgb(16 30 50 / 25%);overflow:hidden}
-.topbar .flight-readout #clock{display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:10px;line-height:1.6;letter-spacing:0;text-align:left}
+.flight-instruments{display:flex;align-items:flex-start;gap:10px;min-width:0;pointer-events:none}
+.flight-instruments .utility-stack{display:flex;align-items:center;gap:8px;margin-top:calc(10px + var(--safe-top,0px));pointer-events:auto;flex:none}
+.topbar .top-system-chart{--chart-radius:calc(var(--dashboard-corner) - 3px);--chart-thickness:28px;isolation:isolate;align-self:flex-start;width:clamp(218px,calc(var(--view-width) * .34),300px);max-width:calc(var(--view-width) - 100px);margin:0;border:0;border-top-left-radius:var(--chart-radius);border-top-right-radius:0;clip-path:none;box-shadow:none;background:none}
+.topbar .flight-readout{width:100%;max-width:none;min-height:calc(var(--chart-radius) - var(--chart-thickness) + 2px);gap:1px;padding:max(10px,var(--safe-top,0px)) 8px 4px max(20px,var(--safe-left,0px));margin:0;justify-items:start;border:0;border-bottom:1px solid #81979d;border-radius:0;clip-path:none;box-shadow:none;background:none;overflow-wrap:anywhere}
+.topbar .flight-readout #clock{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;white-space:normal;font-size:10px;line-height:1.6;letter-spacing:0;text-align:left}
+#clockTime,#clockDate{white-space:nowrap}
 .topbar .flight-readout #clockDate{font-size:8px}
-.topbar .flight-readout #telemetry{flex-direction:column;align-items:flex-start;gap:1px;font-size:9px;line-height:1.4;overflow-wrap:anywhere;white-space:pre-line;text-align:left}
-.top-actions{margin-left:auto;gap:0}
-.top-actions .mission-tools{display:flex;align-items:center;gap:10px;width:auto;flex:none;min-height:calc(var(--dashboard-corner) - 3px)}
-.topbar .top-system-chart{--chart-radius:calc(var(--dashboard-corner) - 3px);--chart-thickness:28px;align-self:flex-start;width:202px;max-width:calc(var(--view-width) * 0.32);margin:0;border:0;border-top-right-radius:var(--chart-radius);clip-path:none;box-shadow:none;background:none}
-.top-system-chart .mission-toggle{position:relative;height:var(--chart-thickness);min-height:var(--chart-thickness);align-items:flex-start;border:0;box-shadow:none;clip-path:none;background:none;padding:0 var(--chart-control-padding,70px) 0 10px;border-top-right-radius:inherit}
-.mission-tab-frame{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.topbar .flight-readout #telemetry{width:100%;flex-direction:column;align-items:flex-start;gap:1px;font-size:9px;line-height:1.4;overflow-wrap:anywhere;white-space:pre-line;text-align:left}
+.top-system-chart .mission-toggle{position:relative;height:var(--chart-thickness);min-height:var(--chart-thickness);align-items:flex-start;border:0;box-shadow:none;clip-path:none;background:none;padding:0 var(--chart-control-padding,62px) 0 10px;border-radius:0}
+.mission-tab-frame{position:absolute;left:0;right:0;bottom:0;width:100%;height:var(--chart-frame-height,100%);z-index:-1;pointer-events:none;overflow:visible}
 .mission-tab-frame path{fill:rgb(16 30 50 / 25%);stroke:#81979d;stroke-width:2;stroke-linejoin:miter}
 .top-system-chart .mission-toggle-copy,.top-system-chart .mission-chevron{position:relative;display:flex;align-items:center;height:var(--chart-thickness)}
 .top-system-chart .mission-toggle-copy{flex:1;min-width:0}
-.top-system-chart .mission-chevron{position:absolute;left:calc(var(--chart-control-left,132px) + 1px);top:0;justify-content:center;width:40px;pointer-events:none}
-.top-system-chart .mission-toggle strong{font-size:10px}
-.top-system-chart .mission-toggle .eyebrow{font-size:7px;white-space:normal}
+.top-system-chart .mission-chevron{position:absolute;left:calc(var(--chart-control-left,156px) + 7px);top:0;justify-content:center;width:40px;pointer-events:none}
+.top-system-chart .mission-toggle strong{font-size:10px;line-height:1.3;white-space:normal;overflow-wrap:anywhere;text-overflow:clip}
 .top-system-chart .mission-chevron{font-size:26px;line-height:1}
-.top-system-chart .mission-reveal{position:absolute;left:0;top:calc(100% - 1px);width:var(--chart-bottom-width,100%);overflow:hidden}
+.top-system-chart .mission-reveal{position:absolute;left:0;top:calc(100% - 1px);width:100%;overflow:hidden}
 .mission-drop-sheet{position:relative}
-.top-system-chart .mission-content{position:relative;left:0;right:auto;top:0;width:100%}
+.top-system-chart .mission-content{position:relative;left:0;right:auto;top:0;width:100%;max-height:min(390px,max(44px,calc(var(--view-height) - var(--chart-frame-height,90px) - var(--dashboard-height) - var(--dashboard-safe-bottom) - 18px)))}
 #settingsOpen,#systemFit.system-center{transform:translateY(-4px)}
 #settingsOpen{width:32px;height:32px;min-width:32px;min-height:32px}
 

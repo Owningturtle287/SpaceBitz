@@ -21,24 +21,11 @@
   <div id="app" hidden>
     <header class="topbar">
       <div class="flight-instruments">
-        <div id="flightReadout" class="flight-readout glass">
+      <aside class="mission glass mission-dropdown top-system-chart" id="systemChart" aria-label="Flight information and system chart">
+        <div id="flightReadout" class="flight-readout" aria-live="off">
           <span id="clock"><span id="clockTime">00:00</span><span id="clockDate">01 JAN 2026</span></span>
           <div id="telemetry" hidden><span id="coordsReadout" hidden></span><span id="fpsReadout" hidden></span><span id="speedReadout" hidden></span></div>
         </div>
-        <div class="utility-stack">
-          <button id="settingsOpen" class="icon-button settings-button utility-button" aria-label="Open settings"><span class="settings-glyph" aria-hidden="true"></span><span class="utility-label">SET</span></button>
-        </div>
-      </div>
-      <div class="top-actions">
-      <div class="mission-tools">
-      <button id="systemFit" class="icon-button system-center" type="button" aria-label="Center on system" title="Center on system" hidden>
-        <svg viewBox="0 0 28 28" width="26" height="26" aria-hidden="true">
-          <path fill="none" stroke="#8edaff" stroke-width="1.5" d="M2 9V3h6m12 0h6v6M2 19v6h6m12 0h6v-6"/>
-          <ellipse cx="14" cy="14" rx="10" ry="5" transform="rotate(-30 14 14)" fill="none" stroke="#93b7d0" stroke-width="1.5"/>
-          <path fill="#ffda85" d="M12 10h4v2h2v4h-2v2h-4v-2h-2v-4h2z"/><path fill="#c4f5ff" d="M21 8h3v3h-3z"/>
-        </svg>
-      </button>
-      <aside class="mission glass mission-dropdown top-system-chart" id="systemChart" aria-live="polite">
         <button id="systemChartToggle" class="mission-toggle" type="button" aria-expanded="false" aria-controls="systemChartContent">
           <svg id="systemChartFrame" class="mission-tab-frame" aria-hidden="true"><path id="systemChartFramePath"/><path id="systemChartButtonPath" class="mission-button-frame"/></svg>
           <span class="mission-toggle-copy"><strong id="placeLabel">Sol</strong></span>
@@ -53,8 +40,16 @@
         </div>
         </div></div>
       </aside>
-      </div>
-
+        <div class="utility-stack">
+          <button id="settingsOpen" class="icon-button settings-button utility-button" aria-label="Open settings"><span class="settings-glyph" aria-hidden="true"></span><span class="utility-label">SET</span></button>
+          <button id="systemFit" class="icon-button system-center" type="button" aria-label="Center on system" title="Center on system" hidden>
+        <svg viewBox="0 0 28 28" width="26" height="26" aria-hidden="true">
+          <path fill="none" stroke="#8edaff" stroke-width="1.5" d="M2 9V3h6m12 0h6v6M2 19v6h6m12 0h6v-6"/>
+          <ellipse cx="14" cy="14" rx="10" ry="5" transform="rotate(-30 14 14)" fill="none" stroke="#93b7d0" stroke-width="1.5"/>
+          <path fill="#ffda85" d="M12 10h4v2h2v4h-2v2h-4v-2h-2v-4h2z"/><path fill="#c4f5ff" d="M21 8h3v3h-3z"/>
+        </svg>
+      </button>
+        </div>
       </div>
     </header>
     <div id="dashboardBase" class="dashboard-metal dashboard-base" aria-hidden="true"></div>
@@ -126,7 +121,7 @@
   <div id="welcome" class="overlay visible" role="dialog" aria-modal="true" aria-labelledby="welcomeTitle">
     <div class="welcome-card glass">
       <section id="mainMenuStage" class="menu-stage main-menu-stage">
-        <span class="version-chip main-menu-version">v1.12.29</span>
+        <span class="version-chip main-menu-version">v1.12.30</span>
         <div id="welcomeTitle" class="hero-logo" role="heading" aria-level="1" aria-label="SpaceBitz">
           <img class="hero-wordmark" src="./assets/spacebitz-title.svg" alt="" width="696" height="156" aria-hidden="true">
         </div>

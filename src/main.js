@@ -595,23 +595,22 @@ $('homeButton').addEventListener('pointercancel',finishCenterDrag);
 $('homeButton').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')centerSuppressClick=false;});
 $('journalButton').onclick=showJournal;
 $('zoneToggle').onclick=()=>{settings.zone=!settings.zone;saveSettings();updateUI();};
-// Keep the screen's outer corner arc, cropped at the thin tab's flat bottom.
-// A plain rounded rectangle would shrink that radius to the tab's height.
+// The readout and chart share one top-left screen curve. The thin tab and
+// yellow arrow remain below the clock/coordinates, above the slide-down sheet.
 const chartFrameObserver=new ResizeObserver(()=>{
-  const button=$('systemChartToggle'),style=getComputedStyle(button),w=button.clientWidth,r=parseFloat(style.borderTopRightRadius),t=parseFloat(getComputedStyle($('systemChart')).getPropertyValue('--chart-thickness'));
-  if(!w||!r)return;
-  const edge=w-r+Math.sqrt(Math.max(0,(r-1)**2-(r-t+1)**2));
-  $('systemChartFrame').setAttribute('viewBox',`0 0 ${w} ${t}`);
-  $('systemChartFramePath').setAttribute('d',`M1 1 H${w-r} A${r-1} ${r-1} 0 0 1 ${edge} ${t-1} H1 Z`);
-  // Frame a broad arrow control with the exact same outer arc as the tab.
-  const controlLeft=Math.max(10,w-r-18);
-  $('systemChartButtonPath').setAttribute('d',`M${controlLeft} 1 H${w-r} A${r-1} ${r-1} 0 0 1 ${edge} ${t-1} H${controlLeft} Z`);
+  const chart=$('systemChart'),button=$('systemChartToggle'),w=button.clientWidth,r=parseFloat(getComputedStyle(chart).borderTopLeftRadius),t=button.clientHeight,readout=gameRect($('flightReadout')).height,h=readout+t;
+  if(!w||!r||!h)return;
+  $('systemChartFrame').setAttribute('viewBox',`0 0 ${w} ${h}`);
+  $('systemChartFramePath').setAttribute('d',`M${r} 1 H${w-1} V${h-1} H1 V${r} A${r-1} ${r-1} 0 0 1 ${r} 1 Z`);
+  const controlLeft=Math.max(10,w-56);
+  $('systemChartButtonPath').setAttribute('d',`M${controlLeft} ${readout+1} H${w-1} V${h-1} H${controlLeft} Z`);
   button.style.setProperty('--chart-control-left',controlLeft+'px');
   button.style.setProperty('--chart-control-padding',(w-controlLeft+6)+'px');
-  $('systemChart').style.setProperty('--chart-bottom-width',(edge+1)+'px');
+  chart.style.setProperty('--chart-frame-height',h+'px');
 });
 chartFrameObserver.observe($('systemChartToggle'));
-// Radius changes with viewport height even when the tab width stays fixed.
+chartFrameObserver.observe($('flightReadout'));
+// Radius changes with viewport height even when the console width stays fixed.
 chartFrameObserver.observe($('gameViewport'));
 function closeSystemChart(){
   $('systemChart').classList.remove('open');$('systemChartContent').hidden=true;$('systemChartToggle').setAttribute('aria-expanded','false');

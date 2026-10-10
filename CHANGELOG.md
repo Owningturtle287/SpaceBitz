@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.30 — Integrated left flight console
+- Combined the clock, date, coordinates and system chart in one left-side console with a shared screen-fitting top-left curve. The chart tab stays beneath the readout, with its framed yellow arrow and fluid slide from the tab’s bottom edge.
+- Kept telemetry readable with wrapping and bounded the dropdown to the space above the dashboard. Settings and Center on System sit beside the console.
+
 ## 1.12.29 — Complete fixed terminal readout
 - Show the selected object’s name and type before its live ship distance in the expanded terminal’s fixed data strip. The full identity wraps within the device at minimum widths, with compact readout fonts that preserve room for recent output and the keyboard.
 

@@ -65,7 +65,7 @@ export async function checkRelease11216(page,engine){
     await page.screenshot({path:`.qa/${engine}-11216-terminal-${viewport.width}.png`});
     assert.equal(layout.paddingTop,'0px');assert.equal(layout.arrowFrame,32);
     for(const b of layout.buttons){assert.ok(Math.abs(b.center-layout.headCenter)<=2,JSON.stringify({viewport,layout}));assert.equal(b.hit,b.id,JSON.stringify({viewport,layout}));}
-    assert.ok(layout.readout.width<=180&&layout.readout.left<=4&&!layout.readout.overflow,JSON.stringify(layout));assert.equal(layout.readout.clockFont,'10px');assert.equal(layout.readout.coordsFont,'9px');
+    assert.ok(layout.readout.width<=300&&layout.readout.left<=4&&!layout.readout.overflow,JSON.stringify(layout));assert.equal(layout.readout.clockFont,'10px');assert.equal(layout.readout.coordsFont,'9px');
     const oldWidth=await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().width);
     const grip=await page.locator('#terminalResizeLeft').boundingBox();await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await page.mouse.down();await page.mouse.move(grip.x+grip.width/2-12,grip.y+grip.height/2,{steps:4});await page.mouse.up();
     assert.ok(await page.locator('#targetCard').evaluate(e=>e.getBoundingClientRect().width)>oldWidth,'Smaller arrow could not resize by dragging');

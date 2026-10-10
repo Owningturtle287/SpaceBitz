@@ -13,11 +13,11 @@ export async function checkRelease11226(page,engine){
     await page.waitForFunction(v=>window.__game.state.width===Math.max(v.width,v.height)&&window.__game.state.height===Math.min(v.width,v.height),physical);
     await settle();
     const control=await page.evaluate(async()=>{
-      const {viewport:v,gameRect}=await import('/src/core/viewport.js'),button=document.getElementById('systemChartToggle'),tab=gameRect(button),frame=document.getElementById('systemChartFramePath'),path=document.getElementById('systemChartButtonPath'),box=path.getBBox(),outer=frame.getBBox(),r=parseFloat(getComputedStyle(button).borderTopRightRadius),w=button.clientWidth,t=button.clientHeight;
-      const points=[{x:box.x+8,y:t/2},{x:w-r+Math.sqrt((r-1)**2-(r-t+6)**2)-6,y:t-6}];
-      return {radius:r,arcRadius:Number(path.getAttribute('d').match(/ A([\d.]+)/)[1]),width:box.width,height:box.height,stroke:getComputedStyle(path).stroke,sharedArc:path.getAttribute('d').split(' A')[1].split(' H')[0]===frame.getAttribute('d').split(' A')[1].split(' H')[0],rightError:Math.abs(box.x+box.width-outer.x-outer.width),arrowInside:path.isPointInFill(new DOMPoint(document.querySelector('.mission-chevron').offsetLeft+20,t/2)),points:points.map(p=>{const x=tab.left+p.x,y=tab.top+p.y;return v.rotated?{x:v.physicalWidth-y+v.left,y:x+v.top}:{x:x+v.left,y:y+v.top};})};
+      const {viewport:v,gameRect}=await import('/src/core/viewport.js'),button=document.getElementById('systemChartToggle'),tab=gameRect(button),chart=document.getElementById('systemChart'),frame=document.getElementById('systemChartFramePath'),path=document.getElementById('systemChartButtonPath'),box=path.getBBox(),outer=frame.getBBox(),r=parseFloat(getComputedStyle(chart).borderTopLeftRadius),t=button.clientHeight,readout=gameRect(document.getElementById('flightReadout')).height;
+      const points=[{x:box.x+8,y:t/2},{x:box.x+box.width-8,y:t-6}];
+      return {radius:r,arcRadius:Number(frame.getAttribute('d').match(/ A([\d.]+)/)[1]),width:box.width,height:box.height,stroke:getComputedStyle(path).stroke,sharedEdge:Math.abs(box.x+box.width-outer.x-outer.width)<.02&&Math.abs(box.y+box.height-outer.y-outer.height)<.02,rightError:Math.abs(box.x+box.width-outer.x-outer.width),arrowInside:path.isPointInFill(new DOMPoint(document.querySelector('.mission-chevron').offsetLeft+20,readout+t/2)),points:points.map(p=>{const x=tab.left+p.x,y=tab.top+p.y;return v.rotated?{x:v.physicalWidth-y+v.left,y:x+v.top}:{x:x+v.left,y:y+v.top};})};
     });
-    assert.ok(control.width>=44&&Math.abs(control.height-26)<.02&&control.sharedArc&&Math.abs(control.arcRadius-control.radius+1)<.02&&control.rightError<.02&&control.arrowInside,JSON.stringify({physical,control}));assert.equal(control.stroke,'rgb(239, 200, 90)');
+    assert.ok(control.width>=44&&Math.abs(control.height-26)<.02&&control.sharedEdge&&Math.abs(control.arcRadius-control.radius+1)<.02&&control.rightError<.02&&control.arrowInside,JSON.stringify({physical,control}));assert.equal(control.stroke,'rgb(239, 200, 90)');
     for(const p of control.points){await page.touchscreen.tap(p.x,p.y);assert.equal(await page.locator('#systemChartToggle').getAttribute('aria-expanded'),'true');await page.touchscreen.tap(p.x,p.y);assert.equal(await page.locator('#systemChartToggle').getAttribute('aria-expanded'),'false');}
     if(physical.width===844)await capture('chart-button');
     await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.applySettings();g.select({...g.state.system.planets.find(p=>p.name==='Earth'),name:'Rhea-851 I'});g.updateUI();});await settle();
@@ -57,5 +57,5 @@ export async function checkRelease11226(page,engine){
     assert.ok(Math.abs(result.topGap)<.2&&result.dataFits,JSON.stringify({dashboardHeight,result}));preferences.push({dashboardHeight,...result});
   }
   await page.evaluate(()=>document.documentElement.style.removeProperty('--dashboard-safe-bottom'));
-  return {layouts,motions,preferences,curveFittedButton:true,flushTerminal:true,horizontalMotion:true};
+  return {layouts,motions,preferences,sharedFrameButton:true,flushTerminal:true,horizontalMotion:true};
 }
