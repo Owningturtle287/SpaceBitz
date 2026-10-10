@@ -43,7 +43,7 @@ export async function checkRelease11225(page,engine){
     await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=true;g.settings.terminalResizeHandles=true;g.state.terminalSize=null;g.applySettings();g.clearTerminal();g.select(g.state.system.planets.find(p=>p.name==='Earth'));g.showDetails(g.state.selected);g.updateTerminal(performance.now());for(let i=0;i<15;i++)g.notify('Earlier reply '+i);});
     await settle();
     await page.locator('#secondaryAction').click();await settle();
-    const distance=await page.evaluate(async()=>{const {gameRect}=await import('/viewport.js'),e=document.getElementById('targetDistance'),r=gameRect(e),name=gameRect(document.getElementById('targetStatus')),card=gameRect(document.getElementById('targetCard'));return {text:e.textContent,inData:e.parentElement.classList.contains('terminal-meta'),visible:!e.hidden&&r.height>0,clear:r.top>=name.bottom&&r.bottom<=card.bottom-2};});
+    const distance=await page.evaluate(async()=>{const {gameRect}=await import('/viewport.js'),e=document.getElementById('targetDistance'),r=gameRect(e),name=gameRect(document.getElementById('targetStatus')),card=gameRect(document.getElementById('targetCard'));return {text:e.textContent,inData:e.parentElement.classList.contains('terminal-meta'),visible:!e.hidden&&r.height>0,clear:r.top>=name.bottom&&r.bottom<=card.bottom-2&&gameRect(document.getElementById('primaryAction')).bottom<=card.top};});
     assert.match(distance.text,/AWAY$/);assert.ok(distance.inData&&distance.visible&&distance.clear,JSON.stringify({physical,distance}));
     if(physical.width===844)await capture('distance');
     await page.locator('#secondaryAction').click();await settle();
