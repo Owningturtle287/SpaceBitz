@@ -15,10 +15,9 @@
 #terminalClear:active{background:#386d55}
 #targetCard .terminal-status{font:var(--terminal-header-font)/1.45 var(--pixel);color:#b6ffc7;overflow-wrap:anywhere}
 #targetCard:not(.expanded) .terminal-meta{display:block;margin:1px 0 0;padding:0}
-#targetCard:not(.expanded) .terminal-status{-webkit-line-clamp:2}
-#targetCard.terminal:not(.expanded){height:auto;min-height:calc(var(--terminal-compact-height) + var(--dashboard-safe-bottom) - 1px)}
-.terminal-dock:not(.terminal-expanded) .travel-controls{bottom:calc(max(var(--dashboard-row-height),var(--terminal-height,0px)) + 4px)}
-#targetCard:not(.expanded) .target-distance{margin:3px 0 0;padding-right:calc((var(--dashboard-corner) - 3px)/2);font:var(--terminal-header-font)/1.45 var(--pixel);text-align:left}
+#targetCard:not(.expanded) .terminal-status{-webkit-line-clamp:2;font:min(var(--terminal-header-font),8px)/1.25 var(--pixel)}
+/* Compact data fits the fixed dashboard row; controls keep a constant vertical anchor. */
+#targetCard:not(.expanded) .target-distance{margin:1px 0 0;padding-right:calc((var(--dashboard-corner) - 3px)/2);font:min(var(--terminal-header-font),7px)/1.3 var(--pixel);text-align:left}
 #targetCard.expanded .terminal-status{display:none}
 #targetCard.expanded .terminal-meta{justify-content:flex-end;margin:1px 0 0}
 #targetCard .target-distance{font:var(--terminal-label-font)/1.5 var(--pixel)}

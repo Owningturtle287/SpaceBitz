@@ -1,6 +1,14 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.26",
+    "items": [
+      "Framed the chart arrow in a broad yellow control on the right of the tab, following the same outer screen corner and straight bottom. Kept its larger touch target and reliable single-tap response.",
+      "Fixed the closed terminal to the dashboard row height, with compact name, type and distance text inside its data area.",
+      "Kept the selected-target X, lever and focus controls at a constant vertical position while the terminal opens or closes, so they slide smoothly sideways without jumping."
+    ]
+  },
+  {
     "version": "1.12.25",
     "items": [
       "Removed the chart's rectangular orange focus outline, enlarged its arrow and touch target, and made each pointer tap toggle once, including small finger movements and rapid presses during the slide animation. Keyboard focus follows the curved frame.",
