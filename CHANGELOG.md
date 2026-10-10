@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.12.27 — Chart corner follows viewport resizing
+- Recalculate the tab and yellow arrow frame when the game viewport changes size, including height changes that leave the tab width unchanged. Both frames continue to share the current screen-corner radius.
+
 ## 1.12.26 — Framed chart control and flush terminal
 - Framed the chart arrow in a broad yellow control on the right of the tab, following the same outer screen corner and straight bottom. Kept its larger touch target and reliable single-tap response.
 - Fixed the closed terminal to the dashboard row height, with compact name, type and distance text inside its data area.
