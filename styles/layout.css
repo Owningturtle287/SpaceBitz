@@ -4,7 +4,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 #gameViewport{position:fixed;left:0;top:0;width:var(--view-width);height:var(--view-height);overflow:hidden;transform-origin:0 0;transform:translate(0,0);transition:none;container:game / size;isolation:isolate}
 #app{position:absolute;inset:0;pointer-events:none}
 #joystick,.navigation-controls{pointer-events:auto}
-.topbar .flight-readout{width:calc(154px + max(0px,var(--safe-left) - 20px));padding-right:6px}
 
 /* Full-screen surfaces cover the game, including their curved corners. */
 #modal:has(.settings-content){padding:0;overflow:hidden;background:#101e32}
@@ -37,7 +36,7 @@ body:has(#homeButton[data-center-position=above]) #joystick{height:calc(var(--da
 #flightSpeed::-moz-range-track{height:var(--speed-track-height)}
 #flightSpeed::-moz-range-thumb{height:calc(var(--speed-track-height) - 4px)}
 
-.mission-content{transform-origin:top right}
+.mission-content{transform-origin:top left}
 .mission-dropdown.open .mission-drop-sheet{animation:chart-unfold .64s cubic-bezier(.4,0,.2,1)}
 .mission-chevron{transition:transform .64s cubic-bezier(.4,0,.2,1)}
 @keyframes chart-unfold{from{transform:translateY(-100%)}to{transform:translateY(0)}}

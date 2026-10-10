@@ -18,6 +18,7 @@ import {checkRelease11223} from './regressions/check-release11223.mjs';
 import {checkRelease11225} from './regressions/check-release11225.mjs';
 import {checkRelease11226} from './regressions/check-release11226.mjs';
 import {checkRelease11229} from './regressions/check-release11229.mjs';
+import {checkRelease11230} from './regressions/check-release11230.mjs';
 import {checkRelease11212} from './regressions/check-release11212.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -83,6 +84,9 @@ try{
   // Exercise the current device controls before the longer renderer soak, then
   // restore the exact launch fixture so the simulation checks stay independent.
   const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
+  const release11230=await checkRelease11230(page,engine);
+  console.log('11230 integrated left console checks',JSON.stringify(release11230));
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11229=await checkRelease11229(page,engine);
   console.log('11229 complete fixed terminal readout checks',JSON.stringify(release11229));
   await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
@@ -152,7 +156,7 @@ try{
   await page.screenshot({path:`.qa/${engine}-system-fit.png`});
   await page.evaluate(()=>{const g=window.__game;g.state.panUntil=0;g.state.zoom=.95;g.state.camera={...g.state.save.ship};});
   const controls=await page.evaluate(()=>{
-    const alpha=id=>id==='systemChart'?getComputedStyle(document.getElementById('systemChartFramePath')).fill:getComputedStyle(document.getElementById(id)).backgroundColor;
+    const alpha=id=>['systemChart','flightReadout'].includes(id)?getComputedStyle(document.getElementById('systemChartFramePath')).fill:getComputedStyle(document.getElementById(id)).backgroundColor;
     const rect=id=>{const r=document.getElementById(id).getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,top:r.top,width:r.width,height:r.height};};
     return {panels:['systemChart','flightReadout','joystick','homeButton','mapButton'].map(alpha),thumb:alpha('stick'),joy:rect('joystick'),center:rect('homeButton'),warp:rect('mapButton'),target:rect('targetCard')};
   });
@@ -573,5 +577,5 @@ try{
   const release1122=await checkRelease1122(page,engine);
   const release1123=await checkRelease1123(page,engine);
   const release11212=await checkRelease11212(page,engine);
-  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,release11216,release11217,release11218,release11219,release11220,release11221,release11222,release11223,release11225,release11226,release11229,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
+  assert.deepEqual(errors,[]);console.log(JSON.stringify({engine,startupMs,initial,release112,release1121,release1122,release1123,release11212,release11213,release11214,release11215,release11216,release11217,release11218,release11219,release11220,release11221,release11222,release11223,release11225,release11226,release11229,release11230,reports:results,giants,stellar,starsV2,v2Soak,barren,weather,soak},null,2));
 }finally{await browser.close();server.close();}
