@@ -232,7 +232,9 @@ function terminalLimits(){
   const joyRect=gameRect($('joystick'));
   const reserve=Math.max(370,joyRect.width?joyRect.right+272:0);
   const maxWidth=Math.max(200,viewport.width-reserve);
-  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,viewport.height-88)};
+  // The keyboard may use the space below the top HUD controls.
+  const topReserve=$('terminalKeyboard').hidden?88:48;
+  return {minWidth:Math.min(200,maxWidth),maxWidth,maxHeight:Math.max(170,viewport.height-topReserve)};
 }
 function applyTerminalSize(){
   $('targetCard').classList.toggle('terminal-large-data',(settings.terminalFontMode==='master'?settings.terminalFontSize:settings.terminalDataFont)>12);
