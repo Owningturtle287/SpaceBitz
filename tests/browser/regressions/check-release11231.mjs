@@ -40,7 +40,7 @@ export async function checkRelease11231(page,engine){
           const e=document.querySelector(id.startsWith('.')||id.startsWith('[')?id:'#'+id),r=read(e);
           // Overlay backgrounds fill the screen; inspect the padded area where
           // their controls/text paint, rather than that background's border box.
-          if(['journalFilters','journalContent'].includes(id)){const c=getComputedStyle(e),l=parseFloat(c.paddingLeft),right=parseFloat(c.paddingRight),top=parseFloat(c.paddingTop),b=parseFloat(c.paddingBottom);r.x+=l;r.y+=top;r.width-=l+right;r.height-=top+b;}
+          if(['journalFilters','journalContent','.journal-pagination'].includes(id)){const c=getComputedStyle(e),l=parseFloat(c.paddingLeft),right=parseFloat(c.paddingRight),top=parseFloat(c.paddingTop),b=parseFloat(c.paddingBottom);r.x+=l;r.y+=top;r.width-=l+right;r.height-=top+b;}
           return {id,...r,inside:r.width>0&&r.height>0&&r.x>=-.2&&r.y>=-.2&&r.x+r.width<=v.width+.2&&r.y+r.height<=v.height+.2,clear:!cameraAreas.some(a=>overlaps(r,a,0))};
         });
         const raw=document.getElementById('gameViewport').getBoundingClientRect();return {fields,areas:cameraAreas.map(a=>({...a})),root:{left:raw.left,top:raw.top,width:raw.width,height:raw.height},canvas:read(document.getElementById('sky')),view:{width:v.width,height:v.height}};
@@ -69,9 +69,10 @@ export async function checkRelease11231(page,engine){
     await page.locator('#systemChartToggle').click();await settle();await page.locator('#secondaryAction').click();await settle();
     await page.evaluate(()=>{const g=window.__game;g.frame(performance.now());g.appendTerminalEntry('Camera scroll fixture\n'+Array.from({length:40},(_,i)=>'Visible line '+i).join('\n'),'input',{log:false});});await settle();
     await check(['terminalClear','secondaryAction','terminalInputBar','targetStatus','targetDistance','cancelTravel','focusSelected','primaryAction','terminalScrollbar']);
-    await page.locator('#terminalKeyboardToggle').click();await settle();await check(['terminalKeyboard','terminalInputBar','terminalScreen','[data-key="P"]','[data-key="Enter"]','[data-key="/"]']);
+    await page.locator('#terminalKeyboardToggle').click();await settle();await check(['terminalKeyboard','terminalInputBar','terminalScreen','[data-key="P"]','[data-key="Enter"]','[data-key="/"]','joystick','navigationControls','mapButton']);
     await page.locator('[data-key="Clear"]').click();await page.locator('[data-key="A"]').click();assert.match(await page.locator('#terminalInput').inputValue(),/a/i);await page.locator('[data-key="Clear"]').click();
     await page.locator('#focusSelected').click();assert.equal(await page.evaluate(()=>window.__game.state.focusBody),await page.evaluate(()=>window.__game.state.system.planets.find(p=>p.name==='Earth').id));
+    await settle();await check(['joystick','navigationControls']);
     if(layout.name==='iphone14-right'){
       await capture('full-width-fitted-terminal');
       await page.evaluate(()=>{const g=window.__game;g.settings.terminalResizeHandles=true;g.settings.terminalWidthScale=60;g.state.terminalSize=null;g.applySettings();});await settle();
