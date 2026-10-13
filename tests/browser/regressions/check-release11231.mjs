@@ -36,7 +36,13 @@ export async function checkRelease11231(page,engine){
       const result=await page.evaluate(async ids=>{
         const {viewport:v,gameRect}=await import('/src/core/viewport.js'),{cameraAreas}=await import('/src/ui/camera-layout.js'),{overlaps}=await import('/src/ui/hud.js');
         const read=e=>{const r=gameRect(e);return {x:r.left,y:r.top,width:r.width,height:r.height};};
-        const fields=ids.map(id=>{const e=document.querySelector(id.startsWith('.')||id.startsWith('[')?id:'#'+id),r=read(e);return {id,...r,inside:r.width>0&&r.height>0&&r.x>=-.2&&r.y>=-.2&&r.x+r.width<=v.width+.2&&r.y+r.height<=v.height+.2,clear:!cameraAreas.some(a=>overlaps(r,a,0))};});
+        const fields=ids.map(id=>{
+          const e=document.querySelector(id.startsWith('.')||id.startsWith('[')?id:'#'+id),r=read(e);
+          // Overlay backgrounds fill the screen; inspect the padded area where
+          // their controls/text paint, rather than that background's border box.
+          if(['journalFilters','journalContent'].includes(id)){const c=getComputedStyle(e),l=parseFloat(c.paddingLeft),right=parseFloat(c.paddingRight),top=parseFloat(c.paddingTop),b=parseFloat(c.paddingBottom);r.x+=l;r.y+=top;r.width-=l+right;r.height-=top+b;}
+          return {id,...r,inside:r.width>0&&r.height>0&&r.x>=-.2&&r.y>=-.2&&r.x+r.width<=v.width+.2&&r.y+r.height<=v.height+.2,clear:!cameraAreas.some(a=>overlaps(r,a,0))};
+        });
         const raw=document.getElementById('gameViewport').getBoundingClientRect();return {fields,areas:cameraAreas.map(a=>({...a})),root:{left:raw.left,top:raw.top,width:raw.width,height:raw.height},canvas:read(document.getElementById('sky')),view:{width:v.width,height:v.height}};
       },ids);
       assert.equal(result.root.left,0);assert.equal(result.root.top,0);assert.equal(result.root.width,layout.width);assert.equal(result.root.height,layout.height);
