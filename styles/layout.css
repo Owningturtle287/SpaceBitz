@@ -1,6 +1,8 @@
 /* The browser viewport may turn; the game keeps one landscape layout. */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-:root{--view-width:100vw;--view-height:100dvh;--view-min:100vmin;--safe-left:env(safe-area-inset-left,0px);--safe-right:env(safe-area-inset-right,0px);--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
+:root{--view-width:100vw;--view-height:100dvh;--view-min:100vmin;--device-safe-left:env(safe-area-inset-left,0px);--device-safe-right:env(safe-area-inset-right,0px);--device-safe-top:env(safe-area-inset-top,0px);--device-safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:0px;--safe-right:0px;--safe-top:0px;--safe-bottom:0px}
+/* Hardware insets belong to the outer surface, never a second layer of padding. */
+#viewportSafeArea{position:fixed;left:0;top:0;width:0;height:0;box-sizing:content-box;padding:var(--device-safe-top) var(--device-safe-right) var(--device-safe-bottom) var(--device-safe-left);visibility:hidden;pointer-events:none}
 #gameViewport{position:fixed;left:0;top:0;width:var(--view-width);height:var(--view-height);overflow:hidden;transform-origin:0 0;transform:translate(0,0);transition:none;container:game / size;isolation:isolate}
 #app{position:absolute;inset:0;pointer-events:none}
 #joystick,.navigation-controls{pointer-events:auto}
