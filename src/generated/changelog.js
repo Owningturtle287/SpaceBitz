@@ -1,6 +1,12 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.32",
+    "items": [
+      "Pulled the system chart's right edge inward, reducing its width by about 18% on an iPhone 14 in landscape. Kept the left screen curve, camera clearance, readable telemetry and framed dropdown control."
+    ]
+  },
+  {
     "version": "1.12.31",
     "items": [
       "Restored the v1.12.30 full-screen game, dashboard width and pointer coordinates. Model the iPhone 14 camera housing locally using Apple's dimensional drawing, reported safe-area depth and phone orientation.",

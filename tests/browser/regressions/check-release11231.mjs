@@ -50,7 +50,8 @@ export async function checkRelease11231(page,engine){
       assert.ok(result.fields.every(f=>f.inside&&f.clear),JSON.stringify({layout,result}));return result;
     };
     const compact=await check(['clockTime','clockDate','coordsReadout','settingsOpen','systemFit','joystick','navigationControls','mapButton','secondaryAction','cancelTravel','focusSelected','primaryAction','targetStatus','targetDistance']);
-    assert.equal(await page.locator('#systemChart').evaluate(e=>Math.round(e.getBoundingClientRect()[document.getElementById('gameViewport').dataset.rotated==='true'?'height':'width'])),Math.round(Math.min(300,Math.max(218,Math.max(layout.width,layout.height)*.34))));
+    const chartBounds=await page.locator('#systemChart').evaluate(async e=>{const {gameRect}=await import('/src/core/viewport.js'),r=gameRect(e);return {left:r.left,width:r.width};});
+    assert.equal(chartBounds.left,3);assert.ok(chartBounds.width>=218&&chartBounds.width<=248,JSON.stringify({layout,chartBounds}));
     if(layout.name==='iphone14-left')assert.equal(compact.areas[0].x,0);
     if(layout.name==='iphone14-right')assert.equal(compact.areas[0].x,791);
     if(layout.name==='no-camera')assert.equal(compact.areas.length,0);

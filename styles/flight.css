@@ -20,7 +20,7 @@
 .topbar{padding:3px 3px 0;gap:12px;align-items:flex-start}
 .flight-instruments{display:flex;align-items:flex-start;gap:10px;min-width:0;pointer-events:none}
 .flight-instruments .utility-stack{display:flex;align-items:center;gap:8px;margin-top:calc(10px + var(--safe-top,0px));pointer-events:auto;flex:none}
-.topbar .top-system-chart{--chart-radius:calc(var(--dashboard-corner) - 3px);--chart-thickness:28px;isolation:isolate;align-self:flex-start;width:clamp(218px,calc(var(--view-width) * .34),300px);max-width:calc(var(--view-width) - 100px);margin:0;border:0;border-top-left-radius:var(--chart-radius);border-top-right-radius:0;clip-path:none;box-shadow:none;background:none}
+.topbar .top-system-chart{--chart-radius:calc(var(--dashboard-corner) - 3px);--chart-thickness:28px;isolation:isolate;align-self:flex-start;width:clamp(218px,calc(var(--view-width) * .28),248px);max-width:calc(var(--view-width) - 100px);margin:0;border:0;border-top-left-radius:var(--chart-radius);border-top-right-radius:0;clip-path:none;box-shadow:none;background:none}
 .topbar .flight-readout{width:100%;max-width:none;min-height:calc(var(--chart-radius) - var(--chart-thickness) + 2px);gap:1px;padding:max(10px,var(--safe-top,0px)) 8px 4px max(20px,var(--safe-left,0px));margin:0;justify-items:start;border:0;border-bottom:1px solid #81979d;border-radius:0;clip-path:none;box-shadow:none;background:none;overflow-wrap:anywhere}
 .topbar .flight-readout #clock{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;white-space:normal;font-size:10px;line-height:1.6;letter-spacing:0;text-align:left}
 #clockTime,#clockDate{white-space:nowrap}
