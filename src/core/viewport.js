@@ -59,6 +59,12 @@ export function watchViewport(onChange){
   const observer=new ResizeObserver(schedule);observer.observe(document.documentElement);
   // Safe insets can arrive after the resize event, or change without a size
   // change (flipping landscape sides, fullscreen, browser chrome). Watch padding.
-  const probe=document.getElementById('viewportSafeArea');if(probe)observer.observe(probe,{box:'border-box'});
+  const probe=document.getElementById('viewportSafeArea');
+  if(probe){
+    observer.observe(probe,{box:'border-box'});
+    // Left/right can swap while their sum stays unchanged. Independent sensors
+    // catch each edge change even when the probe's total border box is identical.
+    for(const sensor of probe.children)observer.observe(sensor);
+  }
   refreshViewport();return schedule;
 }
