@@ -42,6 +42,7 @@ export async function checkRelease11231(page,engine){
     await page.locator('#terminalKeyboardToggle').click();await settle();await check(['targetCard','terminalKeyboard','terminalInputBar','terminalScreen']);
     // Use a real key press and Focus tap, not a programmatic button invocation.
     await page.locator('[data-key="Clear"]').click();await page.locator('[data-key="A"]').click();assert.match(await page.locator('#terminalInput').inputValue(),/a/i);
+    await page.locator('[data-key="Clear"]').click();
     await page.locator('#focusSelected').click();assert.equal(await page.evaluate(()=>window.__game.state.focusBody),await page.evaluate(()=>window.__game.state.system.planets.find(p=>p.name==='Earth').id));
     if(layout.name==='right-camera')await capture('right-camera-terminal');
     await page.locator('#secondaryAction').click();await settle();
