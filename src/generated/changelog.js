@@ -1,6 +1,13 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.31",
+    "items": [
+      "Keep the entire game, chart, terminal and interaction controls inside the phone's reported safe area, clear of camera cutouts and the home indicator in either landscape direction and the rotated portrait fallback.",
+      "Apply safe margins once to the shared rendering and touch coordinate surface, and refresh it when device margins change even without a viewport resize. Preserve readable panel sizes and browser zoom/input alignment."
+    ]
+  },
+  {
     "version": "1.12.30",
     "items": [
       "Combined the clock, date, coordinates and system chart in one left-side console with a shared screen-fitting top-left curve. The chart tab stays beneath the readout, with its framed yellow arrow and fluid slide from the tab’s bottom edge.",

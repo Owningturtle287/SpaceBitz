@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.31 — Cutout-safe game viewport
+- Keep the entire game, chart, terminal and interaction controls inside the phone's reported safe area, clear of camera cutouts and the home indicator in either landscape direction and the rotated portrait fallback.
+- Apply safe margins once to the shared rendering and touch coordinate surface, and refresh it when device margins change even without a viewport resize. Preserve readable panel sizes and browser zoom/input alignment.
+
 ## 1.12.30 — Integrated left flight console
 - Combined the clock, date, coordinates and system chart in one left-side console with a shared screen-fitting top-left curve. The chart tab stays beneath the readout, with its framed yellow arrow and fluid slide from the tab’s bottom edge.
 - Kept telemetry readable with wrapping and bounded the dropdown to the space above the dashboard. Settings and Center on System sit beside the console.
