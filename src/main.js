@@ -1,4 +1,5 @@
 import {viewport,refreshViewport,watchViewport,gamePoint,gameRect,enterLandscape} from './core/viewport.js';
+import {createCameraLayout,cameraAreas} from './ui/camera-layout.js';
 import {createMusicController} from './core/audio.js';
 import {CHANGELOG} from './generated/changelog.js';
 import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
@@ -97,7 +98,7 @@ function applyCenterButtonLayout(){
     if(mode==='custom'){
       const desired={x:viewport.width*settings.centerX/100-bw/2,y:viewport.height*settings.centerY/100-bh/2};
       const obstacles=['joystick','terminalPocket','systemChart','systemFit','flightReadout','settingsOpen','journalButton','terminalButton','mapButton'].map($).filter(el=>el&&!el.hidden).map(el=>{const r=gameRect(el);return {x:r.left,y:r.top,width:r.width,height:r.height};});
-      const placed=placeControls(desired,{width,height:bh},{width:viewport.width,height:viewport.height},[...obstacles,{x:0,y:0,width:viewport.width,height:deck.top-4}]);left=placed.x;top=clamp(placed.y,deck.top+4,viewport.height-safe-bh-4);
+      const placed=placeControls(desired,{width,height:bh},{width:viewport.width,height:viewport.height},[...obstacles,...cameraAreas,{x:0,y:0,width:viewport.width,height:deck.top-4}]);left=placed.x;top=clamp(placed.y,deck.top+4,viewport.height-safe-bh-4);
     }
     group.style.left=left+'px';group.style.top=top+'px';
   });
@@ -220,6 +221,7 @@ canvas.addEventListener('contextlost',e=>{e.preventDefault();resetInput();});
 canvas.addEventListener('contextrestored',()=>{fit(true);terrain.clear();updateUI();});
 document.addEventListener('fullscreenchange',requestLandscape);
 applySettings();
+createCameraLayout({$,onChange:()=>{applyCenterButtonLayout();positionContext();}});
 function start(save) {
   try{save=restoreVoyage(save);}catch(error){notify(error.message+' The stored voyage has not been changed.');return;}
   releaseTerminalQueue();resetFlightContext(state);resetInput();state.saveConflict=null;$('modalClose').hidden=false;

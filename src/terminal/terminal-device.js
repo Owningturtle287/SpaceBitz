@@ -1,4 +1,5 @@
 import {viewport,gamePoint,gameRect} from '../core/viewport.js';
+import {cameraAreas} from '../ui/camera-layout.js';
 import {bodyPosition,visualRadius,clamp} from '../universe/model.js';
 import {terminalLines,typedLength,objectType} from './terminal.js';
 import {contextPosition} from '../ui/target-ui.js';
@@ -316,7 +317,7 @@ function positionContext(){
   const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
   const radius=(state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10)+(homeIcon?16:0);
   const obstacles=['terminalPocket','travelControls','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls','mapButton','dashboardBase'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=gameRect(e);return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
-  const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},obstacles,state.contextPlacement);state.contextPlacement=place;element.style.transform=`translate(${place.x}px,${place.y}px)`;
+  const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},[...obstacles,...cameraAreas],state.contextPlacement);state.contextPlacement=place;element.style.transform=`translate(${place.x}px,${place.y}px)`;
 }
 function layoutTerminalDock(){
   if(state.journalOpen)return;

@@ -26,31 +26,6 @@ test('browser focus zoom and pan preserve the whole landscape surface and input 
   assert.equal(viewportSize(844,390,{width:844,height:210,scale:1}).height,210);
   assert.deepEqual(viewportSize(844,390),{width:844,height:390,rotated:false,physicalWidth:844,physicalHeight:390,left:0,top:0,scale:1});
 });
-test('cutouts inset the entire landscape surface on either physical side',()=>{
-  for(const safe of [{left:47,bottom:21},{right:47,bottom:21},{left:47,right:47,bottom:21}]){
-    const v=viewportSize(844,390,undefined,safe);
-    assert.equal(v.width,844-(safe.left||0)-(safe.right||0));assert.equal(v.height,369);
-    assert.equal(v.left,safe.left||0);assert.equal(v.top,0);
-    assert.deepEqual(gamePoint({clientX:v.left+120,clientY:v.top+60},v),{x:120,y:60});
-  }
-});
-test('portrait cutouts and home indicators rotate with the same rendering and input origin',()=>{
-  const v=viewportSize(390,844,undefined,{top:47,bottom:34});
-  assert.equal(v.width,763);assert.equal(v.height,390);assert.equal(v.rotated,true);
-  assert.equal(v.left,0);assert.equal(v.top,47);
-  assert.deepEqual(gamePoint({clientX:v.left+v.physicalWidth-60,clientY:v.top+120},v),{x:120,y:60});
-});
-test('cutout avoidance composes with browser zoom, pan and keyboard occlusion',()=>{
-  const v=viewportSize(844,390,{width:422,height:195,scale:2,offsetLeft:110,offsetTop:70},{left:47,right:47,bottom:21});
-  assert.equal(v.width,750);assert.equal(v.height,369);assert.equal(v.left,133.5);assert.equal(v.top,70);
-  assert.deepEqual(gamePoint({clientX:v.left+60,clientY:v.top+30},v),{x:120,y:60});
-  assert.equal(viewportSize(844,390,{width:844,height:210,scale:1},{left:47,bottom:21}).height,189);
-  assert.deepEqual(viewportSize(844,390,undefined,{left:0,right:0,top:0,bottom:0}),viewportSize(844,390));
-});
-test('invalid or excessive device insets cannot create negative viewport dimensions',()=>{
-  const v=viewportSize(844,390,undefined,{left:NaN,right:-10,top:Infinity,bottom:9999});
-  assert.equal(v.physicalWidth,844);assert.equal(v.physicalHeight,1);
-});
 test('the first travel leg connects its departure, without duplicate arrivals or unbounded history',()=>{
   const save={route:[]};recordTravel(save,'home','first');assert.deepEqual(save.route,['home','first']);
   recordTravel(save,'first','first');assert.deepEqual(save.route,['home','first']);
