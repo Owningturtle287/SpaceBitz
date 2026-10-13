@@ -50,6 +50,7 @@ export async function checkRelease11231(page,engine){
     if(layout.name==='no-camera')assert.equal(compact.areas.length,0);
     const arrow=await page.locator('.mission-chevron').boundingBox();await page.touchscreen.tap(arrow.x+arrow.width/2,arrow.y+arrow.height/2);
     assert.equal(await page.locator('#systemChartToggle').getAttribute('aria-expanded'),'true');await settle();
+    await page.locator('#systemChartScrollbar').press('Home');await settle();
     await check(['systemChartScrollbar','.body-entry']);
     // The recess removes panel hit testing inside the camera while leaving
     // the full-width canvas beneath it. Scroll remains usable beside the cutout.
