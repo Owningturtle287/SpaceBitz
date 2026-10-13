@@ -3,8 +3,8 @@ export const CHANGELOG=[
   {
     "version": "1.12.31",
     "items": [
-      "Keep the entire game, chart, terminal and interaction controls inside the phone's reported safe area, clear of camera cutouts and the home indicator in either landscape direction and the rotated portrait fallback.",
-      "Apply safe margins once to the shared rendering and touch coordinate surface, and refresh it when device margins change even without a viewport resize. Preserve readable panel sizes and browser zoom/input alignment."
+      "Restored the v1.12.30 full-screen game, dashboard width and pointer coordinates. Model the iPhone 14 camera housing locally using Apple's dimensional drawing, reported safe-area depth and phone orientation.",
+      "Fit the chart and terminal borders around the camera only when they intersect it, reserving readable space for their text and controls. Keep the interaction stack on a clear horizontal rail, and avoid the camera when placing movable controls and target labels. Background rendering continues edge to edge."
     ]
   },
   {

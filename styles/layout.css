@@ -1,14 +1,32 @@
 /* The browser viewport may turn; the game keeps one landscape layout. */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
-:root{--view-width:100vw;--view-height:100dvh;--view-min:100vmin;--device-safe-left:env(safe-area-inset-left,0px);--device-safe-right:env(safe-area-inset-right,0px);--device-safe-top:env(safe-area-inset-top,0px);--device-safe-bottom:env(safe-area-inset-bottom,0px);--safe-left:0px;--safe-right:0px;--safe-top:0px;--safe-bottom:0px}
-/* Hardware insets belong to the outer surface, never a second layer of padding. */
-#viewportSafeArea{position:fixed;left:0;top:0;width:0;height:0;box-sizing:content-box;padding:var(--device-safe-top) var(--device-safe-right) var(--device-safe-bottom) var(--device-safe-left);visibility:hidden;pointer-events:none}
-#viewportSafeArea>span{position:absolute;left:0;top:0;display:block}
-#viewportSafeArea>span:first-child{width:var(--device-safe-left);height:var(--device-safe-top)}
-#viewportSafeArea>span:last-child{width:var(--device-safe-right);height:var(--device-safe-bottom)}
+:root{--view-width:100vw;--view-height:100dvh;--view-min:100vmin;--safe-left:env(safe-area-inset-left,0px);--safe-right:env(safe-area-inset-right,0px);--safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px)}
 #gameViewport{position:fixed;left:0;top:0;width:var(--view-width);height:var(--view-height);overflow:hidden;transform-origin:0 0;transform:translate(0,0);transition:none;container:game / size;isolation:isolate}
 #app{position:absolute;inset:0;pointer-events:none}
 #joystick,.navigation-controls{pointer-events:auto}
+/* Probe physical camera margins without insetting the canvas or dashboard. */
+:root{--device-safe-left:env(safe-area-inset-left,0px);--device-safe-right:env(safe-area-inset-right,0px);--device-safe-top:env(safe-area-inset-top,0px);--device-safe-bottom:env(safe-area-inset-bottom,0px)}
+#cameraProbe{position:fixed;left:0;top:0;width:0;height:0;box-sizing:content-box;padding:var(--device-safe-top) var(--device-safe-right) var(--device-safe-bottom) var(--device-safe-left);visibility:hidden;pointer-events:none}
+#cameraProbe>span{position:absolute;left:0;top:0;display:block}
+#cameraProbe>span:first-child{width:var(--device-safe-left);height:var(--device-safe-top)}
+#cameraProbe>span:last-child{width:var(--device-safe-right);height:var(--device-safe-bottom)}
+.camera-outline{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:9}
+.camera-contour{fill:none!important;stroke:#81979d;stroke-width:2;stroke-linecap:butt;pointer-events:none}
+.top-system-chart .mission-toggle{padding-left:var(--camera-tab-left,10px)}
+.topbar .flight-readout{padding-left:max(20px,var(--safe-left),var(--camera-readout-left,20px))}
+#systemChartContent{padding-left:var(--camera-chart-left,6px)}
+#targetCard.camera-fitted .terminal-head{margin-right:var(--camera-terminal-inset);flex-wrap:wrap}
+#targetCard.camera-fitted:has(.terminal-resize:not([hidden])) .terminal-head{padding-left:0;padding-top:44px;min-height:76px}
+#targetCard.camera-fitted .terminal-resize{top:0}
+#targetCard.camera-fitted .terminal-meta,#targetCard.camera-fitted .terminal-input-bar,#targetCard.camera-fitted .terminal-keyboard{margin-right:max(8px,var(--camera-terminal-inset))}
+#targetCard.camera-fitted .terminal-screen{margin-right:var(--camera-terminal-inset)}
+.travel-controls{right:max(0px,var(--camera-travel-right,0px))}
+.terminal-expanded .travel-controls{right:max(calc(100% + 6px),var(--camera-travel-right,0px))}
+#joystick,.terminal-visible #joystick{left:clamp(max(6px,var(--camera-joy-left,0px)),calc(var(--joy-x,16%) - var(--view-width)*.16),max(var(--deck-joy-max,6px),var(--camera-joy-left,0px)))}
+.mission-dropdown.open .camera-outline{animation:camera-frame-in .64s ease}
+@keyframes camera-frame-in{from{opacity:0}to{opacity:1}}
+body[data-reduced-motion=true] .camera-outline{animation:none}
+@media(prefers-reduced-motion:reduce){.camera-outline{animation:none}}
 
 /* Full-screen surfaces cover the game, including their curved corners. */
 #modal:has(.settings-content){padding:0;overflow:hidden;background:#101e32}

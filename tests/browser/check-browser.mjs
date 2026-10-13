@@ -86,7 +86,7 @@ try{
   // restore the exact launch fixture so the simulation checks stay independent.
   const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
   const release11231=await checkRelease11231(page,engine);
-  console.log('11231 cutout-safe viewport checks',JSON.stringify(release11231));
+  console.log('11231 camera-fitted full-width UI checks',JSON.stringify(release11231));
   await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11230=await checkRelease11230(page,engine);
   console.log('11230 integrated left console checks',JSON.stringify(release11230));
