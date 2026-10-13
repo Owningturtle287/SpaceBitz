@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.12.32 — Narrower system chart
+- Pulled the system chart's right edge inward, reducing its width by about 18% on an iPhone 14 in landscape. Kept the left screen curve, camera clearance, readable telemetry and framed dropdown control.
+
 ## 1.12.31 — Camera-aware UI with the full-width viewport
 - Restored the v1.12.30 full-screen game, dashboard width and pointer coordinates. Model the iPhone 14 camera housing locally using Apple's dimensional drawing, reported safe-area depth and phone orientation.
 - Fit the chart and terminal borders around the camera only when they intersect it, reserving readable space for their text and controls. Keep the interaction stack on a clear horizontal rail, and avoid the camera when placing movable controls and target labels. Background rendering continues edge to edge.
