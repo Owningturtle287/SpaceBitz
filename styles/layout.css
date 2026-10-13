@@ -72,3 +72,9 @@ body[data-reduced-motion=true] .mission-chevron{transition:none}
 .dialog-error{color:#ffc29e}
 .modal-card:has(.delete-voyage-dialog){border-radius:18px;clip-path:none;background:#101e32}
 @media(prefers-reduced-motion:reduce){.mission-dropdown.open .mission-drop-sheet{animation:none}.mission-chevron{transition:none}}
+
+/* Full-width overlay frames retain readable controls beside a local camera. */
+.overlay{padding-left:max(20px,var(--safe-left),var(--camera-menu-left,0px));padding-right:max(20px,var(--safe-right),var(--camera-menu-right,0px))}
+.modal-card:has(.settings-tabs){padding-left:max(16px,var(--safe-left),var(--camera-menu-left,0px),calc(var(--dashboard-corner)*.65));padding-right:max(16px,var(--safe-right),var(--camera-menu-right,0px),calc(var(--dashboard-corner)*.65))}
+.journal-head,.journal-pagination{padding-left:max(16px,var(--safe-left),var(--camera-menu-left,0px),calc(var(--dashboard-corner)*.65));padding-right:max(16px,var(--safe-right),var(--camera-menu-right,0px),calc(var(--dashboard-corner)*.65))}
+.journal-content,.journal-filters{padding-left:max(16px,var(--safe-left),var(--camera-menu-left,0px));padding-right:max(16px,var(--safe-right),var(--camera-menu-right,0px))}

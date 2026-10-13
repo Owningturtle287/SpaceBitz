@@ -60,6 +60,7 @@ export async function checkRelease11231(page,engine){
     await page.locator('#systemChartScrollbar').press('End');assert.ok(await page.locator('#systemChartContent').evaluate(e=>e.scrollTop>0));
     if(layout.name==='iphone14-left')await capture('full-width-fitted-chart');
     await page.locator('#systemChartToggle').click();await settle();await page.locator('#secondaryAction').click();await settle();
+    await page.evaluate(()=>{const g=window.__game;g.frame(performance.now());g.appendTerminalEntry('Camera scroll fixture\n'+Array.from({length:40},(_,i)=>'Visible line '+i).join('\n'),'input',{log:false});});await settle();
     await check(['terminalClear','secondaryAction','terminalInputBar','targetStatus','targetDistance','cancelTravel','focusSelected','primaryAction','terminalScrollbar']);
     await page.locator('#terminalKeyboardToggle').click();await settle();await check(['terminalKeyboard','terminalInputBar','terminalScreen','[data-key="P"]','[data-key="Enter"]','[data-key="/"]']);
     await page.locator('[data-key="Clear"]').click();await page.locator('[data-key="A"]').click();assert.match(await page.locator('#terminalInput').inputValue(),/a/i);await page.locator('[data-key="Clear"]').click();
@@ -71,8 +72,8 @@ export async function checkRelease11231(page,engine){
       await page.evaluate(()=>{const g=window.__game;g.settings.terminalResizeHandles=false;g.settings.terminalWidthScale=100;g.applySettings();});await settle();
     }
     await page.locator('#secondaryAction').click();await settle();
-    await page.locator('#settingsOpen').click();await settle();await check(['modalClose','.settings-tabs']);await page.locator('#modalClose').click();
-    await page.locator('#journalButton').click();await settle();await check(['journalClose','journalFilters','.journal-pagination']);await page.locator('#journalClose').click();await settle();
+    await page.locator('#settingsOpen').click();await settle();await check(['modalClose','.settings-tabs','.settings-pane:not([hidden])']);await page.locator('#modalClose').click();
+    await page.locator('#journalButton').click();await settle();await check(['journalClose','journalFilters','journalContent','.journal-pagination']);await page.locator('#journalClose').click();await settle();
     layouts.push({name:layout.name,fullWidth:Math.max(layout.width,layout.height),cameraAreas:compact.areas});
   }
   // The camera-free closed rail and the open rail keep the original fluid

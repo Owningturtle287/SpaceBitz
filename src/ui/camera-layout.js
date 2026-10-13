@@ -67,6 +67,8 @@ export function createCameraLayout({$,onChange=()=>{}}){
     const css=getComputedStyle(probe),safe={left:parseFloat(css.paddingLeft)||0,right:parseFloat(css.paddingRight)||0,top:parseFloat(css.paddingTop)||0,bottom:parseFloat(css.paddingBottom)||0};
     const device={iphone:/iPhone/.test(navigator.userAgent),screenShort:Math.min(screen.width,screen.height),legacyAngle:globalThis.orientation,angle:screen.orientation?.angle};
     cameraAreas.splice(0,cameraAreas.length,...cameraRectangles(viewport,safe,device));
+    set(document.documentElement,'--camera-menu-left',cameraAreas.filter(a=>a.x===0).reduce((v,a)=>Math.max(v,a.width),0)+'px');
+    set(document.documentElement,'--camera-menu-right',cameraAreas.filter(a=>a.x+a.width>=viewport.width-1).reduce((v,a)=>Math.max(v,a.width),0)+'px');
     const rect=e=>{const r=gameRect(e);return {x:r.left,y:r.top,width:r.width,height:r.height};};
     const header=rect($('systemChartFrame')),tab=rect($('systemChartToggle')),readout=rect($('flightReadout')),chart=$('systemChart');
     fit($('systemChartFrame'),header);
