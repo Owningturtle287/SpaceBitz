@@ -89,7 +89,11 @@ export async function checkRelease11231(page,engine){
   await page.setViewportSize({width:844,height:390});await page.evaluate(()=>{
     for(const side of ['left','right','bottom'])document.documentElement.style.setProperty('--device-safe-'+side,(side==='bottom'?21:47)+'px');Object.defineProperty(window,'orientation',{configurable:true,value:-90});window.dispatchEvent(new Event('orientationchange'));
     const g=window.__game;Object.assign(g.settings,{reducedMotion:false,terminalResizeHandles:false,terminalWidthScale:100});g.applySettings();g.select(g.state.system.planets.find(p=>p.name==='Earth'));g.updateUI();
-  });await page.waitForTimeout(350);
+  });
+  // Selection has its own 550ms entrance. Finish it before measuring the
+  // terminal toggle; otherwise its final fraction looks like vertical drift.
+  await page.locator('#travelControls .context-action-row').evaluate(e=>Promise.all(e.getAnimations().map(a=>a.finished)));
+  await settle();
   for(const phase of ['open','close']){
     const samples=await page.evaluate(async()=>{
       const {gameRect}=await import('/src/core/viewport.js'),{cameraAreas}=await import('/src/ui/camera-layout.js'),{overlaps}=await import('/src/ui/hud.js'),ids=['cancelTravel','focusSelected','primaryAction'];
