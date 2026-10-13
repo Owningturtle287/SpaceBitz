@@ -22,7 +22,6 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 #targetCard.camera-fitted .terminal-screen{margin-right:var(--camera-terminal-inset)}
 .travel-controls{right:max(0px,var(--camera-travel-right,0px))}
 .terminal-expanded .travel-controls{right:max(calc(100% + 6px),var(--camera-travel-right,0px))}
-#joystick,.terminal-visible #joystick{left:clamp(max(6px,var(--camera-joy-left,0px)),calc(var(--joy-x,16%) - var(--view-width)*.16),max(var(--deck-joy-max,6px),var(--camera-joy-left,0px)))}
 .mission-dropdown.open .camera-outline{animation:camera-frame-in .64s ease}
 @keyframes camera-frame-in{from{opacity:0}to{opacity:1}}
 body[data-reduced-motion=true] .camera-outline{animation:none}
@@ -78,3 +77,5 @@ body[data-reduced-motion=true] .mission-chevron{transition:none}
 .modal-card:has(.settings-tabs){padding-left:max(16px,var(--safe-left),var(--camera-menu-left,0px),calc(var(--dashboard-corner)*.65));padding-right:max(16px,var(--safe-right),var(--camera-menu-right,0px),calc(var(--dashboard-corner)*.65))}
 .journal-head,.journal-pagination{padding-left:max(16px,var(--safe-left),var(--camera-menu-left,0px),calc(var(--dashboard-corner)*.65));padding-right:max(16px,var(--safe-right),var(--camera-menu-right,0px),calc(var(--dashboard-corner)*.65))}
 .journal-content,.journal-filters{padding-left:max(16px,var(--safe-left),var(--camera-menu-left,0px));padding-right:max(16px,var(--safe-right),var(--camera-menu-right,0px))}
+#joystick,.terminal-visible #joystick{left:clamp(max(6px,var(--camera-joy-left,0px)),calc(var(--joy-x,16%) - var(--view-width)*.16),max(var(--deck-joy-max,6px),var(--camera-joy-left,0px)))}
+.journal-content{margin-right:var(--camera-menu-right,0px);padding-right:max(16px,calc(var(--safe-right) - var(--camera-menu-right,0px)))}
