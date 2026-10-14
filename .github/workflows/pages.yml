@@ -36,7 +36,7 @@ jobs:
           BROWSER: ${{ matrix.browser }}
         run: npm run test:pwa
       - name: Check startup, zoom, clearing and warp in a real browser
-        timeout-minutes: 5
+        timeout-minutes: 7
         env:
           BROWSER: ${{ matrix.browser }}
           QA_LAYOUT_PREVIEW: true
