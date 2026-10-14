@@ -18,7 +18,7 @@ export async function checkRelease11233(page,engine){
   });assert.ok(open.top>=5&&open.height>sleep.height&&Math.abs(open.bottom-open.cardTop)<1&&open.bodyPainted,JSON.stringify(open));
   const png=await page.screenshot({path:`.qa/${engine}-11233-awake.png`});
   if(engine==='webkit'&&process.env.QA_LAYOUT_PREVIEW==='true'){const data=png.toString('base64');for(let i=0;i<data.length;i+=6000)console.log(`QA_PREVIEW:11233-awake:${i/6000}:${data.slice(i,i+6000)}`);}
-  await page.locator('#terminalInput').fill('Hello scout');await page.locator('#terminalInput').press('Enter');
+  await page.locator('#terminalKeyboardToggle').click();await page.locator('[data-key=H]').click();await page.locator('[data-key=I]').click();await page.locator('[data-key=Enter]').click();
   assert.equal(await page.locator('#terminalCompanion').getAttribute('data-emote'),'input');
   await page.locator('#terminalClear').click();assert.equal(await page.locator('#terminalCompanion').getAttribute('data-emote'),'clear');
   await page.evaluate(()=>window.__game.notify('First landing on Earth',{log:false}));assert.equal(await page.locator('#terminalCompanion').getAttribute('data-emote'),'celebrate');

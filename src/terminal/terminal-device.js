@@ -205,7 +205,7 @@ $('terminalInput').onpointerdown=e=>{const input=$('terminalInput');caretPointer
 for(const event of ['pointerup','pointercancel'])document.addEventListener(event,e=>{if(e.pointerId===caretPointer){caretPointer=null;scheduleInputCaret();}});
 $('terminalInput').onfocus=()=>{scheduleInputCaret(true);resetInput();setTerminalKeyboard(true);};
 $('terminalInput').onblur=()=>{caretPointer=null;$('terminalInputCaret').hidden=true;};
-$('terminalInput').oninput=()=>{scheduleInputCaret();followTerminalOutput();};
+$('terminalInput').oninput=()=>{scheduleInputCaret();followTerminalOutput();if($('terminalInput').value)onCompanionEvent('input');};
 $('terminalInput').onscroll=()=>scheduleInputCaret();
 $('terminalInput').onkeydown=e=>{
   const input=$('terminalInput');
