@@ -1,5 +1,6 @@
 import {viewport,refreshViewport,watchViewport,gamePoint,gameRect,enterLandscape} from './core/viewport.js';
 import {createCameraLayout,cameraAreas} from './ui/camera-layout.js';
+import {createTerminalCompanion} from './ui/terminal-companion.js';
 import {createMusicController} from './core/audio.js';
 import {CHANGELOG} from './generated/changelog.js';
 import {TAU, DAY_MS, EPOCH, currentDays, advanceDays, rotationAngle, clamp, hash, rng, orbitRadius, visualRadius,
@@ -63,7 +64,8 @@ const state = {save:null, system:null, scene:'menu', selected:null, camera:{x:0,
   panUntil:0, centerZoom:null, centerReady:false, followShip:false, followPanRemaining:0, autopilot:null, keys:new Set(), joy:{x:0,y:0}, stars:[], width:0,height:0,dpr:1,
   last:performance.now(), lastUI:0, elapsed:0, fps:60,
   waypoint:null,coordinateTap:null,warpUntil:0,flightContext:0,stellarSeconds:0,focusBody:null,shipMotion:{heading:-Math.PI/2,thrust:0},actorMotion:{direction:'down',steps:0},followBody:null};
-const {showDetails,toggleTerminal,buildTerminal,clearTerminal,pauseTerminalOutput,releaseTerminalQueue,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog:entry=>{if(state.save){if(entry.kind==='object')recordObject(state.save,entry);else recordAction(state.save,entry.text);}},resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
+const companion=createTerminalCompanion({state,settings,$});
+const {showDetails,toggleTerminal,buildTerminal,clearTerminal,pauseTerminalOutput,releaseTerminalQueue,selectedSummary,setTerminalKeyboard,appendTerminalEntry,applyTerminalSize,scheduleTerminalLayout,layoutTerminalDock,layoutDashboard,onDashboard,focusSelected,updateTerminal,positionContext}=createTerminalDevice({state,settings,$,onCompanionEvent:kind=>companion.react(kind),chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog:entry=>{if(state.save){if(entry.kind==='object')recordObject(state.save,entry);else recordAction(state.save,entry.text);}},resetInput,saveSettings,applyCenterButtonLayout,screen:(x,y)=>screen(x,y)});
 const journal=createLogDevice({state,settings,$,formatDate:days=>formatGameDate(new Date(EPOCH+days*DAY_MS),true),resetInput,saveSettings,updateUI,closeSystemChart,setTerminalKeyboard,pauseTerminalOutput,
   createPreview:(entry,save)=>createLogPreview(entry,save,chartSystem),
   readPage:async(save,filter,offset,limit)=>{await persist();return voyages.page(save.id,filter,offset,limit);}});
@@ -221,7 +223,7 @@ canvas.addEventListener('contextlost',e=>{e.preventDefault();resetInput();});
 canvas.addEventListener('contextrestored',()=>{fit(true);terrain.clear();updateUI();});
 document.addEventListener('fullscreenchange',requestLandscape);
 applySettings();
-createCameraLayout({$,onChange:()=>{applyCenterButtonLayout();positionContext();}});
+createCameraLayout({$,onChange:()=>{applyCenterButtonLayout();positionContext();companion.place();}});
 function start(save) {
   try{save=restoreVoyage(save);}catch(error){notify(error.message+' The stored voyage has not been changed.');return;}
   releaseTerminalQueue();resetFlightContext(state);resetInput();state.saveConflict=null;$('modalClose').hidden=false;
@@ -665,6 +667,7 @@ function formatGameDate(date=gameDate(),dateOnly=false){
   return day+' '+time;
 }
 function updateUI() {
+  requestAnimationFrame(()=>companion.update(performance.now()));
   if(!state.save)return;
   const scene=state.scene,sys=state.system,sel=state.selected;
   document.body.dataset.scene=scene;
@@ -1306,6 +1309,7 @@ function frame(now) {
       else if(state.scene==='chart')drawChart(now);
       else if(state.scene==='surface')drawGround(now);
     }finally{ctx.restore();}
+    companion.update(now);
     if(state.save){positionContext();updateTerminal(now);}
     if(state.save && now-state.lastUI>300){state.lastUI=now;updateUI();}
   }

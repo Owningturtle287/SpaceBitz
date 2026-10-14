@@ -49,7 +49,7 @@ export async function checkRelease11231(page,engine){
       assert.deepEqual(result.canvas,{x:0,y:0,width:Math.max(layout.width,layout.height),height:Math.min(layout.width,layout.height)});
       assert.ok(result.fields.every(f=>f.inside&&f.clear),JSON.stringify({layout,result}));return result;
     };
-    const compact=await check(['clockTime','clockDate','coordsReadout','settingsOpen','systemFit','joystick','navigationControls','mapButton','secondaryAction','cancelTravel','focusSelected','primaryAction','targetStatus','targetDistance']);
+    const compact=await check(['clockTime','clockDate','coordsReadout','settingsOpen','systemFit','joystick','navigationControls','mapButton','secondaryAction','cancelTravel','focusSelected','primaryAction','targetStatus','targetDistance','terminalCompanion']);
     const chartBounds=await page.locator('#systemChart').evaluate(async e=>{const {gameRect}=await import('/src/core/viewport.js'),r=gameRect(e);return {left:r.left,width:r.width};});
     assert.equal(chartBounds.left,3);assert.ok(chartBounds.width>=218&&chartBounds.width<=248,JSON.stringify({layout,chartBounds}));
     if(layout.name==='iphone14-left')assert.equal(compact.areas[0].x,0);
@@ -69,7 +69,7 @@ export async function checkRelease11231(page,engine){
     if(layout.name==='iphone14-left')await capture('full-width-fitted-chart');
     await page.locator('#systemChartToggle').click();await settle();await page.locator('#secondaryAction').click();await settle();
     await page.evaluate(()=>{const g=window.__game;g.frame(performance.now());g.appendTerminalEntry('Camera scroll fixture\n'+Array.from({length:40},(_,i)=>'Visible line '+i).join('\n'),'input',{log:false});});await settle();
-    await check(['terminalClear','secondaryAction','terminalInputBar','targetStatus','targetDistance','cancelTravel','focusSelected','primaryAction','terminalScrollbar']);
+    await check(['terminalClear','secondaryAction','terminalInputBar','targetStatus','targetDistance','cancelTravel','focusSelected','primaryAction','terminalScrollbar','terminalCompanion']);
     await page.locator('#terminalKeyboardToggle').click();await settle();await check(['terminalKeyboard','terminalInputBar','terminalScreen','[data-key="P"]','[data-key="Enter"]','[data-key="/"]','joystick','navigationControls','mapButton']);
     await page.locator('[data-key="Clear"]').click();await page.locator('[data-key="A"]').click();assert.match(await page.locator('#terminalInput').inputValue(),/a/i);await page.locator('[data-key="Clear"]').click();
     await page.locator('#focusSelected').click();assert.equal(await page.evaluate(()=>window.__game.state.focusBody),await page.evaluate(()=>window.__game.state.system.planets.find(p=>p.name==='Earth').id));

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.33 — Terminal robot companion
+- Integrated the white scout companion above the terminal. He sleeps with half his head peeking above the closed device when a target is selected, then rises to reveal his chest and arms when it opens.
+- Added pixel animations for blinking, glancing, stretching, listening, scanning, travel, warp, discoveries, warnings and clearing the screen. Keep him clear of camera areas and controls, adapt him to terminal resizing, and respect reduced motion. The artwork is included in the offline shell.
+
 ## 1.12.32 — Narrower system chart
 - Pulled the system chart's right edge inward, reducing its width by about 18% on an iPhone 14 in landscape. Kept the left screen curve, camera clearance, readable telemetry and framed dropdown control.
 

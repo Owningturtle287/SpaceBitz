@@ -1,0 +1,5 @@
+/* The companion shares the terminal's visible top edge, without taking input. */
+.terminal-companion{position:absolute;z-index:8;pointer-events:none;user-select:none;overflow:hidden;transform:translateY(-100%);transition:height .5s cubic-bezier(.22,.7,.25,1),width .5s cubic-bezier(.22,.7,.25,1);contain:layout paint}
+.terminal-companion canvas{display:block;width:100%;height:auto;image-rendering:pixelated;image-rendering:crisp-edges;pointer-events:none}
+body[data-reduced-motion=true] .terminal-companion{transition:none}
+@media(prefers-reduced-motion:reduce){.terminal-companion{transition:none}}

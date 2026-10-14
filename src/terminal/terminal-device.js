@@ -1,5 +1,6 @@
 import {viewport,gamePoint,gameRect} from '../core/viewport.js';
 import {cameraAreas} from '../ui/camera-layout.js';
+import {reactionForMessage} from '../ui/companion-state.js';
 import {bodyPosition,visualRadius,clamp} from '../universe/model.js';
 import {terminalLines,typedLength,objectType} from './terminal.js';
 import {contextPosition} from '../ui/target-ui.js';
@@ -7,7 +8,7 @@ import {formatCoordinates,SYSTEM_MAX_ZOOM} from '../core/scale.js';
 import {systemMinZoom} from '../flight/navigation.js';
 import {addTerminalEntry} from './terminal-history.js';
 
-export function createTerminalDevice({state,settings,$,chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog,resetInput,saveSettings,applyCenterButtonLayout,screen}){
+export function createTerminalDevice({state,settings,$,onCompanionEvent=()=>{},chartSystem,select,updateUI,closeSystemChart,closeJournal,recordLog,resetInput,saveSettings,applyCenterButtonLayout,screen}){
 state.terminalEntries=[];state.terminalFollowOutput=true;
 function canViewOutput(){return !document.hidden&&state.terminalExpanded&&!state.journalOpen&&!state.landscapeBlocked&&!$('targetCard').hidden&&!$('terminalScreen').hidden&&!$('modal').classList.contains('visible');}
 function pauseTerminalOutput(now=performance.now()){
@@ -18,9 +19,11 @@ function releaseTerminalQueue(){
 }
 function followTerminalOutput(){state.terminalFollowOutput=true;if(state.terminal)state.terminal.followOutput=true;scheduleTerminalLayout();}
 function renderRecord(record,count){
+  const wasFinished=record.finished;
   record.count=count;
   for(const row of record.lines){const visible=count>row.offset,text=row.text.slice(0,Math.max(0,count-row.offset)),split=row.colon<0?0:Math.min(text.length,row.colon+3);row.node.hidden=!visible;row.key.textContent=text.slice(0,split);row.value.textContent=text.slice(split);}
   record.finished=count===record.text.length;
+  if(record.finished&&!wasFinished)onCompanionEvent('complete');
   if(record.finished)for(const entry of state.terminalEntries)if(entry.afterRecord===record&&entry.node)entry.node.hidden=false;
   if(record.finished&&record.survey&&!record.logged&&canViewOutput()){recordLog?.(record.survey);record.logged=true;}
 }
@@ -35,6 +38,7 @@ function appendTerminalEntry(text,kind='message',{log=true}={}){
   if(kind==='message'){state.terminalNotice=entry.text;if(log)recordLog?.({kind:'action',text:entry.text});}
   renderTerminalHistory();
   followTerminalOutput();
+  if(kind==='input'||kind==='message')onCompanionEvent(kind==='input'?'input':reactionForMessage(text));
   if(!state.save){
     $('menuTerminal').hidden=false;
     $('menuTerminalMessages').replaceChildren(...state.terminalEntries.slice(-2).map(terminalEntryNode));
@@ -84,6 +88,7 @@ function buildTerminal(){
   $('terminalScreen').scrollTop=$('terminalScreen').scrollHeight;
 }
 function clearTerminal(){
+  onCompanionEvent('clear');
   state.terminalEntries.length=0;state.terminalFollowOutput=true;state.terminal=null;state.terminalRecordKey=null;state.terminalNotice=null;state.terminalCleared=true;
   renderTerminalHistory();$('terminalScreen').scrollTop=0;updateUI();
 }
@@ -316,7 +321,7 @@ function positionContext(){
   if($('contextActions').hidden||!state.save)return;const record=selectedRecord(),target=screen(record.position.x,record.position.y),element=$('contextActions');
   const homeIcon=state.scene==='chart'?state.selected?.seed===state.save.homeSeed:state.scene==='system'&&record.object.id===state.save.homePlanet;
   const radius=(state.scene==='system'?visualRadius(record.object.diameter||0)*state.zoom:state.scene==='chart'?8:10)+(homeIcon?16:0);
-  const obstacles=['terminalPocket','travelControls','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls','mapButton','dashboardBase'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=gameRect(e);return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
+  const obstacles=['terminalPocket','terminalCompanion','travelControls','systemChart','systemFit','flightReadout','settingsOpen','journalButton','joystick','navigationControls','mapButton','dashboardBase'].map($).filter(e=>e&&!e.hidden).map(e=>{const r=gameRect(e);return {x:r.x,y:r.y,width:r.width,height:r.height};}).filter(r=>r.width&&r.height);
   const place=contextPosition(target,radius,{width:element.offsetWidth,height:element.offsetHeight},{width:state.width,height:state.height},[...obstacles,...cameraAreas],state.contextPlacement);state.contextPlacement=place;element.style.transform=`translate(${place.x}px,${place.y}px)`;
 }
 function layoutTerminalDock(){
