@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createCompanionBrain,reactionForMessage,companionPlacement,companionMotion} from '../src/ui/companion-state.js';
+import {createCompanionBrain,reactionForMessage,companionPlacement} from '../src/ui/companion-state.js';
+import {COMPANION,ARM_ANGLES,companionAnimation,shoulderTip,approachShoulder} from '../src/ui/companion-animation.js';
 const state=()=>({save:{},scene:'system',selected:{id:'earth'},terminalExpanded:false});
 test('docked companion stays asleep through action events and wakes only with terminal',()=>{
   const brain=createCompanionBrain(),s=state();brain.react('concern',0);assert.equal(brain.update(s,20),'sleep');
@@ -23,11 +24,31 @@ test('companion sits above terminal and clear of right camera in compact and ope
   const tiny={x:400,y:42,width:200};const p=companionPlacement(tiny,tiny,{width:667,height:375},[],[],true);assert.equal(p.height,36);assert.equal(p.y-p.height,6);
 });
 
-test('default poses face forward, selective turns and arm raises stop with reduced motion',()=>{
-  for(const pose of ['idle','sleep','input','wake','greet','celebrate','complete','concern','clear','stretch','warp']){
-    for(const now of [250,1000,1400,4200])assert.equal(companionMotion(pose,now).turn,0,pose);
+test('head scale is invariant when opening, closing or resizing the terminal',()=>{
+  for(const height of [320,360,390,852]){
+    const view={width:844,height},closed={x:600,y:height-68,width:240},open={x:530,y:Math.round(height*.3),width:310};
+    const a=companionPlacement(closed,closed,view,[],[],false),b=companionPlacement(open,open,view,[],[],true);
+    assert.equal(a.width,b.width);assert.ok(b.height>a.height);
   }
-  for(const pose of ['glance','scan','travel'])assert.ok([250,500,1000,1400].some(now=>companionMotion(pose,now).turn!==0),pose);
-  assert.equal(companionMotion('idle',1000).lift,0);assert.ok(companionMotion('celebrate',1000).lift>=18);
-  assert.deepEqual(companionMotion('celebrate',1000,true),{bob:0,turn:0,lift:0});
+});
+test('real sleeping head frames and purposeful gestures keep default expressions facing the player',()=>{
+  const sleepHeads=new Set([0,800,1600,2400,3200,4000,4800,5600].map(now=>companionAnimation('sleep',now,now).head));
+  assert.deepEqual(sleepHeads,new Set(['sleepOut','sleepIn']));
+  for(const pose of ['idle','sleep','input','wake','greet','celebrate','complete','concern','clear','stretch','warp']){
+    for(const age of [250,500,1000,1400])assert.ok(!['left','right'].includes(companionAnimation(pose,age,age).head),pose);
+  }
+  assert.equal(companionAnimation('glance',300,300).head,'left');assert.equal(companionAnimation('glance',900,900).head,'right');
+  const wave=companionAnimation('greet',800,800);assert.ok(wave.right<-80&&wave.left<=10);
+  const present=companionAnimation('complete',900,900);assert.ok(present.left>40&&present.right===0);
+  const joy=companionAnimation('celebrate',1000,1000);assert.ok(joy.left>90&&joy.right===-joy.left);
+  assert.equal(companionAnimation('sleep',0,0).expression,'sleep');assert.equal(companionAnimation('sleep',0,0).arms,false);
+  const still=companionAnimation('celebrate',1000,1000,true);assert.equal(still.bob,0);assert.equal(still.left,0);assert.equal(still.right,0);
+});
+test('every arm frame follows a rigid shoulder arc within the canvas and settles without jumps',()=>{
+  for(const x of [COMPANION.leftShoulder,COMPANION.rightShoulder])for(const angle of ARM_ANGLES){
+    const y=COMPANION.headY+COMPANION.shoulderY,p=shoulderTip(x,y,angle);
+    assert.ok(Math.abs(Math.hypot(p.x-x,p.y-y)-14)<1e-9);assert.ok(p.x>=0&&p.x<COMPANION.width&&p.y>=0&&p.y<COMPANION.height);
+  }
+  assert.equal(approachShoulder(110,0,50),98);assert.equal(approachShoulder(5,0,50),0);
+  assert.equal(approachShoulder(0,110,-50),0);
 });
