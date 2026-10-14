@@ -9,7 +9,7 @@ export function reactionForMessage(text){
 export function createCompanionBrain(){
   let active=null,wasOpen=false,previousTravel=false;
   return {
-    react(kind,now){const spec=reactions[kind];if(!spec)return;if(active&&now<active.until&&active.priority>spec[1])return;active={kind,until:now+spec[0],priority:spec[1]};},
+    react(kind,now){const spec=reactions[kind];if(!spec)return false;if(active&&now<active.until&&active.priority>spec[1])return false;active={kind,until:now+spec[0],priority:spec[1]};return true;},
     update(state,now){
       const open=Boolean(state.terminalExpanded);
       if(open&&!wasOpen){active={kind:'wake',until:now+1100,priority:2};}

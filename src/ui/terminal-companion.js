@@ -91,5 +91,5 @@ export function createTerminalCompanion({state,settings,$}){
     if(now-lastPlace>=50||pose!==lastPose){place();lastPlace=now;}
     if(now-lastPaint>=1000/30||pose!==lastPose){draw(pose,now);lastPaint=now;lastPose=pose;}
   }
-  return {update,react:(kind)=>{const now=performance.now();brain.react(kind,now);update(now);},place};
+  return {update,react:(kind)=>{const now=performance.now();if(brain.react(kind,now)&&kind===lastPose)poseStarted=now;update(now);},place};
 }

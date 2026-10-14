@@ -1,5 +1,5 @@
 // Frame timing and shoulder poses are independent of rendering and game logic.
-export const COMPANION={width:84,height:60,headWidth:52,headHeight:44,headX:16,headY:3,sleepRows:32,awakeRows:52,scale:132/64,shoulderY:34,leftShoulder:16,rightShoulder:68};
+export const COMPANION={width:84,height:60,headWidth:52,headHeight:44,headX:16,headY:3,sleepRows:32,awakeRows:52,scale:132/64,shoulderY:33,leftShoulder:16,rightShoulder:68};
 export const ARM_ANGLES=Array.from({length:29},(_,i)=>(i-14)*10);
 const gestures={
   wake:{duration:1100,left:[0,0,10,20,10,0],right:[0,0,-10,-20,-10,0]},

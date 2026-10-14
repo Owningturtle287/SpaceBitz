@@ -15,6 +15,12 @@ test('action reactions expire, warnings outrank chatter, travel and scanning fol
   brain.react('concern',8150);assert.equal(brain.update(s,8200),'concern');
   assert.equal(reactionForMessage('Sample secured · added to logbook'),'celebrate');assert.equal(reactionForMessage('Storage is full'),'concern');
 });
+test('repeat reactions are accepted while lower-priority events cannot restart a warning',()=>{
+  const brain=createCompanionBrain(),s={...state(),terminalExpanded:true};brain.update(s,0);
+  assert.equal(brain.react('celebrate',100),true);assert.equal(brain.react('celebrate',1000),true);assert.equal(brain.update(s,2800),'celebrate');
+  assert.equal(brain.react('concern',3000),true);assert.equal(brain.react('celebrate',3200),false);assert.equal(brain.update(s,3300),'concern');
+  assert.equal(brain.react('unknown',3400),false);
+});
 test('companion sits above terminal and clear of right camera in compact and open layouts',()=>{
   const camera={x:791,y:108,width:53,height:174},view={width:844,height:390};
   for(const open of [false,true]){
