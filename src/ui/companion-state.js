@@ -31,8 +31,10 @@ export function companionPlacement(card,pocket,view,areas=[],obstacles=[],open=f
   const anchor=Math.max(card.y,pocket.y),height=open?Math.max(8,Math.min(124,card.y-6)):Math.min(40,Math.max(8,card.y-6));
   const width=open?height*120/132:100;
   const clamp=x=>Math.max(6,Math.min(view.width-width-6,x));
-  const candidates=[card.x+(card.width-width)/2,card.x+6,card.x+card.width-width-6,...areas.flatMap(a=>[a.x-width-4,a.x+a.width+4])].map(clamp);
-  const top=anchor-height,overlap=(x,o)=>x<o.x+o.width&&x+width>o.x&&top<o.y+o.height&&anchor>o.y;
-  const x=candidates.find(x=>![...areas,...obstacles].some(o=>overlap(x,o)))??candidates[1];
+  const top=anchor-height,center=card.x+(card.width-width)/2;
+  const overlap=(x,o,pad=0)=>x<o.x+o.width+pad&&x+width>o.x-pad&&top<o.y+o.height+pad&&anchor>o.y-pad;
+  // Extra room covers the width transition while the head/body are revealed.
+  const candidates=[center,...areas.filter(a=>overlap(center,a,4)).flatMap(a=>[a.x-width-4,a.x+a.width+4]),card.x+6,card.x+card.width-width-6].map(clamp);
+  const x=candidates.find(x=>!areas.some(o=>overlap(x,o,4))&&!obstacles.some(o=>overlap(x,o)))??clamp(card.x+6);
   return {x,y:anchor,width,height};
 }

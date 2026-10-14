@@ -7,7 +7,8 @@ export async function checkRelease11233(page,engine){
   assert.equal(await page.locator('#terminalCompanion').getAttribute('data-emote'),'sleep');
   const sleep=await page.locator('#terminalCompanion').evaluate(e=>({height:e.getBoundingClientRect().height,pointer:getComputedStyle(e).pointerEvents}));
   assert.equal(sleep.height,40);assert.equal(sleep.pointer,'none');
-  await page.screenshot({path:`.qa/${engine}-11233-sleep.png`});
+  const sleepy=await page.screenshot({path:`.qa/${engine}-11233-sleep.png`});
+  if(engine==='webkit'&&process.env.QA_LAYOUT_PREVIEW==='true'){const data=sleepy.toString('base64');for(let i=0;i<data.length;i+=6000)console.log(`QA_PREVIEW:11233-sleep:${i/6000}:${data.slice(i,i+6000)}`);}
   await page.locator('#secondaryAction').click();
   await page.waitForFunction(()=>document.getElementById('terminalCompanion').dataset.pose==='awake');
   await page.waitForFunction(()=>{const r=document.getElementById('terminalCompanion').getBoundingClientRect(),card=document.getElementById('targetCard').getBoundingClientRect();return r.height>45&&Math.abs(r.bottom-card.top)<1;});

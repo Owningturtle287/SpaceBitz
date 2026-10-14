@@ -37,11 +37,11 @@ export function createTerminalCompanion({state,settings,$}){
     const arm=(name,x,angle)=>{ctx.save();ctx.translate(x,86+bob);ctx.rotate(angle);ctx.drawImage(parts[name],-10,0);ctx.restore();};
     arm('left',30,wave?(still?-.2:-.3+Math.sin(t*speed)*.25):0);
     arm('right',90,wave?(still?.2:.3-Math.sin(t*speed)*.25):0);
-    const headY=bob+(pose==='input'?Math.round(Math.sin(t*5)):0);
+    const headY=bob+(pose==='sleep'?-8:pose==='input'?Math.round(Math.sin(t*5)):0);
     ctx.drawImage(parts.head,12,headY);
     // Visor occupies x37..89, y48..70 on the downsampled head.
     const cyan=pose==='concern'?'#ffd27b':'#8efff4',dark='#031321';
-    const eyeY=pose==='sleep'?45:52+headY,shift=pose==='glance'?Math.round(Math.sin(t*2)*3):pose==='scan'?Math.round(Math.sin(t*4)*2):0;
+    const eyeY=52+headY,shift=pose==='glance'?Math.round(Math.sin(t*2)*3):pose==='scan'?Math.round(Math.sin(t*4)*2):0;
     ctx.fillStyle=cyan;
     if(pose==='sleep'||pose==='blink'){
       for(const x of [44,70]){ctx.fillRect(x,eyeY,12,2);if(pose==='sleep')ctx.fillRect(x+2,eyeY+2,8,1);}
