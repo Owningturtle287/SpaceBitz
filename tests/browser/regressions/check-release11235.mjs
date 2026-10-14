@@ -43,14 +43,16 @@ export async function checkRelease11235(page,engine){
   if(engine==='webkit'&&process.env.QA_LAYOUT_PREVIEW==='true'){const data=wave.toString('base64');for(let i=0;i<data.length;i+=6000)console.log(`QA_PREVIEW:11235-wave:${i/6000}:${data.slice(i,i+6000)}`);}
   await page.evaluate(()=>{window.__game.settings.reducedMotion=true;window.__game.notify('No solid surface here.',{log:false});});assert.equal(await page.locator('#terminalCompanion').getAttribute('data-emote'),'concern');
   const stable=await page.evaluate(()=>{const g=window.__game,c=document.getElementById('companionCanvas'),now=performance.now(),read=()=>Array.from(c.getContext('2d').getImageData(0,0,84,60).data).join(',');g.companion.update(now);const a=read();g.companion.update(now+200);return a===read();});assert.ok(stable);
-  await page.evaluate(()=>{const g=window.__game;window.__scoutRecord=g.state.terminal;g.state.terminal={finished:false};g.settings.reducedMotion=false;window.__scoutTime=performance.now()+7000;g.companion.update(window.__scoutTime);});
-  for(const [direction,offset]of [['left',100],['right',1100]]){
-    await page.evaluate(offset=>window.__game.companion.update(window.__scoutTime+offset),offset);
-    assert.ok((await page.locator('#terminalCompanion').getAttribute('data-sprite')).startsWith(direction+'/'));
+  // Let the warning expire on the real clock. Future timestamps between
+  // screenshots conflict with normal UI callbacks and restart the scan pose.
+  await page.evaluate(async()=>{const g=window.__game;window.__scoutRecord=g.state.terminal;g.state.terminal={finished:false};g.settings.reducedMotion=false;const begin=performance.now();while(performance.now()-begin<3100){g.companion.update(performance.now());await new Promise(r=>requestAnimationFrame(r));}});
+  for(const direction of ['left','right']){
+    await page.evaluate(async direction=>{const g=window.__game,e=document.getElementById('terminalCompanion'),begin=performance.now();do{g.companion.update(performance.now());await new Promise(r=>requestAnimationFrame(r));}while(!e.dataset.sprite.startsWith(direction+'/')&&performance.now()-begin<2100);},direction);
+    const sprite=await page.locator('#terminalCompanion').getAttribute('data-sprite');assert.ok(sprite.startsWith(direction+'/'),`${direction} glance selected ${sprite}`);
     const glance=await page.screenshot({path:`.qa/${engine}-11235-${direction}.png`});
     if(engine==='webkit'&&process.env.QA_LAYOUT_PREVIEW==='true'){const data=glance.toString('base64');for(let i=0;i<data.length;i+=6000)console.log(`QA_PREVIEW:11235-${direction}:${i/6000}:${data.slice(i,i+6000)}`);}
   }
-  await page.evaluate(()=>{const g=window.__game;g.state.terminal=window.__scoutRecord;g.settings.reducedMotion=true;delete window.__scoutRecord;delete window.__scoutTime;});
+  await page.evaluate(()=>{const g=window.__game;g.state.terminal=window.__scoutRecord;g.settings.reducedMotion=true;delete window.__scoutRecord;});
   await page.locator('#secondaryAction').click();await page.waitForFunction(()=>document.getElementById('terminalCompanion').dataset.emote==='sleep');
   await page.evaluate(()=>{const g=window.__game;g.cancelTarget();g.frame(performance.now());});assert.ok(await page.locator('#terminalCompanion').evaluate(e=>e.hidden));
   return {sleep,open,breathing,inputAndActionReactions:true,reducedMotionStable:true,directionalSprites:true};
