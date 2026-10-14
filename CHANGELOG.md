@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.35 — Head-and-arms scout with shoulder animation
+- Replaced the torso with a head and two softly tapered, fingerless arms. Added distinct front, sleeping, alert and glance sprites, flat sleeping eyes and frame-based gestures that rotate each rigid arm from its shoulder only.
+- Reserved space for the full sleeping outline so breathing moves the head without trimming its top pixels. Kept the head pixel scale identical when the terminal opens or closes, with viewport-based sizing and the existing camera clearance.
+
 ## 1.12.34 — Chunkier, larger scout companion
 - Simplified the white scout to a low-resolution 64 × 72 pixel renderer with a small flat palette and solid mitten hands without fingers. He now faces the player by default, turning only during occasional glances, scans and travel.
 - Increased his on-screen size and tucked his lower chest and resting arms behind the terminal. Waves, stretches and celebrations lift his arms into view, with eased movement and the existing camera clearance and reduced-motion support.

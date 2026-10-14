@@ -20,7 +20,7 @@ import {checkRelease11226} from './regressions/check-release11226.mjs';
 import {checkRelease11229} from './regressions/check-release11229.mjs';
 import {checkRelease11230} from './regressions/check-release11230.mjs';
 import {checkRelease11231} from './regressions/check-release11231.mjs';
-import {checkRelease11234} from './regressions/check-release11234.mjs';
+import {checkRelease11235} from './regressions/check-release11235.mjs';
 import {checkRelease11212} from './regressions/check-release11212.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -86,8 +86,8 @@ try{
   // Exercise the current device controls before the longer renderer soak, then
   // restore the exact launch fixture so the simulation checks stay independent.
   const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
-  const release11234=await checkRelease11234(page,engine);
-  console.log('11234 companion checks',JSON.stringify(release11234));
+  const release11235=await checkRelease11235(page,engine);
+  console.log('11235 companion checks',JSON.stringify(release11235));
   await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11231=await checkRelease11231(page,engine);
   console.log('11231 camera-fitted full-width UI checks',JSON.stringify(release11231));
