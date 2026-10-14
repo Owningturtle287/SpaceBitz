@@ -17,7 +17,7 @@ async function runtimeFiles(directory,extension){
 }
 const modules=await runtimeFiles('src','.js');
 const styles=await runtimeFiles('styles','.css');
-const shell=['./','./index.html',...modules,...styles,'./assets/spacebitz-pixel.woff','./assets/spacebitz-title.svg','./manifest.webmanifest','./icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
+const shell=['./','./index.html',...modules,...styles,'./assets/spacebitz-pixel.woff','./assets/spacebitz-title.svg','./assets/terminal-companion.png','./manifest.webmanifest','./icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 const files=new Map([
   ['src/generated/changelog.js','// Generated from CHANGELOG.md by npm run release:sync.\nexport const CHANGELOG='+JSON.stringify(releases,null,2)+';\n'],
   ['index.html',(await read('index.html')).replace(/(class="version-chip[^\"]*">)v[\d.]+/,`$1v${version}`)],

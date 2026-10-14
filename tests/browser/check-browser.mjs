@@ -20,6 +20,7 @@ import {checkRelease11226} from './regressions/check-release11226.mjs';
 import {checkRelease11229} from './regressions/check-release11229.mjs';
 import {checkRelease11230} from './regressions/check-release11230.mjs';
 import {checkRelease11231} from './regressions/check-release11231.mjs';
+import {checkRelease11233} from './regressions/check-release11233.mjs';
 import {checkRelease11212} from './regressions/check-release11212.mjs';
 import {createServer} from 'node:http';
 import {readFile,mkdir,writeFile} from 'node:fs/promises';
@@ -54,7 +55,7 @@ try{
     source=source.replace("if('serviceWorker' in navigator && location.protocol.startsWith('http'))","if(false)");
     source=source.replaceAll('requestAnimationFrame(frame);','if(!globalThis.__qaPause)requestAnimationFrame(frame);');
     source=source.replace('}finally{ctx.restore();}',"}finally{ctx.restore();globalThis.__lastFrame={width:state.width,height:state.height,dpr:state.dpr,ship:state.save?screen(state.save.ship.x,state.save.ship.y):null,transform:ctx.getTransform().toString()};}");
-    source+='\nwindow.__game={state,settings,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,nearbyStars,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,scheduleTerminalLayout,focusSelected,applySettings,setFlightStage,notify,appendTerminalEntry,clearTerminal,showJournal,closeJournal,openSettings,persist,inputPointerCount:()=>pointers.size};';
+    source+='\nwindow.__game={state,settings,companion,frame,backdrop,drawSystem,drawChart,update,updateUI,create,start,select,showDetails,enterSystem,enterChart,enterSurface,drawGround,drawCoordinateGrid,nearbyStars,launch,closeModal,zoom,terrain,applyCenterButtonLayout,primary,cancelTravel,cancelTarget,positionContext,updateTerminal,scheduleTerminalLayout,focusSelected,applySettings,setFlightStage,notify,appendTerminalEntry,clearTerminal,showJournal,closeJournal,openSettings,persist,inputPointerCount:()=>pointers.size};';
     await route.fulfill({response,body:source});
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
@@ -85,6 +86,9 @@ try{
   // Exercise the current device controls before the longer renderer soak, then
   // restore the exact launch fixture so the simulation checks stay independent.
   const launchFixture=await page.evaluate(()=>({save:structuredClone(window.__game.state.save),settings:{...window.__game.settings}}));
+  const release11233=await checkRelease11233(page,engine);
+  console.log('11233 companion checks',JSON.stringify(release11233));
+  await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
   const release11231=await checkRelease11231(page,engine);
   console.log('11231 camera-fitted full-width UI checks',JSON.stringify(release11231));
   await page.evaluate(fixture=>{const g=window.__game;Object.assign(g.settings,fixture.settings);g.start({...fixture.save,id:crypto.randomUUID(),revision:0});g.applySettings();g.frame(performance.now());},launchFixture);
