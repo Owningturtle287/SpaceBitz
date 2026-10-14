@@ -6,7 +6,7 @@ export {reactionForMessage} from './companion-state.js';
 
 // Native alpha bounds from the eight-component 1774 × 887 transparent atlas.
 // Align the blank visors at row 25, rather than stretching the sleeping heads.
-const regions={front:[28,127,416,337,52,2],sleepIn:[470,153,421,311,52,4],sleepOut:[912,170,417,300,52,5],alert:[1346,115,414,348,52,0],left:[79,524,365,314,46,4],right:[486,524,364,314,46,4],leftArm:[1072,569,143,266,10,0],rightArm:[1450,568,143,267,10,0]};
+const regions={front:[28,127,416,337,52,2],sleepIn:[470,153,421,311,52,4],sleepOut:[912,170,417,300,52,5],alert:[1346,115,414,348,52,0],right:[79,524,365,314,46,4],left:[486,524,364,314,46,4],leftArm:[1072,569,143,266,10,0],rightArm:[1450,568,143,267,10,0]};
 const palette=['06131e','173440','355a65','71949b','b6c5bb','f4f2dc','fff8e7','12525c','187c81','26b9b1','79eee0','d2fff0','886533','e2b455'].map(hex=>[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)));
 function pixelCanvas(width,height){const canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;canvas.getContext('2d').imageSmoothingEnabled=false;return canvas;}
 function flatten(canvas){
@@ -21,7 +21,7 @@ function flatten(canvas){
 }
 function faceFrame(head,expression,direction){
   const frame=pixelCanvas(C.headWidth,C.headHeight),f=frame.getContext('2d');f.drawImage(head,0,0);
-  const cyan=expression==='concern'?'#e2b455':'#79eee0',shift=direction==='left'?-2:direction==='right'?2:0,eyeY=27;
+  const cyan=expression==='concern'?'#e2b455':'#79eee0',shift=direction==='left'?-5:direction==='right'?4:0,eyeY=27;
   f.fillStyle=cyan;
   if(expression==='sleep'||expression==='blink')for(const x of [17,32])f.fillRect(x+shift,eyeY,7,1);
   else if(expression==='happy'||expression==='smile')for(const x of [17,32]){f.fillRect(x+shift,eyeY+1,2,1);f.fillRect(x+shift+2,eyeY,3,1);f.fillRect(x+shift+5,eyeY+1,2,1);}
