@@ -29,8 +29,10 @@ export function createCompanionBrain(){
   };
 }
 export function companionPlacement(card,pocket,view,areas=[],obstacles=[],open=false){
-  const anchor=Math.max(card.y,pocket.y),height=open?Math.max(8,Math.min(124,card.y-6)):Math.min(40,Math.max(8,card.y-6));
-  const width=open?height*120/132:100;
+  // Only the top 52 of 72 sprite rows are exposed when awake; relaxed hands
+  // and the lower torso stay behind the terminal. Sleep exposes half the head.
+  const anchor=Math.max(card.y,pocket.y),height=open?Math.max(8,Math.min(116,card.y-6)):Math.min(42,Math.max(8,card.y-6));
+  const width=open?height*64/52:132;
   const clamp=x=>Math.max(6,Math.min(view.width-width-6,x));
   const top=anchor-height,center=card.x+(card.width-width)/2;
   const overlap=(x,o,pad=0)=>x<o.x+o.width+pad&&x+width>o.x-pad&&top<o.y+o.height+pad&&anchor>o.y-pad;
@@ -38,4 +40,12 @@ export function companionPlacement(card,pocket,view,areas=[],obstacles=[],open=f
   const candidates=[center,...areas.filter(a=>overlap(center,a,4)).flatMap(a=>[a.x-width-4,a.x+a.width+4]),card.x+6,card.x+card.width-width-6].map(clamp);
   const x=candidates.find(x=>!areas.some(o=>overlap(x,o,4))&&!obstacles.some(o=>overlap(x,o)))??clamp(card.x+6);
   return {x,y:anchor,width,height};
+}
+export function companionMotion(pose,now,reduced=false){
+  if(reduced)return {bob:0,turn:0,lift:0};
+  const t=now/1000;
+  // Idle, listening and expressive reactions address the player head-on.
+  const turn=['glance','scan','travel'].includes(pose)?Math.round(Math.sin(t*(pose==='scan'?3:1.8))*2):0;
+  const raised=['wake','greet','celebrate','complete','stretch'].includes(pose);
+  return {bob:Math.round(Math.sin(t*(pose==='sleep'?1.6:2.2))),turn,lift:raised?20+Math.round(Math.sin(t*(pose==='celebrate'?9:4))*2):0};
 }

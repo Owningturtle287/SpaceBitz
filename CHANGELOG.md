@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.12.34 — Chunkier, larger scout companion
+- Simplified the white scout to a low-resolution 64 × 72 pixel renderer with a small flat palette and solid mitten hands without fingers. He now faces the player by default, turning only during occasional glances, scans and travel.
+- Increased his on-screen size and tucked his lower chest and resting arms behind the terminal. Waves, stretches and celebrations lift his arms into view, with eased movement and the existing camera clearance and reduced-motion support.
+
 ## 1.12.33 — Terminal robot companion
 - Integrated the white scout companion above the terminal. He sleeps with half his head peeking above the closed device when a target is selected, then rises to reveal his chest and arms when it opens.
 - Added pixel animations for blinking, glancing, stretching, listening, scanning, travel, warp, discoveries, warnings and clearing the screen. Keep him clear of camera areas and controls, adapt him to terminal resizing, and respect reduced motion. The artwork is included in the offline shell.

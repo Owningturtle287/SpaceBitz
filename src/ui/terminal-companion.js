@@ -1,19 +1,30 @@
 import {viewport,gameRect} from '../core/viewport.js';
 import {cameraAreas} from './camera-layout.js';
-import {createCompanionBrain,companionPlacement} from './companion-state.js';
+import {createCompanionBrain,companionPlacement,companionMotion} from './companion-state.js';
 export {reactionForMessage} from './companion-state.js';
 
-// Measured alpha bounds of the generated atlas, in its native 1254px square.
-const regions={head:[57,65,637,571],chest:[729,229,462,434],left:[256,722,233,490],right:[793,722,232,490]};
+// Measured alpha bounds of the simplified, front-facing 1254px atlas.
+const regions={head:[38,92,673,567],chest:[732,263,470,429],left:[265,757,222,438],right:[767,757,223,438]};
+const palette=['06131e','173440','355a65','71949b','b6c5bb','f4f2dc','fff8e7','12525c','187c81','26b9b1','79eee0','d2fff0','886533','e2b455'].map(hex=>[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)));
 export function createTerminalCompanion({state,settings,$}){
   const stage=$('terminalCompanion'),canvas=$('companionCanvas'),ctx=canvas.getContext('2d'),brain=createCompanionBrain(),parts={};
-  let ready=false,lastPaint=-Infinity,lastPlace=-Infinity,lastPose='',lastScene=state.scene;
+  const face=document.createElement('canvas');face.width=52;face.height=44;const faceContext=face.getContext('2d');
+  let ready=false,lastPaint=-Infinity,lastPlace=-Infinity,lastPose='',lastScene=state.scene,armLift=0,headTurn=0;
   const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)');
   const image=new Image();image.src=new URL('../../assets/terminal-companion.png',import.meta.url).href;
   image.onload=()=>{
     for(const [name,[x,y,w,h]]of Object.entries(regions)){
-      const part=document.createElement('canvas');part.width=name==='head'?96:name==='chest'?50:20;part.height=Math.round(part.width*h/w);
-      const c=part.getContext('2d');c.imageSmoothingEnabled=false;c.drawImage(image,x,y,w,h,0,0,part.width,part.height);parts[name]=part;
+      const part=document.createElement('canvas');part.width=name==='head'?52:name==='chest'?26:10;part.height=Math.round(part.width*h/w);
+      const c=part.getContext('2d');c.imageSmoothingEnabled=false;c.drawImage(image,x,y,w,h,0,0,part.width,part.height);
+      // Flatten the generated artwork to a small console palette once, on load.
+      const pixels=c.getImageData(0,0,part.width,part.height),data=pixels.data;
+      for(let i=0;i<data.length;i+=4){
+        if(data[i+3]<128){data[i+3]=0;continue;}
+        let best=palette[0],distance=Infinity;
+        for(const color of palette){const d=color.reduce((sum,v,j)=>sum+(v-data[i+j])**2,0);if(d<distance){best=color;distance=d;}}
+        data.set(best,i);data[i+3]=255;
+      }
+      c.putImageData(pixels,0,0);parts[name]=part;
     }
     ready=true;stage.dataset.ready='true';update(performance.now());
   };
@@ -27,41 +38,39 @@ export function createTerminalCompanion({state,settings,$}){
   }
   const observer=new ResizeObserver(place);for(const id of ['targetCard','terminalPocket','gameViewport'])observer.observe($(id));
   function draw(pose,now){
-    ctx.clearRect(0,0,120,132);ctx.imageSmoothingEnabled=false;
-    const still=settings.reducedMotion||reducedMotion.matches;
-    const t=still?0:now/1000,bob=still?0:Math.round(Math.sin(t*(pose==='sleep'?1.6:2.2)));
-    const wave=['wake','greet','celebrate','complete','stretch'].includes(pose),speed=pose==='celebrate'?9:4;
-    // Integer offsets keep the small pixel sprite crisp. Body and hands reveal
-    // beneath the head as the terminal rises; the closed stage clips them out.
-    ctx.drawImage(parts.chest,35,79+bob);
-    const arm=(name,x,angle)=>{ctx.save();ctx.translate(x,86+bob);ctx.rotate(angle);ctx.drawImage(parts[name],-10,0);ctx.restore();};
-    arm('left',30,wave?(still?-.2:-.3+Math.sin(t*speed)*.25):0);
-    arm('right',90,wave?(still?.2:.3-Math.sin(t*speed)*.25):0);
-    const headY=bob+(pose==='sleep'?-8:pose==='input'?Math.round(Math.sin(t*5)):0);
-    ctx.drawImage(parts.head,12,headY);
-    // Visor occupies x37..89, y48..70 on the downsampled head.
-    const cyan=pose==='concern'?'#ffd27b':'#8efff4',dark='#031321';
-    const eyeY=52+headY,shift=pose==='glance'?Math.round(Math.sin(t*2)*3):pose==='scan'?Math.round(Math.sin(t*4)*2):0;
-    ctx.fillStyle=cyan;
+    ctx.clearRect(0,0,64,72);ctx.imageSmoothingEnabled=false;
+    const still=settings.reducedMotion||reducedMotion.matches,{bob,turn,lift}=companionMotion(pose,now,still),t=still?0:now/1000;
+    // Ease arm raises and occasional head turns without ever smoothing pixels.
+    const ease=still?1:1-Math.exp(-Math.max(0,Math.min(100,now-lastPaint))/120);
+    armLift+=(lift-armLift)*ease;headTurn+=(turn-headTurn)*ease;
+    const raised=Math.round(armLift),yaw=Math.round(headTurn),headY=bob+(pose==='sleep'?-10:0);
+    ctx.drawImage(parts.chest,19,40+bob);
+    const arms=()=>{ctx.drawImage(parts.left,8-Math.round(raised/4),43+bob-raised);ctx.drawImage(parts.right,46+Math.round(raised/4),43+bob-raised);};
+    if(!raised)arms();
+    // This mild yaw is reserved for scanning/travel/glances; the default is a
+    // symmetric front view. Draw the visor in the same head coordinate space.
+    const f=faceContext;f.clearRect(0,0,52,44);f.drawImage(parts.head,0,0);
+    const cyan=pose==='concern'?'#e2b455':'#79eee0',eyeY=27;f.fillStyle=cyan;
     if(pose==='sleep'||pose==='blink'){
-      for(const x of [44,70]){ctx.fillRect(x,eyeY,12,2);if(pose==='sleep')ctx.fillRect(x+2,eyeY+2,8,1);}
+      for(const x of [17,32]){f.fillRect(x,eyeY,6,1);if(pose==='sleep')f.fillRect(x+1,eyeY+1,4,1);}
     }else if(['celebrate','complete','greet'].includes(pose)){
-      for(const x of [44,70]){ctx.fillRect(x,eyeY+3,3,3);ctx.fillRect(x+3,eyeY,6,3);ctx.fillRect(x+9,eyeY+3,3,3);}
+      for(const x of [17,32]){f.fillRect(x,eyeY+1,2,2);f.fillRect(x+2,eyeY,2,1);f.fillRect(x+4,eyeY+1,2,2);}
     }else{
-      const wide=pose==='warp'||pose==='wake',h=wide?13:pose==='concern'?5:10;
-      for(const x of [46,72]){ctx.fillRect(x+shift,eyeY,8,h);ctx.fillRect(x+shift+2,eyeY-2,4,h+4);ctx.fillStyle='#e6fffb';ctx.fillRect(x+shift+2,eyeY,2,3);ctx.fillStyle=cyan;}
+      const h=pose==='warp'||pose==='wake'?7:pose==='concern'?3:5;
+      for(const x of [17,32]){f.fillRect(x+yaw,eyeY,6,h);f.fillRect(x+yaw+1,eyeY-1,4,1);}
     }
     if(pose!=='sleep'&&pose!=='blink'){
-      const mouthY=70+headY;ctx.fillStyle=cyan;
-      if(pose==='warp'){ctx.fillRect(60,mouthY-3,7,6);ctx.fillStyle=dark;ctx.fillRect(62,mouthY-1,3,2);}
-      else if(pose==='concern'){ctx.fillRect(56,mouthY,4,2);ctx.fillRect(60,mouthY-2,8,2);ctx.fillRect(68,mouthY,4,2);}
-      else if(pose==='input'||pose==='scan'){ctx.fillRect(56,mouthY,14,2+Math.round((Math.sin(t*10)+1)*1.5));}
-      else{ctx.fillRect(57,mouthY-2,3,2);ctx.fillRect(60,mouthY,8,2);ctx.fillRect(68,mouthY-2,3,2);}
+      if(pose==='warp'){f.fillRect(25,34,4,3);f.fillStyle='#06131e';f.fillRect(26,35,2,1);}
+      else if(pose==='concern'){f.fillRect(23,35,2,1);f.fillRect(25,34,4,1);f.fillRect(29,35,2,1);}
+      else if(pose==='input'||pose==='scan'){f.fillRect(23,34,8,1+Math.round((Math.sin(t*10)+1)/2));}
+      else{f.fillRect(23,33,2,1);f.fillRect(25,34,4,1);f.fillRect(29,33,2,1);}
     }
-    if(pose==='sleep'&&!still&&now%7500>5000){ctx.fillStyle='#68c2c2';ctx.fillRect(101,13,6,1);ctx.fillRect(105,14,2,1);ctx.fillRect(103,15,2,1);ctx.fillRect(101,16,6,1);}
-    if(pose==='travel'||pose==='warp'){ctx.fillStyle='#77fff0';ctx.fillRect(52,126,16,2);if(!still)ctx.fillRect(56,128,8,now%160<80?3:1);}
-    if(pose==='clear'){ctx.fillStyle='#8efff4';ctx.fillRect(33,Math.round(94+Math.sin(t*4)*13),54,2);}
-    if(pose==='celebrate'&&!still){ctx.fillStyle='#ffd27b';for(let i=0;i<3;i++)ctx.fillRect(8+i*49,20+Math.round((t*12+i*18)%45),2,2);}
+    ctx.drawImage(face,6+yaw,headY,52-Math.abs(yaw),44);
+    if(raised)arms();
+    if(pose==='sleep'&&!still&&now%7500>5000){ctx.fillStyle='#71949b';ctx.fillRect(58,5,4,1);ctx.fillRect(60,6,1,1);ctx.fillRect(59,7,1,1);ctx.fillRect(58,8,4,1);}
+    if(pose==='travel'||pose==='warp'){ctx.fillStyle='#79eee0';ctx.fillRect(23,49,18,1);if(!still)ctx.fillRect(29,50,6,now%160<80?2:1);}
+    if(pose==='clear'){ctx.fillStyle='#79eee0';ctx.fillRect(18,Math.round(44+Math.sin(t*4)*3),28,1);}
+    if(pose==='celebrate'&&!still){ctx.fillStyle='#e2b455';for(let i=0;i<3;i++)ctx.fillRect(2+i*29,8+Math.round((t*6+i*9)%26),1,1);}
   }
   function update(now){
     const blocked=document.hidden||!state.save||state.scene==='menu'||state.journalOpen||$('modal').classList.contains('visible')||$('systemChart').classList.contains('open')||$('targetCard').hidden;
@@ -69,7 +78,8 @@ export function createTerminalCompanion({state,settings,$}){
     if(stage.hidden){lastPose='';return;}
     if(state.scene!==lastScene){brain.react('greet',now);lastScene=state.scene;}
     stage.dataset.pose=state.terminalExpanded?'awake':'sleep';stage.dataset.emote=pose;
-    if(now-lastPlace>=100||pose!==lastPose){place();lastPlace=now;}if(now-lastPaint>=50||pose!==lastPose){draw(pose,now);lastPaint=now;lastPose=pose;}
+    if(now-lastPlace>=100||pose!==lastPose){place();lastPlace=now;}
+    if(now-lastPaint>=50||pose!==lastPose){draw(pose,now);lastPaint=now;lastPose=pose;}
   }
   return {update,react:(kind)=>{const now=performance.now();brain.react(kind,now);update(now);},place};
 }
