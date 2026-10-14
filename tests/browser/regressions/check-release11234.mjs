@@ -19,13 +19,15 @@ export async function checkRelease11234(page,engine){
     return {native:[c.width,c.height],width:r.width,canvasBottom:full.bottom,top:r.top,bottom:r.bottom,cardTop:card.top,height:r.height,bodyPainted:pixels.some((v,i)=>i%4===3&&v>0)};
   });assert.ok(open.top>=5&&open.height>sleep.height&&Math.abs(open.bottom-open.cardTop)<1&&open.bodyPainted,JSON.stringify(open));
   assert.deepEqual(open.native,[64,72]);assert.ok(open.width>120&&open.canvasBottom>open.bottom+30,JSON.stringify(open));
+  const restingHands=await page.locator('#companionCanvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(3,35,8,8).data).join(','));
   const png=await page.screenshot({path:`.qa/${engine}-11234-awake.png`});
   if(engine==='webkit'&&process.env.QA_LAYOUT_PREVIEW==='true'){const data=png.toString('base64');for(let i=0;i<data.length;i+=6000)console.log(`QA_PREVIEW:11234-awake:${i/6000}:${data.slice(i,i+6000)}`);}
   await page.locator('#terminalKeyboardToggle').click();await page.locator('[data-key=H]').click();await page.locator('[data-key=I]').click();await page.locator('[data-key=Enter]').click();
   assert.equal(await page.locator('#terminalCompanion').getAttribute('data-emote'),'input');
   await page.locator('#terminalClear').click();assert.equal(await page.locator('#terminalCompanion').getAttribute('data-emote'),'clear');
   await page.evaluate(()=>window.__game.notify('First landing on Earth',{log:false}));assert.equal(await page.locator('#terminalCompanion').getAttribute('data-emote'),'celebrate');
-  const raised=await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;const now=performance.now();g.companion.update(now+250);g.companion.update(now+500);return document.getElementById('terminalCompanion').dataset.emote;});assert.equal(raised,'celebrate');
+  const raised=await page.evaluate(()=>{const g=window.__game;g.settings.reducedMotion=false;const now=performance.now();for(const offset of [250,500,750])g.companion.update(now+offset);return document.getElementById('terminalCompanion').dataset.emote;});assert.equal(raised,'celebrate');
+  const raisedHands=await page.locator('#companionCanvas').evaluate(c=>Array.from(c.getContext('2d').getImageData(3,35,8,8).data).join(','));assert.notEqual(raisedHands,restingHands,'the raised mitten must enter the visible area above the terminal');
   const wave=await page.screenshot({path:`.qa/${engine}-11234-wave.png`});
   if(engine==='webkit'&&process.env.QA_LAYOUT_PREVIEW==='true'){const data=wave.toString('base64');for(let i=0;i<data.length;i+=6000)console.log(`QA_PREVIEW:11234-wave:${i/6000}:${data.slice(i,i+6000)}`);}
   await page.evaluate(()=>{window.__game.settings.reducedMotion=true;window.__game.notify('No solid surface here.',{log:false});});assert.equal(await page.locator('#terminalCompanion').getAttribute('data-emote'),'concern');

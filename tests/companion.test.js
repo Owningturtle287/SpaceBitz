@@ -28,6 +28,6 @@ test('default poses face forward, selective turns and arm raises stop with reduc
     for(const now of [250,1000,1400,4200])assert.equal(companionMotion(pose,now).turn,0,pose);
   }
   for(const pose of ['glance','scan','travel'])assert.ok([250,500,1000,1400].some(now=>companionMotion(pose,now).turn!==0),pose);
-  assert.equal(companionMotion('idle',1000).lift,0);assert.ok(companionMotion('celebrate',1000).lift>=10);
+  assert.equal(companionMotion('idle',1000).lift,0);assert.ok(companionMotion('celebrate',1000).lift>=18);
   assert.deepEqual(companionMotion('celebrate',1000,true),{bob:0,turn:0,lift:0});
 });

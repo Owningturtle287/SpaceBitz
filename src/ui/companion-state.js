@@ -47,5 +47,5 @@ export function companionMotion(pose,now,reduced=false){
   // Idle, listening and expressive reactions address the player head-on.
   const turn=['glance','scan','travel'].includes(pose)?Math.round(Math.sin(t*(pose==='scan'?3:1.8))*2):0;
   const raised=['wake','greet','celebrate','complete','stretch'].includes(pose);
-  return {bob:Math.round(Math.sin(t*(pose==='sleep'?1.6:2.2))),turn,lift:raised?12+Math.round(Math.sin(t*(pose==='celebrate'?9:4))*2):0};
+  return {bob:Math.round(Math.sin(t*(pose==='sleep'?1.6:2.2))),turn,lift:raised?20+Math.round(Math.sin(t*(pose==='celebrate'?9:4))*2):0};
 }
