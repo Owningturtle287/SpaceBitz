@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createCompanionBrain,reactionForMessage,companionPlacement} from '../src/ui/companion-state.js';
+import {createCompanionBrain,reactionForMessage,companionPlacement,companionMotion} from '../src/ui/companion-state.js';
 const state=()=>({save:{},scene:'system',selected:{id:'earth'},terminalExpanded:false});
 test('docked companion stays asleep through action events and wakes only with terminal',()=>{
   const brain=createCompanionBrain(),s=state();brain.react('concern',0);assert.equal(brain.update(s,20),'sleep');
@@ -21,4 +21,13 @@ test('companion sits above terminal and clear of right camera in compact and ope
     assert.ok(p.x>=6&&p.x+p.width<=838&&p.y-p.height>=6);assert.ok(p.x+p.width<=camera.x||p.y<=camera.y||p.y-p.height>=camera.y+camera.height);assert.equal(p.y,card.y);
   }
   const tiny={x:400,y:42,width:200};const p=companionPlacement(tiny,tiny,{width:667,height:375},[],[],true);assert.equal(p.height,36);assert.equal(p.y-p.height,6);
+});
+
+test('default poses face forward, selective turns and arm raises stop with reduced motion',()=>{
+  for(const pose of ['idle','sleep','input','wake','greet','celebrate','complete','concern','clear','stretch','warp']){
+    for(const now of [250,1000,1400,4200])assert.equal(companionMotion(pose,now).turn,0,pose);
+  }
+  for(const pose of ['glance','scan','travel'])assert.ok([250,500,1000,1400].some(now=>companionMotion(pose,now).turn!==0),pose);
+  assert.equal(companionMotion('idle',1000).lift,0);assert.ok(companionMotion('celebrate',1000).lift>=10);
+  assert.deepEqual(companionMotion('celebrate',1000,true),{bob:0,turn:0,lift:0});
 });

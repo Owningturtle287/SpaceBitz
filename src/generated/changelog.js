@@ -1,6 +1,13 @@
 // Generated from CHANGELOG.md by npm run release:sync.
 export const CHANGELOG=[
   {
+    "version": "1.12.34",
+    "items": [
+      "Simplified the white scout to a low-resolution 64 × 72 pixel renderer with a small flat palette and solid mitten hands without fingers. He now faces the player by default, turning only during occasional glances, scans and travel.",
+      "Increased his on-screen size and tucked his lower chest and resting arms behind the terminal. Waves, stretches and celebrations lift his arms into view, with eased movement and the existing camera clearance and reduced-motion support."
+    ]
+  },
+  {
     "version": "1.12.33",
     "items": [
       "Integrated the white scout companion above the terminal. He sleeps with half his head peeking above the closed device when a target is selected, then rises to reveal his chest and arms when it opens.",
