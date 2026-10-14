@@ -10,7 +10,8 @@ test('action reactions expire, warnings outrank chatter, travel and scanning fol
   const brain=createCompanionBrain(),s={...state(),terminalExpanded:true};brain.update(s,0);
   brain.react('concern',100);brain.react('input',200);assert.equal(brain.update(s,300),'concern');
   s.autopilot={};assert.equal(brain.update(s,4000),'travel');s.autopilot=null;assert.equal(brain.update(s,4100),'celebrate');
-  s.terminal={finished:false};assert.equal(brain.update(s,8000),'scan');s.warpUntil=9000;assert.equal(brain.update(s,8100),'warp');
+  s.terminal={finished:false};assert.equal(brain.update(s,8000),'scan');brain.react('input',8050);s.warpUntil=9000;assert.equal(brain.update(s,8100),'warp');
+  brain.react('concern',8150);assert.equal(brain.update(s,8200),'concern');
   assert.equal(reactionForMessage('Sample secured · added to logbook'),'celebrate');assert.equal(reactionForMessage('Storage is full'),'concern');
 });
 test('companion sits above terminal and clear of right camera in compact and open layouts',()=>{

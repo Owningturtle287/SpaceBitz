@@ -17,8 +17,9 @@ export function createCompanionBrain(){
       if(previousTravel&&!travel&&open)this.react('celebrate',now);previousTravel=travel;
       if(!state.save||state.scene==='menu')return 'hidden';
       if(!open)return state.selected||state.waypoint?'sleep':'hidden';
-      if(active&&now<active.until&&active.priority>=3)return active.kind;
+      if(active&&now<active.until&&active.kind==='concern')return active.kind;
       if(state.warpUntil)return 'warp';
+      if(active&&now<active.until&&active.priority>=3)return active.kind;
       if(state.autopilot)return 'travel';
       if(active&&now<active.until)return active.kind;
       if(state.terminal&&!state.terminal.finished)return 'scan';
